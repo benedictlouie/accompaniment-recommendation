@@ -3,7 +3,7 @@ import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
 import os
 import numpy as np
-from constants import DEVICE, NUM_CLASSES, MELODY_NOTES_PER_BEAT, INPUT_DIM
+from constants import DEVICE, NUM_CLASSES, MELODY_NOTES_PER_BEAT, INPUT_DIM, LEARNING_RATE, DROPOUT_RATE, WEIGHT_DECAY
 from torch.utils.tensorboard import SummaryWriter
 
 # -------------------------------------------------------
@@ -11,9 +11,9 @@ from torch.utils.tensorboard import SummaryWriter
 # -------------------------------------------------------
 
 class SequenceToChordGRU(nn.Module):
-    def __init__(self, input_dim=INPUT_DIM, hidden_dim=128, num_layers=2, num_classes=NUM_CLASSES, dropout=0.2):
+    def __init__(self, input_dim=INPUT_DIM, hidden_dim=128, num_layers=2, num_classes=NUM_CLASSES, dropout=DROPOUT_RATE):
         super().__init__()
-        self.gru = nn.GRU(input_dim, hidden_dim, num_layers=num_layers, batch_first=True, dropout=dropout)
+        self.gru = nn.GRU(input_dim, hidden_dim, num_layers=num_layers, batch_first=True, dropout=DROPOUT_RATE)
         self.fc = nn.Linear(hidden_dim, num_classes)
 
         total_params = sum(p.numel() for p in self.parameters() if p.requires_grad)
@@ -117,7 +117,7 @@ def evaluate(model, dataloader, criterion, device='cuda'):
             total_samples += y.size(0)
     return total_loss / len(dataloader), total_correct / total_samples
 
-def train_model(model, train_dataset, val_dataset, num_epochs=30, batch_size=64, lr=5e-2,
+def train_model(model, train_dataset, val_dataset, num_epochs=30, batch_size=64, lr=LEARNING_RATE,
                 device='cuda', checkpoint_path='checkpoints/gru.pth'):
 
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
@@ -125,8 +125,8 @@ def train_model(model, train_dataset, val_dataset, num_epochs=30, batch_size=64,
 
     model = model.to(device)
     criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=1e-5)
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=num_epochs, eta_min=1e-5)  # LR schedule
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=WEIGHT_DECAY)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=num_epochs, eta_min=LEARNING_RATE/10)  # LR schedule
 
     model, optimizer, start_epoch, _ = load_checkpoint(model, optimizer, save_path=checkpoint_path, device=device)
 
@@ -185,12 +185,11 @@ if __name__ == "__main__":
 
     writer = SummaryWriter()
 
-
     train_inputs, train_targets = load_data_from_npz('data_train.npz')
     val_inputs, val_targets = load_data_from_npz('data_val.npz')
 
     train_dataset = ChordDataset(train_inputs, train_targets)
     val_dataset = ChordDataset(val_inputs, val_targets)
 
-    model = SequenceToChordGRU(input_dim=6)
+    model = SequenceToChordGRU(input_dim=INPUT_DIM)
     train_model(model, train_dataset, val_dataset, num_epochs=30, batch_size=64, device=DEVICE)

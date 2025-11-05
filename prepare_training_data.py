@@ -1,7 +1,7 @@
 import numpy as np
 import os
 import random
-from constants import *
+from constants import ROOTS, QUALITIES, CHORD_CLASSES, NUM_CLASSES, REVERSE_CHORD_MAP, REVERSE_ROOT_MAP, FLAT_TO_SHARP, MEMORY, MELODY_NOTES_PER_BEAT, CHORD_TO_TETRAD
 
 # ------------------------- #
 #     CHORD UTILITIES       #
@@ -19,12 +19,6 @@ def simplify_chord(chord_str):
     if qual not in QUALITIES:
         qual = 'maj'
     return f"{root}:{qual}"
-
-
-def chord_to_index(chord_simple):
-    """Return integer index for a chord."""
-    return REVERSE_CHORD_MAP.get(chord_simple, random.randint(0, NUM_CLASSES - 1))
-
 
 def pad_sequence(arr, target_len, pad_value=0):
     n = len(arr)
@@ -57,14 +51,16 @@ def prepare_one_song_for_training(npz_path, transpose=0):
             chord = f"{root}:{qual}"
         processed_chords.append(chord)
 
-    chord_indices = np.array([chord_to_index(c) for c in processed_chords], dtype=np.int16)
+    chord_indices = np.array([REVERSE_CHORD_MAP.get(c, NUM_CLASSES-1) for c in processed_chords], dtype=np.int16)
+    chord_embeddings = np.array([CHORD_TO_TETRAD.get(c, [-1, -1, -1, -1]) for c in processed_chords], dtype=np.int16)
+
     melody = np.where(melody > 10, melody + transpose, -1)  # transpose melody
     num_beats = min(len(chord_indices), len(melody) // MELODY_NOTES_PER_BEAT) - 1
 
     melody_chunks = np.reshape(melody[:num_beats * MELODY_NOTES_PER_BEAT],
                                (num_beats, MELODY_NOTES_PER_BEAT))
     strong_beats = strong_beats[:num_beats, None]
-    chord_vecs = chord_indices[:num_beats, None]  # shape (num_beats, 1)
+    chord_vecs = chord_embeddings[:num_beats]  # shape (num_beats, 4)
     targets = chord_indices[1:num_beats + 1, None]  # next chord index
 
     inputs = np.concatenate([strong_beats, melody_chunks, chord_vecs], axis=1)

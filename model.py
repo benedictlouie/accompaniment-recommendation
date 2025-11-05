@@ -3,7 +3,7 @@ import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
 import os
 import numpy as np
-from constants import DEVICE, NUM_CLASSES, MEMORY, MELODY_NOTES_PER_BEAT, INPUT_DIM
+from constants import DEVICE, NUM_CLASSES, MEMORY, MELODY_NOTES_PER_BEAT, INPUT_DIM, LEARNING_RATE, DROPOUT_RATE, WEIGHT_DECAY
 from torch.utils.tensorboard import SummaryWriter
 
 # -------------------------------------------------------
@@ -12,7 +12,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 class SequenceToChordTransformer(nn.Module):
     def __init__(self, input_dim=INPUT_DIM, model_dim=256, num_heads=4, num_layers=4,
-                 num_classes=NUM_CLASSES, dropout=0.2):
+                 num_classes=NUM_CLASSES, dropout=DROPOUT_RATE):
         """
         input_dim: number of features per timestep (1 strong beat + 4 melody + 1 chord index)
         """
@@ -162,7 +162,7 @@ def evaluate(model, dataloader, criterion, device='cuda'):
     return total_loss / len(dataloader), total_correct / total_samples
 
 
-def train_model(model, train_dataset, val_dataset, num_epochs=10, batch_size=32, lr=1e-3,
+def train_model(model, train_dataset, val_dataset, num_epochs=10, batch_size=32, lr=LEARNING_RATE,
                 device='cuda', checkpoint_path='checkpoints/latest.pth'):
 
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
@@ -170,7 +170,7 @@ def train_model(model, train_dataset, val_dataset, num_epochs=10, batch_size=32,
 
     model = model.to(device)
     criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=1e-5) # weight_decay is related to l2 regularisation
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=WEIGHT_DECAY) # weight_decay is related to l2 regularisation
 
     model, optimizer, start_epoch, _ = load_checkpoint(model, optimizer, save_path=checkpoint_path, device=device)
 
@@ -232,5 +232,5 @@ if __name__ == "__main__":
     val_dataset = ChordDataset(val_inputs, val_targets)
 
     # Initialize and train
-    model = SequenceToChordTransformer(input_dim=6)
+    model = SequenceToChordTransformer(input_dim=INPUT_DIM)
     train_model(model, train_dataset, val_dataset, num_epochs=30, batch_size=64, device=DEVICE)
