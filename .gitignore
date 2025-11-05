@@ -1,0 +1,10 @@
+.DS_Store
+__pycache__/
+runs/
+pop/POP909/
+pop/melody_chords/
+pop/.DS_Store
+checkpoints/
+output.mid
+data_train.npz
+data_val.npz
