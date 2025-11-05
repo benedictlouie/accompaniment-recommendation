@@ -3,18 +3,15 @@ import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
 import os
 import numpy as np
-from prepare_training_data import NUM_CLASSES, MEMORY, MELODY_NOTES_PER_BEAT
+from constants import DEVICE, NUM_CLASSES, MEMORY, MELODY_NOTES_PER_BEAT, INPUT_DIM
 from torch.utils.tensorboard import SummaryWriter
-
-writer = SummaryWriter()
-DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # -------------------------------------------------------
 #               MODEL DEFINITION
 # -------------------------------------------------------
 
 class SequenceToChordTransformer(nn.Module):
-    def __init__(self, input_dim=6, model_dim=256, num_heads=4, num_layers=4,
+    def __init__(self, input_dim=INPUT_DIM, model_dim=256, num_heads=4, num_layers=4,
                  num_classes=NUM_CLASSES, dropout=0.2):
         """
         input_dim: number of features per timestep (1 strong beat + 4 melody + 1 chord index)
@@ -224,6 +221,9 @@ def train_model(model, train_dataset, val_dataset, num_epochs=10, batch_size=32,
 # -------------------------------------------------------
 
 if __name__ == "__main__":
+
+    writer = SummaryWriter()
+
     # Load datasets
     train_inputs, train_targets = load_data_from_npz('data_train.npz')
     val_inputs, val_targets = load_data_from_npz('data_val.npz')

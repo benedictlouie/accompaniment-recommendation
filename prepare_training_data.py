@@ -1,23 +1,7 @@
 import numpy as np
 import os
 import random
-
-# ------------------------- #
-#     CONSTANTS / MAPS      #
-# ------------------------- #
-
-ROOTS = np.array(['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'])
-QUALITIES = ['maj', 'min']
-CHORD_CLASSES = np.array([f"{r}:{q}" for r in ROOTS for q in QUALITIES] + ["N"])
-NUM_CLASSES = len(CHORD_CLASSES)
-
-REVERSE_ROOT_MAP = {r: i for i, r in enumerate(ROOTS)}
-REVERSE_CHORD_MAP = {c: i for i, c in enumerate(CHORD_CLASSES)}
-FLAT_TO_SHARP = {'Ab': 'G#', 'Bb': 'A#', 'Db': 'C#', 'Eb': 'D#', 'Gb': 'F#'}
-
-MEMORY = 32
-MELODY_NOTES_PER_BEAT = 4
-
+from constants import *
 
 # ------------------------- #
 #     CHORD UTILITIES       #
@@ -76,8 +60,6 @@ def prepare_one_song_for_training(npz_path, transpose=0):
     chord_indices = np.array([chord_to_index(c) for c in processed_chords], dtype=np.int16)
     melody = np.where(melody > 10, melody + transpose, -1)  # transpose melody
     num_beats = min(len(chord_indices), len(melody) // MELODY_NOTES_PER_BEAT) - 1
-    # if num_beats <= 0:
-    #     return np.empty((0, 30 + 1)), np.empty((0, 1), dtype=np.int16)
 
     melody_chunks = np.reshape(melody[:num_beats * MELODY_NOTES_PER_BEAT],
                                (num_beats, MELODY_NOTES_PER_BEAT))

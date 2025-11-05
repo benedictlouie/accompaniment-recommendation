@@ -1,0 +1,28 @@
+import numpy as np
+import torch
+
+DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+ROOTS = np.array(['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'])
+QUALITIES = ['maj', 'min']
+CHORD_CLASSES = np.array([f"{r}:{q}" for r in ROOTS for q in QUALITIES] + ["N"])
+NUM_CLASSES = len(CHORD_CLASSES)
+
+REVERSE_ROOT_MAP = {r: i for i, r in enumerate(ROOTS)}
+REVERSE_CHORD_MAP = {c: i for i, c in enumerate(CHORD_CLASSES)}
+FLAT_TO_SHARP = {'Ab': 'G#', 'Bb': 'A#', 'Db': 'C#', 'Eb': 'D#', 'Gb': 'F#'}
+
+CHORD_TO_TETRAD = {}
+BASE_OCTAVE = 36  # C2 (~two octaves below middle C)
+for name, offset in REVERSE_ROOT_MAP.items():
+    root = BASE_OCTAVE + offset
+    CHORD_TO_TETRAD[f"{name}:maj"] = [root, root + 4, root + 7, root + 12]
+    CHORD_TO_TETRAD[f"{name}:min"] = [root, root + 3, root + 7, root + 12]
+
+MEMORY = 32
+MELODY_NOTES_PER_BEAT = 4
+INPUT_DIM = 1 + MELODY_NOTES_PER_BEAT + 1
+
+FIFTHS = ["C", "G", "D", "A", "E", "B", "F#", "C#", "G#", "D#", "A#", "F"]
+FIFTHS_INDEX = {note: i for i, note in enumerate(FIFTHS)}
+

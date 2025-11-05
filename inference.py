@@ -1,21 +1,22 @@
 import torch
 import numpy as np
-# from model import SequenceToChordTransformer, load_checkpoint, DEVICE
-from gru import SequenceToChordGRU, load_checkpoint, DEVICE
-from prepare_training_data import break_down_one_song_into_sequences, CHORD_CLASSES, MEMORY, NUM_CLASSES
+# from model import SequenceToChordTransformer, load_checkpoint
+from gru import SequenceToChordGRU, load_checkpoint
+from prepare_training_data import break_down_one_song_into_sequences
+from constants import DEVICE, CHORD_CLASSES, MEMORY, NUM_CLASSES, DEVICE, INPUT_DIM
 from plot_chords import plot_chords_over_time
 from play import npz_to_midi
 
 # ----- Load Model -----
-# model = SequenceToChordTransformer(input_dim=6)
-model = SequenceToChordGRU(input_dim=6)
+# model = SequenceToChordTransformer(input_dim=INPUT_DIM)
+model = SequenceToChordGRU(input_dim=INPUT_DIM)
 # model, _, _, _ = load_checkpoint(model, save_path='checkpoints/latest.pth', device=DEVICE)
 model, _, _, _ = load_checkpoint(model, save_path='checkpoints/gru.pth', device=DEVICE)
 model.to(DEVICE)
 model.eval()
 
 # ----- Prepare Data -----
-num = 444
+num = 330
 inputs, targets = break_down_one_song_into_sequences(num, test=True)
 print("Inputs:", inputs.shape, "Targets:", targets.shape)
 

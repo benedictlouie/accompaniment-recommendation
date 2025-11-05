@@ -1,8 +1,5 @@
 import matplotlib.pyplot as plt
-
-# Circle of fifths order (12 positions)
-fifths = ["C", "G", "D", "A", "E", "B", "F#", "Db", "Ab", "Eb", "Bb", "F"]
-note_to_index = {note: i for i, note in enumerate(fifths)}
+from constants import FIFTHS, FIFTHS_INDEX, FLAT_TO_SHARP
 
 def chord_to_position(chord):
     """Return y position index based on circle of fifths (+3 mod for relative minors)."""
@@ -18,19 +15,14 @@ def chord_to_position(chord):
         return None
 
     # Normalize enharmonics
-    root = {
-        'C#': 'Db',
-        'D#': 'Eb',
-        'G#': 'Ab',
-        'A#': 'Bb',
-        'Gb': 'F#'
-    }.get(root, root)
+    if root.endswith('b'):
+        root = FLAT_TO_SHARP.get(root, root)
 
-    if root not in note_to_index:
+    if root not in FIFTHS_INDEX:
         print(f"Warning: {root} not in circle of fifths")
         return None
 
-    idx = note_to_index[root]
+    idx = FIFTHS_INDEX[root]
 
     # Minor chords belong to the relative major (-3 mod 12)
     if quality == "min":
@@ -53,7 +45,7 @@ def plot_chords_over_time(*chord_sequences):
         plt.plot(times, y_positions, 'o-', lw=2, label=f"Sequence {seq_idx + 1}")
 
     # Add -1 ("N") to the y-axis labels
-    plt.yticks([-1] + list(range(len(fifths))), ["N"] + fifths)
+    plt.yticks([-1] + list(range(len(FIFTHS))), ["N"] + FIFTHS)
     plt.xlabel("Time (index)")
     plt.ylabel("Keys (ordered by circle of fifths)")
     plt.title("Chord Progressions vs Time (Circle of Fifths Order, with N)")

@@ -3,18 +3,15 @@ import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
 import os
 import numpy as np
-from prepare_training_data import NUM_CLASSES, MEMORY, MELODY_NOTES_PER_BEAT
+from constants import DEVICE, NUM_CLASSES, MELODY_NOTES_PER_BEAT, INPUT_DIM
 from torch.utils.tensorboard import SummaryWriter
-
-writer = SummaryWriter()
-DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # -------------------------------------------------------
 #               MODEL DEFINITION (GRU)
 # -------------------------------------------------------
 
 class SequenceToChordGRU(nn.Module):
-    def __init__(self, input_dim=6, hidden_dim=128, num_layers=2, num_classes=NUM_CLASSES, dropout=0.2):
+    def __init__(self, input_dim=INPUT_DIM, hidden_dim=128, num_layers=2, num_classes=NUM_CLASSES, dropout=0.2):
         super().__init__()
         self.gru = nn.GRU(input_dim, hidden_dim, num_layers=num_layers, batch_first=True, dropout=dropout)
         self.fc = nn.Linear(hidden_dim, num_classes)
@@ -185,6 +182,10 @@ def train_model(model, train_dataset, val_dataset, num_epochs=30, batch_size=64,
 # -------------------------------------------------------
 
 if __name__ == "__main__":
+
+    writer = SummaryWriter()
+
+
     train_inputs, train_targets = load_data_from_npz('data_train.npz')
     val_inputs, val_targets = load_data_from_npz('data_val.npz')
 
