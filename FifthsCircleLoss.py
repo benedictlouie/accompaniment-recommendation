@@ -3,7 +3,7 @@ import torch.nn as nn
 import math
 
 class FifthsCircleLoss(nn.Module):
-    def __init__(self, num_chords=25, factor_minor=0.8, k=99.0):
+    def __init__(self, num_chords=25, factor_minor=0.8, k=99.0, no_chord_penalty=2):
         """
         num_chords: number of chord classes (default 25)
         factor_minor: scale factor for minor chords
@@ -13,6 +13,7 @@ class FifthsCircleLoss(nn.Module):
         self.num_chords = num_chords
         self.factor_minor = factor_minor
         self.k = k
+        self.no_chord_penalty = torch.tensor(no_chord_penalty)
 
         # precompute chord coordinates
         coords = torch.stack([self.map_to_circle(torch.tensor(i, dtype=torch.float32)) 
@@ -33,10 +34,9 @@ class FifthsCircleLoss(nn.Module):
 
         angle_major = 2 * math.pi * dist_major / 12
         angle_minor = 2 * math.pi * dist_minor / 12
-        coord_major = torch.stack([torch.cos(angle_major), torch.sin(angle_major)])
-        coord_minor = factor * torch.stack([torch.cos(angle_minor), torch.sin(angle_minor)])
-
-        coords = is_N * torch.zeros(2) + (1 - is_N) * ((1 - is_minor) * coord_major + is_minor * coord_minor)
+        coord_major = torch.stack([torch.cos(angle_major), torch.sin(angle_major), self.no_chord_penalty])
+        coord_minor = factor * torch.stack([torch.cos(angle_minor), torch.sin(angle_minor), self.no_chord_penalty])
+        coords = is_N * torch.zeros(3) + (1 - is_N) * ((1 - is_minor) * coord_major + is_minor * coord_minor)
         return coords
 
     def forward(self, logits, target_idx):

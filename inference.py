@@ -12,12 +12,12 @@ from play import npz_to_midi
 # model = SequenceToChordTransformer(input_dim=INPUT_DIM)
 model = SequenceToChordGRU(input_dim=INPUT_DIM)
 # model, _, _, _ = load_checkpoint(model, save_path='checkpoints/latest.pth', device=DEVICE)
-model, _, _, _ = load_checkpoint(model, save_path='checkpoints/gru.pth', device=DEVICE)
+model, _, _, _ = load_checkpoint(model, save_path='checkpoints/gru-6.pth', device=DEVICE)
 model.to(DEVICE)
 model.eval()
 
 # ----- Prepare Data -----
-num = 330
+num = 400
 inputs, targets = break_down_one_song_into_sequences(num, test=True)
 print("Inputs:", inputs.shape, "Targets:", targets.shape)
 
@@ -58,16 +58,16 @@ for inp, target in zip(inputs, targets):
     print(f"Predicted: {CHORD_CLASSES[predicted_class]}, Actual: {CHORD_CLASSES[actual_class]}")
 
 # Compute Fifths Circle Loss
-fifthsCircleLoss = FifthsCircleLoss()
-averageLoss = 0
-for pred_chord, true_chord in zip(predicted_chord_names, target_chord_names):
+def compute_fifths_circle_loss(pred_chord, true_chord):
+    fifthsCircleLoss = FifthsCircleLoss()
     predicted_class = torch.tensor(REVERSE_CHORD_MAP[pred_chord])
     pred_coords = fifthsCircleLoss.map_to_circle(predicted_class)
     actual_class = torch.tensor(REVERSE_CHORD_MAP[true_chord])
     target_coords = fifthsCircleLoss.map_to_circle(actual_class)
-    averageLoss += ((pred_coords - target_coords) ** 2).mean()
-averageLoss /= len(predicted_chord_names)
-print("Loss:", averageLoss)
+    return ((pred_coords - target_coords) ** 2).mean().item()
+
+losses = [compute_fifths_circle_loss(pred_chord, true_chord) for pred_chord, true_chord in zip(predicted_chord_names, target_chord_names)]
+print("Average Loss:", sum(losses)/len(losses))
 
 plot_chords_over_time(predicted_chord_names, target_chord_names)
 npz_to_midi(num, predicted_chord_names)
