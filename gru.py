@@ -3,7 +3,8 @@ import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
 import os
 import numpy as np
-from constants import DEVICE, NUM_CLASSES, MELODY_NOTES_PER_BEAT, INPUT_DIM, LEARNING_RATE, DROPOUT_RATE, WEIGHT_DECAY
+from constants import DEVICE, CHORD_CLASSES, NUM_CLASSES, MELODY_NOTES_PER_BEAT, CHORD_TO_TETRAD, INPUT_DIM, CHORD_EMBEDDING_LENGTH, LEARNING_RATE, DROPOUT_RATE, WEIGHT_DECAY, LEARNING_RATE, DROPOUT_RATE, WEIGHT_DECAY
+from FifthsCircleLoss import FifthsCircleLoss
 from torch.utils.tensorboard import SummaryWriter
 
 # -------------------------------------------------------
@@ -78,7 +79,7 @@ def load_checkpoint(model, optimizer=None, save_path='checkpoints/gru.pth', devi
 # -------------------------------------------------------
 
 def corrupt_history_with_model(x, model, K, wrong_prob, device):
-    if torch.rand(1).item() >= wrong_prob:
+    if torch.rand(1).item() > 1:
         return x
 
     batch, timestamp, feature = x.shape
@@ -96,7 +97,11 @@ def corrupt_history_with_model(x, model, K, wrong_prob, device):
         preds = logits.argmax(dim=-1)  # [B]
 
     x_corr = x.clone().to(device)
-    x_corr[:, -K:, -1] = preds.unsqueeze(1).repeat(1, K)
+    prev_chords = [CHORD_CLASSES[pred] for pred in preds]
+    for i, chord in enumerate(prev_chords):
+        tetrads = np.array(CHORD_TO_TETRAD[chord]).reshape(1, -1).repeat(K, axis=0)
+        x_corr[i, -K:, -CHORD_EMBEDDING_LENGTH:] = torch.from_numpy(tetrads).to(DEVICE, dtype=x_corr.dtype)
+    
     return x_corr
 
 # -------------------------------------------------------
@@ -124,7 +129,7 @@ def train_model(model, train_dataset, val_dataset, num_epochs=30, batch_size=64,
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 
     model = model.to(device)
-    criterion = nn.CrossEntropyLoss()
+    criterion = FifthsCircleLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=WEIGHT_DECAY)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=num_epochs, eta_min=LEARNING_RATE/10)  # LR schedule
 

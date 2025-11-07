@@ -48,14 +48,16 @@ def npz_to_midi(song_num, chords, output_path="output.mid", bpm=80):
             continue
         # Note ONs
         for n in notes:
+            if n == -1:
+                chord_track.append(Message('note_off', note=0, velocity=0, time=tpb))
+                continue
             chord_track.append(Message('note_on', note=n, velocity=70, time=0))
         # Note OFFs after one beat
         for i,n in enumerate(notes):
+            if n == -1: continue
             chord_track.append(Message('note_off', note=n, velocity=64, time=(tpb if i == 0 else 0)))
 
     # === Save MIDI ===
     mid.save(output_path)
     print(f"✅ MIDI saved to {output_path}")
-
-
-# MIDI Player: https://midiplayer.ehubsoft.net/
+    

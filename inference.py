@@ -3,7 +3,7 @@ import numpy as np
 # from model import SequenceToChordTransformer, load_checkpoint
 from gru import SequenceToChordGRU, load_checkpoint
 from prepare_training_data import break_down_one_song_into_sequences
-from constants import DEVICE, CHORD_CLASSES, MEMORY, NUM_CLASSES, DEVICE, INPUT_DIM
+from constants import DEVICE, CHORD_CLASSES, MEMORY, NUM_CLASSES, DEVICE, CHORD_TO_TETRAD, INPUT_DIM, CHORD_EMBEDDING_LENGTH
 from plot_chords import plot_chords_over_time
 from play import npz_to_midi
 
@@ -30,7 +30,8 @@ target_chord_names = []
 # ----- Inference Loop -----
 for inp, target in zip(inputs, targets):
     for i in range(-min(MEMORY, len(predicted_chord_names)), 0):
-        inp[i, -1] = predicted_chords[i]
+        prev_chord = CHORD_CLASSES[predicted_chords[i]]
+        inp[i, -CHORD_EMBEDDING_LENGTH:] = CHORD_TO_TETRAD[prev_chord]
 
     # Convert input to tensor for model
     input_tensor = torch.from_numpy(inp.astype(np.float32)).unsqueeze(0).to(DEVICE)  # [1, MEMORY, features]
