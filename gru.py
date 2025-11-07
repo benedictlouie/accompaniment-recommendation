@@ -197,4 +197,4 @@ if __name__ == "__main__":
     val_dataset = ChordDataset(val_inputs, val_targets)
 
     model = SequenceToChordGRU(input_dim=INPUT_DIM)
-    train_model(model, train_dataset, val_dataset, num_epochs=30, batch_size=64, device=DEVICE)
+    train_model(model, train_dataset, val_dataset, num_epochs=60, batch_size=64, device=DEVICE)

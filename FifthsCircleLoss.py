@@ -47,5 +47,5 @@ class FifthsCircleLoss(nn.Module):
         probs = torch.softmax(logits, dim=-1)  # [B, num_chords]
         pred_coords = probs @ self.chord_coords  # [B, 2]
         target_coords = self.chord_coords[target_idx]  # [B, 2]
-        loss = ((pred_coords - target_coords) ** 2).mean() * 6
+        loss = ((pred_coords - target_coords) ** 2).mean()
         return loss

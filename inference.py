@@ -3,7 +3,8 @@ import numpy as np
 # from model import SequenceToChordTransformer, load_checkpoint
 from gru import SequenceToChordGRU, load_checkpoint
 from prepare_training_data import break_down_one_song_into_sequences
-from constants import DEVICE, CHORD_CLASSES, MEMORY, NUM_CLASSES, DEVICE, CHORD_TO_TETRAD, INPUT_DIM, CHORD_EMBEDDING_LENGTH
+from constants import DEVICE, CHORD_CLASSES, REVERSE_CHORD_MAP, MEMORY, NUM_CLASSES, DEVICE, CHORD_TO_TETRAD, INPUT_DIM, CHORD_EMBEDDING_LENGTH
+from FifthsCircleLoss import FifthsCircleLoss
 from plot_chords import plot_chords_over_time
 from play import npz_to_midi
 
@@ -55,6 +56,18 @@ for inp, target in zip(inputs, targets):
         print(f"{CHORD_CLASSES[i]}: {probs[i]:.4f}")
 
     print(f"Predicted: {CHORD_CLASSES[predicted_class]}, Actual: {CHORD_CLASSES[actual_class]}")
+
+# Compute Fifths Circle Loss
+fifthsCircleLoss = FifthsCircleLoss()
+averageLoss = 0
+for pred_chord, true_chord in zip(predicted_chord_names, target_chord_names):
+    predicted_class = torch.tensor(REVERSE_CHORD_MAP[pred_chord])
+    pred_coords = fifthsCircleLoss.map_to_circle(predicted_class)
+    actual_class = torch.tensor(REVERSE_CHORD_MAP[true_chord])
+    target_coords = fifthsCircleLoss.map_to_circle(actual_class)
+    averageLoss += ((pred_coords - target_coords) ** 2).mean()
+averageLoss /= len(predicted_chord_names)
+print("Loss:", averageLoss)
 
 plot_chords_over_time(predicted_chord_names, target_chord_names)
 npz_to_midi(num, predicted_chord_names)
