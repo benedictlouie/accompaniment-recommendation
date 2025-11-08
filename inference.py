@@ -61,10 +61,11 @@ for inp, target in zip(inputs, targets):
 def compute_fifths_circle_loss(pred_chord, true_chord):
     fifthsCircleLoss = FifthsCircleLoss()
     predicted_class = torch.tensor(REVERSE_CHORD_MAP[pred_chord])
-    pred_coords = fifthsCircleLoss.map_to_circle(predicted_class)
+    pred_coords = fifthsCircleLoss.map_to_circle(predicted_class).unsqueeze(0)
     actual_class = torch.tensor(REVERSE_CHORD_MAP[true_chord])
-    target_coords = fifthsCircleLoss.map_to_circle(actual_class)
-    return ((pred_coords - target_coords) ** 2).mean().item()
+    target_coords = fifthsCircleLoss.map_to_circle(actual_class).unsqueeze(0)
+    loss = torch.norm(pred_coords - target_coords, dim=1).mean()
+    return loss
 
 losses = [compute_fifths_circle_loss(pred_chord, true_chord) for pred_chord, true_chord in zip(predicted_chord_names, target_chord_names)]
 print("Average Loss:", sum(losses)/len(losses))
