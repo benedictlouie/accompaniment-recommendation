@@ -10,6 +10,7 @@ NUM_CLASSES = len(CHORD_CLASSES)
 REVERSE_ROOT_MAP = {r: i for i, r in enumerate(ROOTS)}
 REVERSE_CHORD_MAP = {c: i for i, c in enumerate(CHORD_CLASSES)}
 FLAT_TO_SHARP = {'Ab': 'G#', 'Bb': 'A#', 'Db': 'C#', 'Eb': 'D#', 'Gb': 'F#'}
+QUALITY_SIMPLIFIER = {'maj7': 'maj', 'min7': 'min', 'aug': 'min', 'dim': 'min', 'dim7': 'min', 'sus2': 'maj', 'sus4': 'maj', '7': 'maj'}
 
 # ENCODING CHORDS
 CHORD_TO_TETRAD = {'N': [-1, -1, -1, -1]}
@@ -33,4 +34,4 @@ FIFTHS_INDEX = {note: i for i, note in enumerate(FIFTHS)}
 LEARNING_RATE = 1e-4
 DROPOUT_RATE = 0.2
 WEIGHT_DECAY = 1e-5
-
+BATCH_SIZE = 64

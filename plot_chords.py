@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 from constants import FIFTHS, FIFTHS_INDEX, FLAT_TO_SHARP
 
 def chord_to_position(chord):
-    """Return y position index based on circle of fifths (+3 mod for relative minors)."""
+
     # Handle 'N' (no chord)
     if chord == 'N':
         return -1  # put N below all other chords
@@ -24,9 +24,9 @@ def chord_to_position(chord):
 
     idx = FIFTHS_INDEX[root]
 
-    # Minor chords belong to the relative major (-3 mod 12)
+    # Minor chords belong to the relative major
     if quality == "min":
-        idx = (idx - 3) % 12 + 0.3  # offset for visibility
+        idx = (idx - 4) % 12 + 0.5  # offset for visibility
 
     return idx
 

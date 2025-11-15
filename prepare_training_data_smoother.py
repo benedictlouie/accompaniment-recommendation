@@ -1,6 +1,5 @@
 import numpy as np
 import os
-import random
 from constants import ROOTS, QUALITIES, CHORD_CLASSES, NUM_CLASSES, REVERSE_CHORD_MAP, REVERSE_ROOT_MAP, FLAT_TO_SHARP, QUALITY_SIMPLIFIER, MEMORY, MELODY_NOTES_PER_BEAT, CHORD_TO_TETRAD, CHORD_EMBEDDING_LENGTH
 
 # ------------------------- #
@@ -59,10 +58,13 @@ def prepare_one_song_for_training(npz_path, transpose=0):
     melody_chunks = np.reshape(melody[:num_beats * MELODY_NOTES_PER_BEAT],
                                (num_beats, MELODY_NOTES_PER_BEAT))
     strong_beats = strong_beats[:num_beats, None]
-    chord_vecs = chord_embeddings[:num_beats]  # shape (num_beats, 4)
-    targets = chord_indices[1:num_beats + 1, None]  # next chord index
 
-    inputs = np.concatenate([strong_beats, melody_chunks, chord_vecs], axis=1)
+    inputs = np.concatenate([strong_beats, melody_chunks], axis=1)
+
+    targets = np.full((num_beats, MEMORY), NUM_CLASSES-1, dtype=np.int64)
+    for i in range(num_beats):
+        assign = chord_indices[max(0, i-MEMORY+1): i+1]
+        targets[i, -len(assign):] = assign
     return inputs, targets
 
 
@@ -127,7 +129,7 @@ if __name__ == "__main__":
         print("Train:", train_inputs.shape, train_targets.shape)
 
         np.savez_compressed(
-            "data_train.npz",
+            "data_train_smooth.npz",
             chord_classes=CHORD_CLASSES,
             inputs=train_inputs,
             targets=train_targets
@@ -148,7 +150,7 @@ if __name__ == "__main__":
         print("Val:", val_inputs.shape, val_targets.shape)
 
         np.savez_compressed(
-            "data_val.npz",
+            "data_val_smooth.npz",
             chord_classes=CHORD_CLASSES,
             inputs=val_inputs,
             targets=val_targets

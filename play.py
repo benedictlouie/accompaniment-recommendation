@@ -40,6 +40,7 @@ def npz_to_midi(song_num, chords, output_path="output.mid", bpm=80):
 
 
     # === Write chords (1 per beat) ===
+    chords = ["N"] + chords
     for chord_name in chords:
         notes = CHORD_TO_TETRAD.get(chord_name, [])
         if not notes:

@@ -8,3 +8,5 @@ checkpoints/
 output.mid
 data_train.npz
 data_val.npz
+data_train_smooth.npz
+data_val_smooth.npz

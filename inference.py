@@ -12,7 +12,7 @@ from play import npz_to_midi
 # model = SequenceToChordTransformer(input_dim=INPUT_DIM)
 model = SequenceToChordGRU(input_dim=INPUT_DIM)
 # model, _, _, _ = load_checkpoint(model, save_path='checkpoints/latest.pth', device=DEVICE)
-model, _, _, _ = load_checkpoint(model, save_path='checkpoints/gru-6.pth', device=DEVICE)
+model, _, _, _ = load_checkpoint(model, save_path='checkpoints/gru.pth', device=DEVICE)
 model.to(DEVICE)
 model.eval()
 
@@ -30,6 +30,7 @@ target_chord_names = []
 
 # ----- Inference Loop -----
 for inp, target in zip(inputs, targets):
+    
     for i in range(-min(MEMORY, len(predicted_chord_names)), 0):
         prev_chord = CHORD_CLASSES[predicted_chords[i]]
         inp[i, -CHORD_EMBEDDING_LENGTH:] = CHORD_TO_TETRAD[prev_chord]
@@ -39,11 +40,11 @@ for inp, target in zip(inputs, targets):
 
     with torch.no_grad():
         logits = model(input_tensor)  # [1, NUM_CLASSES]
-        probs = torch.softmax(logits, dim=1).squeeze(0).cpu().numpy()
+        probs = torch.softmax(logits[:,:-1], dim=1).squeeze(0).cpu().numpy()
 
     # Sample predicted chord index (can also use argmax)
-    predicted_class = np.random.choice(len(probs), p=probs)
-    # predicted_class = np.argmax(probs)
+    # predicted_class = np.random.choice(len(probs), p=probs)
+    predicted_class = np.argmax(probs)
     actual_class = int(target)
 
     predicted_chords.append(predicted_class)

@@ -1,9 +1,10 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import math
 
 class FifthsCircleLoss(nn.Module):
-    def __init__(self, num_chords=25, factor_minor=0.8, k=99.0, no_chord_penalty=1):
+    def __init__(self, num_chords=25, factor_minor=0.8, k=99.0, no_chord_penalty=3, eta=0.3):
         """
         num_chords: number of chord classes (default 25)
         factor_minor: scale factor for minor chords
@@ -13,6 +14,7 @@ class FifthsCircleLoss(nn.Module):
         self.num_chords = num_chords
         self.factor_minor = factor_minor
         self.k = k
+        self.eta = eta
         self.no_chord_penalty = torch.tensor(no_chord_penalty)
 
         # precompute chord coordinates
@@ -45,7 +47,10 @@ class FifthsCircleLoss(nn.Module):
         target_idx: [batch_size] long tensor of chord indices
         """
         probs = torch.softmax(logits, dim=-1)  # [B, num_chords]
+    
         pred_coords = probs @ self.chord_coords  # [B, 3]
         target_coords = self.chord_coords[target_idx]  # [B, 3]
-        loss = torch.norm(pred_coords - target_coords, dim=1).mean()
+        coord_loss = torch.norm(pred_coords - target_coords, dim=1).mean()
+        cat_loss = F.cross_entropy(logits, target_idx)
+        loss = coord_loss + self.eta * cat_loss
         return loss

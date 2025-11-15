@@ -3,7 +3,7 @@ import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
 import os
 import numpy as np
-from constants import DEVICE, CHORD_CLASSES, NUM_CLASSES, MELODY_NOTES_PER_BEAT, CHORD_TO_TETRAD, INPUT_DIM, CHORD_EMBEDDING_LENGTH, LEARNING_RATE, DROPOUT_RATE, WEIGHT_DECAY, LEARNING_RATE, DROPOUT_RATE, WEIGHT_DECAY
+from constants import DEVICE, CHORD_CLASSES, NUM_CLASSES, MELODY_NOTES_PER_BEAT, CHORD_TO_TETRAD, INPUT_DIM, CHORD_EMBEDDING_LENGTH, LEARNING_RATE, DROPOUT_RATE, WEIGHT_DECAY, LEARNING_RATE, DROPOUT_RATE, WEIGHT_DECAY, BATCH_SIZE
 from FifthsCircleLoss import FifthsCircleLoss
 from torch.utils.tensorboard import SummaryWriter
 
@@ -122,7 +122,7 @@ def evaluate(model, dataloader, criterion, device='cuda'):
             total_samples += y.size(0)
     return total_loss / len(dataloader), total_correct / total_samples
 
-def train_model(model, train_dataset, val_dataset, num_epochs=30, batch_size=64, lr=LEARNING_RATE,
+def train_model(model, train_dataset, val_dataset, num_epochs=30, batch_size=BATCH_SIZE, lr=LEARNING_RATE,
                 device='cuda', checkpoint_path='checkpoints/gru.pth'):
 
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
@@ -197,4 +197,4 @@ if __name__ == "__main__":
     val_dataset = ChordDataset(val_inputs, val_targets)
 
     model = SequenceToChordGRU(input_dim=INPUT_DIM)
-    train_model(model, train_dataset, val_dataset, num_epochs=60, batch_size=64, device=DEVICE)
+    train_model(model, train_dataset, val_dataset, num_epochs=60, batch_size=BATCH_SIZE, device=DEVICE)
