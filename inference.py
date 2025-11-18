@@ -9,15 +9,13 @@ from plot_chords import plot_chords_over_time
 from play import npz_to_midi
 
 # ----- Load Model -----
-# model = SequenceToChordTransformer(input_dim=INPUT_DIM)
 model = SequenceToChordGRU(input_dim=INPUT_DIM)
-# model, _, _, _ = load_checkpoint(model, save_path='checkpoints/latest.pth', device=DEVICE)
 model, _, _, _ = load_checkpoint(model, save_path='checkpoints/gru.pth', device=DEVICE)
 model.to(DEVICE)
 model.eval()
 
 # ----- Prepare Data -----
-num = 400
+num = 676
 inputs, targets = break_down_one_song_into_sequences(num, test=True)
 print("Inputs:", inputs.shape, "Targets:", targets.shape)
 
@@ -29,11 +27,15 @@ predicted_chord_names = []
 target_chord_names = []
 
 # ----- Inference Loop -----
+prime = 0
 for inp, target in zip(inputs, targets):
     
-    for i in range(-min(MEMORY, len(predicted_chord_names)), 0):
-        prev_chord = CHORD_CLASSES[predicted_chords[i]]
-        inp[i, -CHORD_EMBEDDING_LENGTH:] = CHORD_TO_TETRAD[prev_chord]
+    if prime < 0:
+        prime += 1
+    else:
+        for i in range(-min(MEMORY, len(predicted_chord_names)), 0):
+            prev_chord = CHORD_CLASSES[predicted_chords[i]]
+            inp[i, -CHORD_EMBEDDING_LENGTH:] = CHORD_TO_TETRAD[prev_chord]
 
     # Convert input to tensor for model
     input_tensor = torch.from_numpy(inp.astype(np.float32)).unsqueeze(0).to(DEVICE)  # [1, MEMORY, features]

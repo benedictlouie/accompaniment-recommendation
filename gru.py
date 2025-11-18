@@ -79,7 +79,7 @@ def load_checkpoint(model, optimizer=None, save_path='checkpoints/gru.pth', devi
 # -------------------------------------------------------
 
 def corrupt_history_with_model(x, model, K, wrong_prob, device):
-    if torch.rand(1).item() > 1:
+    if torch.rand(1).item() > wrong_prob:
         return x
 
     batch, timestamp, feature = x.shape
@@ -197,4 +197,4 @@ if __name__ == "__main__":
     val_dataset = ChordDataset(val_inputs, val_targets)
 
     model = SequenceToChordGRU(input_dim=INPUT_DIM)
-    train_model(model, train_dataset, val_dataset, num_epochs=60, batch_size=BATCH_SIZE, device=DEVICE)
+    train_model(model, train_dataset, val_dataset, num_epochs=30, batch_size=BATCH_SIZE, device=DEVICE)

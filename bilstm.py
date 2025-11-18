@@ -140,7 +140,8 @@ def train_model(train_path, val_path, num_classes, epochs=10, batch_size=BATCH_S
                 loss = criterion(y_pred.view(-1, num_classes), target.view(-1))
                 val_loss += loss.item()
 
-                predicted = y_pred.argmax(dim=-1)  # (B,32)
+                predicted = y_pred.argmax(dim=-1)   # (B,32)
+                target = target.squeeze(-1)
                 correct += (predicted == target).sum().item()
                 total += target.numel()
 

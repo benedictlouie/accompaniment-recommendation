@@ -4,7 +4,7 @@ import torch.nn.functional as F
 import math
 
 class FifthsCircleLoss(nn.Module):
-    def __init__(self, num_chords=25, factor_minor=0.8, k=99.0, no_chord_penalty=3, eta=0.3):
+    def __init__(self, num_chords=25, factor_minor=0.8, k=99.0, no_chord_penalty=3, eta=0.2):
         """
         num_chords: number of chord classes (default 25)
         factor_minor: scale factor for minor chords

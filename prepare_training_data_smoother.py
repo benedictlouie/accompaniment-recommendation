@@ -61,10 +61,7 @@ def prepare_one_song_for_training(npz_path, transpose=0):
 
     inputs = np.concatenate([strong_beats, melody_chunks], axis=1)
 
-    targets = np.full((num_beats, MEMORY), NUM_CLASSES-1, dtype=np.int64)
-    for i in range(num_beats):
-        assign = chord_indices[max(0, i-MEMORY+1): i+1]
-        targets[i, -len(assign):] = assign
+    targets = chord_indices[1:num_beats + 1, None]
     return inputs, targets
 
 
@@ -92,7 +89,14 @@ def break_down_one_song_into_sequences(song_num, test=False):
             seqs.append(seq)
 
         all_inputs.append(np.stack(seqs))
-        all_targets.append(targets)
+
+        seqs = []
+        for i in range(targets.shape[0]):
+            seq = targets[max(0, i - MEMORY + 1):i + 1]
+            seq = pad_sequence(seq, MEMORY, pad_value=NUM_CLASSES-1)
+            seqs.append(seq)
+        
+        all_targets.append(np.stack(seqs))
 
     if not all_inputs:
         return np.empty((0, MEMORY, feature_size)), np.empty((0, 1), dtype=np.int16)

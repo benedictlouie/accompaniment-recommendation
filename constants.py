@@ -30,6 +30,24 @@ INPUT_DIM = 1 + MELODY_NOTES_PER_BEAT + CHORD_EMBEDDING_LENGTH
 FIFTHS = ["C", "G", "D", "A", "E", "B", "F#", "C#", "G#", "D#", "A#", "F"]
 FIFTHS_INDEX = {note: i for i, note in enumerate(FIFTHS)}
 
+def chord_to_fifths_position(chord):
+    if chord == 'N': return -1
+    try: root, quality = chord.split(':')
+    except ValueError:
+        print(f"Warning: Invalid chord format '{chord}', expected 'Root:Quality'")
+        return None
+    if root.endswith('b'): root = FLAT_TO_SHARP.get(root, root)
+    if root not in FIFTHS_INDEX:
+        print(f"Warning: {root} not in circle of fifths")
+        return None
+    idx = FIFTHS_INDEX[root]
+    if quality == "min":
+        idx = (idx - 4) % 12 + 0.5
+    return idx
+
+FIFTHS_CHORD_LIST = sorted(CHORD_CLASSES, key=chord_to_fifths_position)
+FIFTHS_CHORD_INDICES = {v: i for i,v in enumerate(FIFTHS_CHORD_LIST)}
+
 # HYPERPARAMETERS
 LEARNING_RATE = 1e-4
 DROPOUT_RATE = 0.2
