@@ -187,10 +187,9 @@ def predict_chords(X, y_true=None, model_path="checkpoints/small_melody_chord_mo
         probs = nn.functional.softmax(logits, dim=1)
         max_probs, preds = torch.max(probs, dim=1)
     
-        threshold = 2 / NUM_CLASSES
-        low_conf_mask = max_probs < threshold
-        for i in torch.where(low_conf_mask)[0]:
-            preds[i] = torch.multinomial(probs[i], 1)
+        temp = 0.1
+        probs_temp = torch.softmax(torch.tensor(logits) / temp, dim=1)
+        preds = torch.multinomial(probs_temp, num_samples=1).squeeze(1)
 
         preds = preds.numpy()
 
@@ -255,8 +254,8 @@ if __name__ == "__main__":
         val_targets += [REVERSE_CHORD_MAP.get(simplify_chord(chords[i]), NUM_CLASSES-1) for i in range(len(bars))]
     val_targets = np.array(val_targets)
 
-    train_model(train_inputs, train_targets, val_inputs, val_targets,
-                num_classes=NUM_CLASSES, model_path="checkpoints/small_melody_chord_model.pth", epochs=20)
+    # train_model(train_inputs, train_targets, val_inputs, val_targets,
+    #             num_classes=NUM_CLASSES, model_path="checkpoints/small_melody_chord_model.pth", epochs=20)
 
     # Inference
     predict_chords(val_inputs, val_targets, plot_cm=True)

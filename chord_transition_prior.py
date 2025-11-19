@@ -81,20 +81,18 @@ if __name__ == "__main__":
             current_chord = simplify_chord(chords[i])
             next_chord = simplify_chord(chords[i + 1])
 
-            # for i in range(-6, 6):
-            #     chord_from = "N"
-            #     chord_to = "N"
-            #     if current_chord != "N":
-            #         root_from, quality_from = current_chord.split(':')
-            #         root_from = (FIFTHS_INDEX[root_from] + i) % 12
-            #         chord_from = FIFTHS[(root_from + i) % 12] + ':' + quality_from
-            #     if next_chord != "N":
-            #         root_to, quality_to = next_chord.split(':')
-            #         root_to = (FIFTHS_INDEX[root_to] + i) % 12
-            #         chord_to = FIFTHS[(root_to + i) % 12] + ':' + quality_to
-            #     transitions[chord_from][chord_to] += 1
-            
-            transitions[current_chord][next_chord] += 1
+            for i in range(-6, 6):
+                chord_from = "N"
+                chord_to = "N"
+                if current_chord != "N":
+                    root_from, quality_from = current_chord.split(':')
+                    root_from = (FIFTHS_INDEX[root_from] + i) % 12
+                    chord_from = FIFTHS[(root_from + i) % 12] + ':' + quality_from
+                if next_chord != "N":
+                    root_to, quality_to = next_chord.split(':')
+                    root_to = (FIFTHS_INDEX[root_to] + i) % 12
+                    chord_to = FIFTHS[(root_to + i) % 12] + ':' + quality_to
+                transitions[chord_from][chord_to] += 1
 
 
     # Step 2: Create transition matrix

@@ -45,8 +45,10 @@ for inp, target in zip(inputs, targets):
         probs = torch.softmax(logits[:,:-1], dim=1).squeeze(0).cpu().numpy()
 
     # Sample predicted chord index (can also use argmax)
-    # predicted_class = np.random.choice(len(probs), p=probs)
-    predicted_class = np.argmax(probs)
+    temp = 0.01
+    probs_temp = torch.softmax(torch.tensor(logits) / temp, dim=1)
+    predicted_class = torch.multinomial(probs_temp, num_samples=1).squeeze(1)
+    
     actual_class = int(target)
 
     predicted_chords.append(predicted_class)

@@ -1,7 +1,10 @@
 import torch
 import numpy as np
 from full import ChordTransformer
-from constants import DEVICE, NUM_CLASSES, MELODY_NOTES_PER_BEAT
+from constants import DEVICE, NUM_CLASSES, MELODY_NOTES_PER_BEAT, CHORD_CLASSES
+from prepare_training_data_smoother import break_down_one_song_into_sequences
+from plot_chords import plot_chords_over_time
+from play import npz_to_midi
 
 def generate_chords(model, melody, max_len=32):
     """
@@ -25,6 +28,15 @@ if __name__ == "__main__":
     model.load_state_dict(checkpoint['model_state_dict'])
 
     # example melody
-    melody = np.random.rand(1, 32, 1+MELODY_NOTES_PER_BEAT).astype(np.float32)
-    chords = generate_chords(model, melody)
-    print(chords)
+    song_num = 676
+    melody, target_chords = break_down_one_song_into_sequences(song_num, test=True)
+    predicted_chords = generate_chords(model, melody)
+
+    target_chords = target_chords[:, -1].flatten().tolist()
+    target_chords = [CHORD_CLASSES[tgt] for tgt in target_chords]
+    
+    predicted_chords = predicted_chords[:, -1].flatten().tolist()
+    predicted_chords = [CHORD_CLASSES[pred] for pred in predicted_chords]
+
+    plot_chords_over_time(predicted_chords, target_chords)
+    npz_to_midi(song_num, predicted_chords)
