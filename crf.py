@@ -20,7 +20,7 @@ def compute_fifths_circle_loss(pred_chord, true_chord):
 
 if __name__ == "__main__":
 
-    song_num = 676
+    song_num = 867
     song_num_str = f"{song_num:03d}"
 
     npz_path = f'pop/melody_chords/{song_num_str}.npz'
@@ -46,14 +46,13 @@ if __name__ == "__main__":
     for t in range(1, num_steps):
         # Compute delta[t] in vectorized form: for each next chord j, compare all previous k
         # This is equivalent to t x C x C if fully expanded
-        delta[t] = log_probs[t] + np.max(delta[t-1][:, None] + log_transitions, axis=0)
+        delta[t] = np.max(delta[t-1][:, None] + log_probs[t-1] + log_transitions, axis=0)
     
-    temp = 1.2
+    temp = .5
     probs_temp = torch.softmax(torch.tensor(delta) / temp, dim=1)
     predicted_destinations = torch.multinomial(probs_temp, num_samples=1).squeeze(1)
     
     predicted = [FIFTHS_CHORD_LIST[pred] for pred in predicted_destinations]
-    print(predicted)
     plot_chords_over_time(predicted, chords)    
 
     losses = [compute_fifths_circle_loss(pred_chord, true_chord) for pred_chord, true_chord in zip(predicted, chords)]

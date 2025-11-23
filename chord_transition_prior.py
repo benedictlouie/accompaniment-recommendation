@@ -67,7 +67,7 @@ def get_bar_chords(strong_beats: np.ndarray, chord_array: np.ndarray):
 if __name__ == "__main__":
     transitions = defaultdict(lambda: defaultdict(int))
 
-    for song_num in range(1, 301):
+    for song_num in range(1, 801):
         song_num_str = f"{song_num:03d}"
         npz_path = f'pop/melody_chords/{song_num_str}.npz'
         data = np.load(npz_path, allow_pickle=True)

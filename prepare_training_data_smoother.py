@@ -52,7 +52,7 @@ def prepare_one_song_for_training(npz_path, transpose=0):
     chord_indices = np.array([REVERSE_CHORD_MAP.get(c, NUM_CLASSES-1) for c in processed_chords], dtype=np.int16)
     chord_embeddings = np.array([CHORD_TO_TETRAD.get(c, [-1, -1, -1, -1]) for c in processed_chords], dtype=np.int16)
 
-    melody = np.where(melody > 10, melody + transpose, -1)  # transpose melody
+    melody = np.where(melody > 10, (melody + transpose) % 12, -1)  # transpose melody
     num_beats = min(len(chord_indices), len(melody) // MELODY_NOTES_PER_BEAT) - 1
 
     melody_chunks = np.reshape(melody[:num_beats * MELODY_NOTES_PER_BEAT],

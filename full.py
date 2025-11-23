@@ -51,7 +51,7 @@ class PositionalEncoding(nn.Module):
 # Transformer Model
 # --------------------------
 class ChordTransformer(nn.Module):
-    def __init__(self, num_chords=NUM_CLASSES, feature_dim=1+MELODY_NOTES_PER_BEAT, d_model=128, nhead=4, num_encoder_layers=2, num_decoder_layers=2, dim_feedforward=256, dropout=0.1):
+    def __init__(self, num_chords=NUM_CLASSES, feature_dim=1+MELODY_NOTES_PER_BEAT, d_model=64, nhead=2, num_encoder_layers=2, num_decoder_layers=2, dim_feedforward=128, dropout=0.1):
         super().__init__()
         # Encoder
         self.encoder_input = nn.Linear(feature_dim, d_model)

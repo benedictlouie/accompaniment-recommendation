@@ -219,7 +219,7 @@ if __name__ == "__main__":
 
     train_inputs = np.ndarray((0, 13))
     train_targets = []
-    for song_num in range(1, 301):
+    for song_num in range(1, 801):
         song_num_str = f"{song_num:03d}"
         npz_path = f'pop/melody_chords/{song_num_str}.npz'
         data = np.load(npz_path, allow_pickle=True)
@@ -231,6 +231,12 @@ if __name__ == "__main__":
             bars = melody_histogram(strong_beats, np.where(melody > 10, melody+transpose, -1))
             train_inputs = np.vstack((train_inputs, bars))
             for i in range(len(bars)):
+                
+                # No melody no chord
+                if bars[i][0] == 1:
+                    train_targets.append(NUM_CLASSES-1)
+                    continue
+                
                 chord_index = REVERSE_CHORD_MAP.get(simplify_chord(chords[i]), NUM_CLASSES-1)
                 if chord_index != NUM_CLASSES-1:
                     chord_index += 2 * transpose

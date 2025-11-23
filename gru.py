@@ -145,7 +145,8 @@ def train_model(model, train_dataset, val_dataset, num_epochs=30, batch_size=BAT
 
         for batch_idx, (x, y) in enumerate(train_loader):
             x, y = x.to(device), y.to(device)
-            x_corr = corrupt_history_with_model(x, model, K=4, wrong_prob=wrong_history_prob, device=device)
+            # x_corr = corrupt_history_with_model(x, model, K=4, wrong_prob=wrong_history_prob, device=device)
+            x_corr = x
 
             optimizer.zero_grad()
             logits = model(x_corr)
