@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from collections import defaultdict
-from constants import QUALITY_SIMPLIFIER, QUALITIES, FIFTHS, FIFTHS_INDEX, FLAT_TO_SHARP, FIFTHS_CHORD_LIST, NUM_CLASSES
+from constants import QUALITY_SIMPLIFIER, QUALITIES, FIFTHS, FIFTHS_INDEX, FLAT_TO_SHARP, FIFTHS_CHORD_LIST, NUM_CLASSES, CHORD_CLASSES
 from matplotlib.colors import LogNorm
 from collections import Counter
 
@@ -65,7 +65,7 @@ def get_bar_chords(strong_beats: np.ndarray, chord_array: np.ndarray):
     return simplified_chords
 
 if __name__ == "__main__":
-    transitions = defaultdict(lambda: defaultdict(int))
+    transitions = {chord_from: {chord_to: {key: 0 for key in CHORD_CLASSES} for chord_to in CHORD_CLASSES} for chord_from in CHORD_CLASSES}
 
     for song_num in range(1, 801):
         song_num_str = f"{song_num:03d}"
@@ -75,40 +75,50 @@ if __name__ == "__main__":
         strong_beats = data['strong_beats']
         chords = data["chords"]
         chords = get_bar_chords(strong_beats, chords)
-        
+
+        with open(f'pop/POP909/{song_num_str}/key_audio.txt', 'r') as file:
+            key = file.readline().strip().split('\t')[2]
+            key = simplify_chord(key)
+
         # Record transitions
         for i in range(len(chords) - 1):
             current_chord = simplify_chord(chords[i])
             next_chord = simplify_chord(chords[i + 1])
 
-            for i in range(-6, 6):
+            for transpose in range(-6, 6):
+                root_key, quality_key = key.split(':')
+                root_key = (FIFTHS_INDEX[root_key] + transpose) % 12
+                transposed_key = FIFTHS[root_key] + ':' + quality_key
+
                 chord_from = "N"
                 chord_to = "N"
                 if current_chord != "N":
                     root_from, quality_from = current_chord.split(':')
-                    root_from = (FIFTHS_INDEX[root_from] + i) % 12
-                    chord_from = FIFTHS[(root_from + i) % 12] + ':' + quality_from
+                    root_from = (FIFTHS_INDEX[root_from] + transpose) % 12
+                    chord_from = FIFTHS[root_from] + ':' + quality_from
                 if next_chord != "N":
                     root_to, quality_to = next_chord.split(':')
-                    root_to = (FIFTHS_INDEX[root_to] + i) % 12
-                    chord_to = FIFTHS[(root_to + i) % 12] + ':' + quality_to
-                transitions[chord_from][chord_to] += 1
-
+                    root_to = (FIFTHS_INDEX[root_to] + transpose) % 12
+                    chord_to = FIFTHS[root_to] + ':' + quality_to
+                transitions[chord_from][chord_to][transposed_key] += 1
 
     # Step 2: Create transition matrix
-    transition_matrix = np.zeros((NUM_CLASSES, NUM_CLASSES))
+    transition_matrix = np.zeros((NUM_CLASSES, NUM_CLASSES, NUM_CLASSES-1))
 
     for i, chord_from in enumerate(FIFTHS_CHORD_LIST):
-        total = sum(transitions[chord_from].values()) + 1
         for j, chord_to in enumerate(FIFTHS_CHORD_LIST):
-            transition_matrix[i, j] = transitions[chord_from][chord_to] / total
+            for k, key in enumerate(FIFTHS_CHORD_LIST[:-1]):
+                transition_matrix[i, j, k] = transitions[chord_from][chord_to][key]
 
     np.save('chord_transition_matrix.npy', transition_matrix)
+
+    transition_matrix = np.sum(transition_matrix, axis=2)
+    transition_matrix /= np.sum(transition_matrix, axis=1)
 
     # Step 3: Plot heatmap
     plt.figure(figsize=(12, 10))
     sns.heatmap(
-        transition_matrix + 1e-12,
+        transition_matrix,
         xticklabels=FIFTHS_CHORD_LIST,
         yticklabels=FIFTHS_CHORD_LIST,
         cmap="Blues",

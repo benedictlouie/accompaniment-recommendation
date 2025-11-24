@@ -1,8 +1,8 @@
 import torch 
 import numpy as np
-from chord_transition_prior import get_bar_chords
+from chord_transition_prior import get_bar_chords, simplify_chord
 from chord_melody_relation import predict_chords, melody_histogram
-from constants import FIFTHS_CHORD_LIST, REVERSE_CHORD_MAP
+from constants import FIFTHS_CHORD_LIST, FIFTHS_CHORD_INDICES, CHORD_CLASSES, NUM_CLASSES, REVERSE_CHORD_MAP, MAJOR, MINOR
 from plot_chords import plot_chords_over_time
 from play import npz_to_midi
 from FifthsCircleLoss import FifthsCircleLoss
@@ -18,6 +18,25 @@ def compute_fifths_circle_loss(pred_chord, true_chord):
     return loss
 
 
+def key_probs(X):
+    scores = [0 for _ in range(24)]
+    for row in X:
+        pc = row[1:13].astype(float)
+        if pc.sum() > 0: pc /= pc.sum()
+        else: continue
+        for k in range(12):
+            prof = np.roll(MAJOR, k)
+            scores[2*k] += (np.corrcoef(pc, prof)[0, 1])
+            prof = np.roll(MINOR, k)
+            scores[2*k+1] += (np.corrcoef(pc, prof)[0, 1])
+
+    s = np.array(scores)
+    s = np.nan_to_num(s)  # handle degenerate rows
+    e = np.exp(s - np.max(s))
+    probs = e / e.sum()
+    return probs
+
+
 if __name__ == "__main__":
 
     song_num = 867
@@ -30,13 +49,17 @@ if __name__ == "__main__":
     chords = get_bar_chords(strong_beats, data["chords"])
 
     bars = melody_histogram(strong_beats, melody)
+
     probs, _ = predict_chords(bars) # (N, 25)
     probs = np.array(probs)
     transition_matrix = np.load("chord_transition_matrix.npy") # (25, 25)
 
     num_steps, num_chords = probs.shape
-    log_probs = np.log(probs + 1e-12)  # (T, C)
-    log_transitions = np.log(transition_matrix + 1e-12)  # (C, C)
+    log_probs = np.log(probs + 1e-12)
+
+    transitions = np.sum(transition_matrix, axis=2) + 1e-12
+    transitions /= transitions.sum(axis=1)
+    log_transitions = np.log(transitions) * 0.3
 
     # Initialize delta table
     delta = np.zeros((num_steps, num_chords))
@@ -44,11 +67,26 @@ if __name__ == "__main__":
 
     # Recursion: delta[t, j] = max_k (delta[t-1, k] + log_transitions[k, j]) + log_probs[t, j]
     for t in range(1, num_steps):
-        # Compute delta[t] in vectorized form: for each next chord j, compare all previous k
-        # This is equivalent to t x C x C if fully expanded
-        delta[t] = np.max(delta[t-1][:, None] + log_probs[t-1] + log_transitions, axis=0)
+
+        key_prob = key_probs(bars[max(0,t-8):t, :])
+        print(CHORD_CLASSES[np.argmax(key_prob)])
+        rearrange = np.array([FIFTHS_CHORD_INDICES[CHORD_CLASSES[i]]-1 for i in range(NUM_CLASSES-1)])
+        key_prob = key_prob[np.argsort(rearrange)]
+        probs2 = np.sum(transition_matrix, axis=1) * key_prob
+        probs2 = np.sum(probs2, axis=1).flatten() + 1e-12
+        probs2 /= np.sum(probs2)
+        log_probs2 = np.log(probs2)
+
+        delta[t] = np.max(delta[t-1][:, None] + log_probs[t-1] + log_probs2 + log_transitions, axis=0)
     
-    temp = .5
+    # Compare real key to predicted key
+    with open(f'pop/POP909/{song_num_str}/key_audio.txt', 'r') as file:
+        key = file.readline().strip().split('\t')[2]
+        key = simplify_chord(key)
+    print(f"Real key: {key}")
+
+    
+    temp = .3
     probs_temp = torch.softmax(torch.tensor(delta) / temp, dim=1)
     predicted_destinations = torch.multinomial(probs_temp, num_samples=1).squeeze(1)
     

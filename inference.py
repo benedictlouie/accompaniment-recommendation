@@ -10,12 +10,12 @@ from play import npz_to_midi
 
 # ----- Load Model -----
 model = SequenceToChordGRU(input_dim=INPUT_DIM)
-model, _, _, _ = load_checkpoint(model, save_path='checkpoints/gru.pth', device=DEVICE)
+model, _, _, _ = load_checkpoint(model, save_path='checkpoints/gru-10.pth', device=DEVICE)
 model.to(DEVICE)
 model.eval()
 
 # ----- Prepare Data -----
-num = 676
+num = 867
 inputs, targets = break_down_one_song_into_sequences(num, test=True)
 print("Inputs:", inputs.shape, "Targets:", targets.shape)
 
@@ -26,10 +26,19 @@ predicted_chords = [last_chord_idx]
 predicted_chord_names = []
 target_chord_names = []
 
-# ----- Inference Loop -----
+beam_width = 22
+beam_scores = None
+beam_classes = None      # classes for each beam at current step
+
+predicted_chords = []
+predicted_chord_names = []
+target_chord_names = []
+
 prime = 0
+
 for inp, target in zip(inputs, targets):
     
+    # ----- Your memory update logic stays the same -----
     if prime < 0:
         prime += 1
     else:
@@ -37,26 +46,52 @@ for inp, target in zip(inputs, targets):
             prev_chord = CHORD_CLASSES[predicted_chords[i]]
             inp[i, -CHORD_EMBEDDING_LENGTH:] = CHORD_TO_TETRAD[prev_chord]
 
-    # Convert input to tensor for model
-    input_tensor = torch.from_numpy(inp.astype(np.float32)).unsqueeze(0).to(DEVICE)  # [1, MEMORY, features]
+    # Convert to tensor
+    input_tensor = torch.from_numpy(inp.astype(np.float32)).unsqueeze(0).to(DEVICE)
 
     with torch.no_grad():
         logits = model(input_tensor)  # [1, NUM_CLASSES]
-        probs = torch.softmax(logits[:,:-1], dim=1).squeeze(0).cpu().numpy()
+        probs = torch.softmax(logits[:, :-1], dim=1).squeeze(0).cpu().numpy()
 
-    # Sample predicted chord index (can also use argmax)
-    temp = 0.01
-    probs_temp = torch.softmax(torch.tensor(logits) / temp, dim=1)
-    predicted_class = torch.multinomial(probs_temp, num_samples=1).squeeze(1)
-    
+    # ======== BEAM SEARCH OVER FULL SEQUENCE (no backtracking) ========
+
+    logits_tensor = torch.tensor(logits, dtype=torch.float32)
+    log_probs = torch.log_softmax(logits_tensor[:, :-1], dim=1).squeeze(0)  # [NUM_CLASSES]
+
+    if beam_scores is None:
+        # First time step: initialize beams
+        top_log_probs, top_indices = torch.topk(log_probs, beam_width)
+
+        beam_scores = top_log_probs.clone()
+        beam_classes = top_indices.clone()
+
+    else:
+        # Expand beams → combine scores
+        expanded_scores = beam_scores[:, None] + log_probs[None, :]  # [beam_width, vocab]
+        flat_scores = expanded_scores.flatten()
+
+        # Pick best beams
+        top_scores, top_positions = torch.topk(flat_scores, beam_width)
+
+        vocab = log_probs.shape[0]
+        new_classes = top_positions % vocab
+
+        beam_scores = top_scores
+        beam_classes = new_classes
+
+    # Choose final prediction for this timestep → best beam
+    predicted_class = int(beam_classes[0].item())
     actual_class = int(target)
+
+    # =====================================================
 
     predicted_chords.append(predicted_class)
     predicted_chord_names.append(CHORD_CLASSES[predicted_class])
     target_chord_names.append(CHORD_CLASSES[actual_class])
 
-    top_n = 3  # number of top probabilities to show
-    top_indices = np.argsort(probs)[-top_n:][::-1]  # sort descending
+    # Top-N printout
+    top_n = 3
+    top_indices = np.argsort(probs)[-top_n:][::-1]
     for i in top_indices:
         print(f"{CHORD_CLASSES[i]}: {probs[i]:.4f}")
 
