@@ -7,7 +7,7 @@ import os
 from sklearn.metrics import confusion_matrix
 import seaborn as sns
 
-from constants import ROOTS, CHORD_CLASSES, NUM_CLASSES, REVERSE_CHORD_MAP, FIFTHS_CHORD_LIST, FIFTHS_CHORD_INDICES
+from constants import ROOTS, CHORD_CLASSES, NUM_CLASSES, REVERSE_CHORD_MAP, FIFTHS_CHORD_LIST, FIFTHS_CHORD_INDICES, TEMPERATURE
 from prepare_training_data import simplify_chord
 from chord_transition_prior import get_bar_chords
 from FifthsCircleLoss import FifthsCircleLoss
@@ -185,22 +185,22 @@ def predict_chords(X, y_true=None, model_path="checkpoints/small_melody_chord_mo
         X_tensor = torch.tensor(X, dtype=torch.float32)
         logits = model(X_tensor)
         probs = nn.functional.softmax(logits, dim=1)
+
+        rearrange = np.array([FIFTHS_CHORD_INDICES[CHORD_CLASSES[i]]-1 for i in range(NUM_CLASSES)])
+        probs = probs[:, np.argsort(rearrange)]
+
         max_probs, preds = torch.max(probs, dim=1)
     
-        temp = 0.1
-        probs_temp = torch.softmax(torch.tensor(logits) / temp, dim=1)
+        probs_temp = torch.softmax(torch.tensor(logits) / TEMPERATURE, dim=1)
         preds = torch.multinomial(probs_temp, num_samples=1).squeeze(1)
-
         preds = preds.numpy()
 
     accuracy = None
 
     if y_true is not None:
         y_true = np.array(y_true).squeeze()
-
         y_true = np.array([FIFTHS_CHORD_INDICES[CHORD_CLASSES[y]] for y in y_true])
         preds = np.array([FIFTHS_CHORD_INDICES[CHORD_CLASSES[y]] for y in preds])
-
         accuracy = np.mean(preds == y_true)
         
         if plot_cm:

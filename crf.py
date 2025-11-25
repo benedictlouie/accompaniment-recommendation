@@ -2,7 +2,7 @@ import torch
 import numpy as np
 from chord_transition_prior import get_bar_chords, simplify_chord
 from chord_melody_relation import predict_chords, melody_histogram
-from constants import FIFTHS_CHORD_LIST, FIFTHS_CHORD_INDICES, CHORD_CLASSES, NUM_CLASSES, REVERSE_CHORD_MAP, MAJOR, MINOR
+from constants import FIFTHS_CHORD_LIST, FIFTHS_CHORD_INDICES, CHORD_CLASSES, NUM_CLASSES, REVERSE_CHORD_MAP, MAJOR, MINOR, TEMPERATURE
 from plot_chords import plot_chords_over_time
 from play import npz_to_midi
 from FifthsCircleLoss import FifthsCircleLoss
@@ -52,11 +52,11 @@ if __name__ == "__main__":
 
     probs, _ = predict_chords(bars) # (N, 25)
     probs = np.array(probs)
-    transition_matrix = np.load("chord_transition_matrix.npy") # (25, 25)
-
+    
     num_steps, num_chords = probs.shape
     log_probs = np.log(probs + 1e-12)
 
+    transition_matrix = np.load("chord_transition_matrix.npy") # (25, 25)
     transitions = np.sum(transition_matrix, axis=2) + 1e-12
     transitions /= transitions.sum(axis=1)
     log_transitions = np.log(transitions) * 0.3
@@ -65,13 +65,22 @@ if __name__ == "__main__":
     delta = np.zeros((num_steps, num_chords))
     delta[0] = log_probs[0]  # first timestep
 
+    # Real key
+    with open(f'pop/POP909/{song_num_str}/key_audio.txt', 'r') as file:
+        key = file.readline().strip().split('\t')[2]
+        key = simplify_chord(key)
+    print(f"Real key: {key}")
+
     # Recursion: delta[t, j] = max_k (delta[t-1, k] + log_transitions[k, j]) + log_probs[t, j]
     for t in range(1, num_steps):
 
-        key_prob = key_probs(bars[max(0,t-8):t, :])
-        print(CHORD_CLASSES[np.argmax(key_prob)])
+        # key_prob = np.zeros(NUM_CLASSES-1)
+        # key_prob[FIFTHS_CHORD_INDICES[key]] = 1
+
+        key_prob = key_probs(bars[max(0,t-16):t, :])
         rearrange = np.array([FIFTHS_CHORD_INDICES[CHORD_CLASSES[i]]-1 for i in range(NUM_CLASSES-1)])
         key_prob = key_prob[np.argsort(rearrange)]
+
         probs2 = np.sum(transition_matrix, axis=1) * key_prob
         probs2 = np.sum(probs2, axis=1).flatten() + 1e-12
         probs2 /= np.sum(probs2)
@@ -79,15 +88,7 @@ if __name__ == "__main__":
 
         delta[t] = np.max(delta[t-1][:, None] + log_probs[t-1] + log_probs2 + log_transitions, axis=0)
     
-    # Compare real key to predicted key
-    with open(f'pop/POP909/{song_num_str}/key_audio.txt', 'r') as file:
-        key = file.readline().strip().split('\t')[2]
-        key = simplify_chord(key)
-    print(f"Real key: {key}")
-
-    
-    temp = .3
-    probs_temp = torch.softmax(torch.tensor(delta) / temp, dim=1)
+    probs_temp = torch.softmax(torch.tensor(delta) / TEMPERATURE, dim=1)
     predicted_destinations = torch.multinomial(probs_temp, num_samples=1).squeeze(1)
     
     predicted = [FIFTHS_CHORD_LIST[pred] for pred in predicted_destinations]
