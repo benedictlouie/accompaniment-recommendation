@@ -107,22 +107,28 @@ def next_chord(bar_history, delta):
     probs2 /= np.sum(probs2)
     log_probs2 = np.log(probs2)
     
-    return bar_history[1:, :], np.max(delta + log_probs + log_probs2 + log_transitions, axis=0)
+    if len(bar_history) > 8:
+        bar_history = bar_history[1:, :]
+
+    return bar_history, np.max(delta + log_probs + log_probs2 + log_transitions, axis=0)
 
 def play_chord(bar_proportions, bar_history, delta):
     bars = [0 for _ in range(13)]
     for note, prop in bar_proportions.items():
         note = note[:-1]
         bars[REVERSE_ROOT_MAP[note]+1] += prop
-    if sum(bars) > 1: return
-    else: bars[0] = 1 - sum(bars)
+    if sum(bars) > 1:
+        return bar_history
+    else:
+        bars[0] = 1 - sum(bars)
     bars = np.array(bars) / np.sum(bars)
     bar_history = np.vstack((bar_history, bars))
     bar_history, probs = next_chord(bar_history, delta)
 
     decision = FIFTHS_CHORD_LIST[np.argmax(probs)]
     print("Predicted chord:", decision)
-    if decision == 'N': return
+    if decision == 'N':
+        return bar_history
     for i, midi in enumerate(CHORD_TO_TETRAD[decision]):
         wave = generate_note_sound(440 * 2 ** (1+(midi-69)/12), BAR_DURATION)
         pygame.mixer.Channel(len(NOTE_FREQS) + i).play(wave)
@@ -131,11 +137,12 @@ def play_chord(bar_proportions, bar_history, delta):
 
 # Main loop
 running = True
-while running:
-    current_time = time.time()
-    delta = np.zeros((1, NUM_CLASSES))
-    bar_history = np.zeros((0, 13))
+delta = np.zeros((1, NUM_CLASSES))
+bar_history = np.zeros((0, 13))
 
+while running:
+    current_time = time.time()    
+    
     # Metronome tick
     if current_time - last_beat_time >= BEAT_DURATION:
 
