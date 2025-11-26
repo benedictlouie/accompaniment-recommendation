@@ -185,11 +185,10 @@ def predict_chords(X, y_true=None, model_path="checkpoints/small_melody_chord_mo
         X_tensor = torch.tensor(X, dtype=torch.float32)
         logits = model(X_tensor)
         probs = nn.functional.softmax(logits, dim=1)
+        max_probs, preds = torch.max(probs, dim=1)
 
         rearrange = np.array([FIFTHS_CHORD_INDICES[CHORD_CLASSES[i]]-1 for i in range(NUM_CLASSES)])
         probs = probs[:, np.argsort(rearrange)]
-
-        max_probs, preds = torch.max(probs, dim=1)
     
         probs_temp = torch.softmax(torch.tensor(logits) / TEMPERATURE, dim=1)
         preds = torch.multinomial(probs_temp, num_samples=1).squeeze(1)
@@ -201,6 +200,10 @@ def predict_chords(X, y_true=None, model_path="checkpoints/small_melody_chord_mo
         y_true = np.array(y_true).squeeze()
         y_true = np.array([FIFTHS_CHORD_INDICES[CHORD_CLASSES[y]] for y in y_true])
         preds = np.array([FIFTHS_CHORD_INDICES[CHORD_CLASSES[y]] for y in preds])
+        
+        mask = preds > 0
+        y_true = y_true[mask]
+        preds = preds[mask]
         accuracy = np.mean(preds == y_true)
         
         if plot_cm:
