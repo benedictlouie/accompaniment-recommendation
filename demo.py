@@ -119,8 +119,8 @@ def play_chord(bar_proportions, bar_history, delta):
         bars[REVERSE_ROOT_MAP[note]+1] += prop
     if sum(bars) > 1:
         return bar_history
-    else:
-        bars[0] = 1 - sum(bars)
+    elif sum(bars) == 0:
+        bars[0] = 1
     bars = np.array(bars) / np.sum(bars)
     bar_history = np.vstack((bar_history, bars))
     bar_history, probs = next_chord(bar_history, delta)
@@ -151,11 +151,9 @@ while running:
         current_beat += 1
         
         if current_beat >= BEATS_PER_BAR:
-            # End of bar: compute proportions
             bar_end_time = current_time
             bar_proportions = {}
             for note, start, end in notes_played:
-                # Clip to bar duration
                 start = max(start, bar_start_time)
                 end = min(end, bar_end_time)
                 duration = max(0, end - start)
@@ -163,6 +161,9 @@ while running:
                     bar_proportions[note] += duration
                 else:
                     bar_proportions[note] = duration
+                if end > bar_end_time:
+                    notes_pressed[note] = bar_end_time
+
             for note in bar_proportions:
                 bar_proportions[note] /= BAR_DURATION
 

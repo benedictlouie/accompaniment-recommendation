@@ -3,6 +3,11 @@ import torch.nn as nn
 import torch.nn.functional as F
 import math
 
+import numpy as np
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+from constants import CHORD_CLASSES
+
 class FifthsCircleLoss(nn.Module):
     def __init__(self, num_chords=25, factor_minor=0.8, k=99.0, no_chord_penalty=3, eta=0.2):
         """
@@ -54,3 +59,27 @@ class FifthsCircleLoss(nn.Module):
         cat_loss = F.cross_entropy(logits, target_idx)
         loss = coord_loss + self.eta * cat_loss
         return loss
+
+if __name__ == "__main__":
+    fcl = FifthsCircleLoss()
+    x = np.zeros((0,3))
+    for i in range(25):
+        res = fcl.map_to_circle(torch.tensor(i)).numpy()
+        x = np.vstack((x, res))
+    
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+    # Plot the points
+    ax.scatter(x[:, 0], x[:, 1], x[:, 2], c='r', marker='o')
+
+    # Label each point with its index
+    for i, (xi, yi, zi) in enumerate(x):
+        ax.text(xi, yi, zi, CHORD_CLASSES[i], color='blue')
+
+    # Optional: set axis labels
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
+
+    plt.show()
