@@ -11,7 +11,7 @@ pygame.init()
 pygame.mixer.init(frequency=44100, size=-16, channels=1)
 
 # Settings
-BPM = 80
+BPM = 100
 BEAT_DURATION = 60 / BPM
 BEATS_PER_BAR = 4
 BAR_DURATION = BEAT_DURATION * BEATS_PER_BAR
