@@ -1,10 +1,10 @@
 import torch
 import numpy as np
-from full import ChordTransformer
-from constants import DEVICE, NUM_CLASSES, MELODY_NOTES_PER_BEAT, CHORD_CLASSES
-from prepare_training_data_smoother import break_down_one_song_into_sequences
-from plot_chords import plot_chords_over_time
-from play import npz_to_midi
+from archive.full import ChordTransformer
+from utils.constants import DEVICE, NUM_CLASSES, MELODY_NOTES_PER_BEAT, CHORD_CLASSES
+from data.prepare_training_data_smoother import break_down_one_song_into_sequences
+from utils.plot_chords import plot_chords_over_time
+from utils.play import npz_to_midi
 
 def generate_chords(model, melody, max_len=32):
     """

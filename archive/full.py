@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
 from torch.utils.tensorboard import SummaryWriter
-from constants import MEMORY, DEVICE, BATCH_SIZE, NUM_CLASSES, LEARNING_RATE, MELODY_NOTES_PER_BEAT
+from utils.constants import MEMORY, DEVICE, BATCH_SIZE, NUM_CLASSES, LEARNING_RATE, MELODY_NOTES_PER_BEAT
 
 os.makedirs("checkpoints", exist_ok=True)
 
@@ -17,8 +17,8 @@ def load_data_from_npz(path):
     y = data['targets'].astype(np.int64)
     return X, y
 
-X_train, y_train = load_data_from_npz("data_train_smooth.npz")
-X_val, y_val     = load_data_from_npz("data_val_smooth.npz")
+X_train, y_train = load_data_from_npz("data/data_train_smooth.npz")
+X_val, y_val     = load_data_from_npz("data/data_val_smooth.npz")
 
 class MusicDataset(Dataset):
     def __init__(self, X, Y):

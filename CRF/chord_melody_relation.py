@@ -7,10 +7,10 @@ import os
 from sklearn.metrics import confusion_matrix
 import seaborn as sns
 
-from constants import ROOTS, CHORD_CLASSES, NUM_CLASSES, REVERSE_CHORD_MAP, FIFTHS_CHORD_LIST, FIFTHS_CHORD_INDICES, TEMPERATURE
-from prepare_training_data import simplify_chord
-from chord_transition_prior import get_bar_chords
-from FifthsCircleLoss import FifthsCircleLoss
+from utils.constants import ROOTS, CHORD_CLASSES, NUM_CLASSES, REVERSE_CHORD_MAP, FIFTHS_CHORD_LIST, FIFTHS_CHORD_INDICES, TEMPERATURE
+from data.prepare_training_data import simplify_chord
+from CRF.chord_transition_prior import get_bar_chords
+from utils.FifthsCircleLoss import FifthsCircleLoss
 
 def melody_histogram(trig, mel, plot=False):
     """
@@ -224,7 +224,7 @@ if __name__ == "__main__":
     train_targets = []
     for song_num in range(1, 801):
         song_num_str = f"{song_num:03d}"
-        npz_path = f'pop/melody_chords/{song_num_str}.npz'
+        npz_path = f'data/pop/melody_chords/{song_num_str}.npz'
         data = np.load(npz_path, allow_pickle=True)
         strong_beats = data['strong_beats']
         melody = data["melody"]
@@ -253,7 +253,7 @@ if __name__ == "__main__":
     val_targets = []
     for song_num in range(801, 910):
         song_num_str = f"{song_num:03d}"
-        npz_path = f'pop/melody_chords/{song_num_str}.npz'
+        npz_path = f'data/pop/melody_chords/{song_num_str}.npz'
         data = np.load(npz_path, allow_pickle=True)
         strong_beats = data['strong_beats']
         melody = data["melody"]

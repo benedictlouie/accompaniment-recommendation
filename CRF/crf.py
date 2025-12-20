@@ -1,11 +1,11 @@
 import torch 
 import numpy as np
-from chord_transition_prior import get_bar_chords, simplify_chord
-from chord_melody_relation import predict_chords, melody_histogram
-from constants import FIFTHS_CHORD_LIST, FIFTHS_CHORD_INDICES, CHORD_CLASSES, NUM_CLASSES, REVERSE_CHORD_MAP, MAJOR, MINOR, TEMPERATURE
-from plot_chords import plot_chords_over_time
-from play import npz_to_midi
-from FifthsCircleLoss import FifthsCircleLoss
+from CRF.chord_transition_prior import get_bar_chords, simplify_chord
+from CRF.chord_melody_relation import predict_chords, melody_histogram
+from utils.constants import FIFTHS_CHORD_LIST, FIFTHS_CHORD_INDICES, CHORD_CLASSES, NUM_CLASSES, REVERSE_CHORD_MAP, MAJOR, MINOR, TEMPERATURE
+from utils.plot_chords import plot_chords_over_time
+from utils.play import npz_to_midi
+from utils.FifthsCircleLoss import FifthsCircleLoss
 
 
 def compute_fifths_circle_loss(pred_chord, true_chord):
@@ -42,7 +42,7 @@ if __name__ == "__main__":
     song_num = 867
     song_num_str = f"{song_num:03d}"
 
-    npz_path = f'pop/melody_chords/{song_num_str}.npz'
+    npz_path = f'data/pop/melody_chords/{song_num_str}.npz'
     data = np.load(npz_path, allow_pickle=True)
     strong_beats = data["strong_beats"]
     melody = data["melody"]
@@ -66,7 +66,7 @@ if __name__ == "__main__":
     delta[0] = log_probs[0]  # first timestep
 
     # Real key
-    with open(f'pop/POP909/{song_num_str}/key_audio.txt', 'r') as file:
+    with open(f'data/pop/POP909/{song_num_str}/key_audio.txt', 'r') as file:
         key = file.readline().strip().split('\t')[2]
         key = simplify_chord(key)
     print(f"Real key: {key}")

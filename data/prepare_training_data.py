@@ -1,6 +1,7 @@
 import numpy as np
 import os
-from constants import ROOTS, QUALITIES, CHORD_CLASSES, NUM_CLASSES, REVERSE_CHORD_MAP, REVERSE_ROOT_MAP, FLAT_TO_SHARP, QUALITY_SIMPLIFIER, MEMORY, MELODY_NOTES_PER_BEAT, CHORD_TO_TETRAD, CHORD_EMBEDDING_LENGTH
+import random
+from utils.constants import ROOTS, QUALITIES, CHORD_CLASSES, NUM_CLASSES, REVERSE_CHORD_MAP, REVERSE_ROOT_MAP, FLAT_TO_SHARP, QUALITY_SIMPLIFIER, MEMORY, MELODY_NOTES_PER_BEAT, CHORD_TO_TETRAD, CHORD_EMBEDDING_LENGTH
 
 # ------------------------- #
 #     CHORD UTILITIES       #
@@ -52,22 +53,22 @@ def prepare_one_song_for_training(npz_path, transpose=0):
     chord_indices = np.array([REVERSE_CHORD_MAP.get(c, NUM_CLASSES-1) for c in processed_chords], dtype=np.int16)
     chord_embeddings = np.array([CHORD_TO_TETRAD.get(c, [-1, -1, -1, -1]) for c in processed_chords], dtype=np.int16)
 
-    melody = np.where(melody > 10, (melody + transpose) % 12, -1)  # transpose melody
+    melody = np.where(melody > 10, melody + transpose, -1)  # transpose melody
     num_beats = min(len(chord_indices), len(melody) // MELODY_NOTES_PER_BEAT) - 1
 
     melody_chunks = np.reshape(melody[:num_beats * MELODY_NOTES_PER_BEAT],
                                (num_beats, MELODY_NOTES_PER_BEAT))
     strong_beats = strong_beats[:num_beats, None]
+    chord_vecs = chord_embeddings[:num_beats]  # shape (num_beats, 4)
+    targets = chord_indices[1:num_beats + 1, None]  # next chord index
 
-    inputs = np.concatenate([strong_beats, melody_chunks], axis=1)
-
-    targets = chord_indices[1:num_beats + 1, None]
+    inputs = np.concatenate([strong_beats, melody_chunks, chord_vecs], axis=1)
     return inputs, targets
 
 
 def break_down_one_song_into_sequences(song_num, test=False):
     song_num = f"{song_num:03d}"
-    npz_path = f'pop/melody_chords/{song_num}.npz'
+    npz_path = f'data/pop/melody_chords/{song_num}.npz'
 
     feature_size = 1 + MELODY_NOTES_PER_BEAT + CHORD_EMBEDDING_LENGTH
 
@@ -89,14 +90,7 @@ def break_down_one_song_into_sequences(song_num, test=False):
             seqs.append(seq)
 
         all_inputs.append(np.stack(seqs))
-
-        seqs = []
-        for i in range(targets.shape[0]):
-            seq = targets[max(0, i - MEMORY + 1):i + 1]
-            seq = pad_sequence(seq, MEMORY, pad_value=NUM_CLASSES-1)
-            seqs.append(seq)
-        
-        all_targets.append(np.stack(seqs))
+        all_targets.append(targets)
 
     if not all_inputs:
         return np.empty((0, MEMORY, feature_size)), np.empty((0, 1), dtype=np.int16)
@@ -133,7 +127,7 @@ if __name__ == "__main__":
         print("Train:", train_inputs.shape, train_targets.shape)
 
         np.savez_compressed(
-            "data_train_smooth.npz",
+            "data/data_train.npz",
             chord_classes=CHORD_CLASSES,
             inputs=train_inputs,
             targets=train_targets
@@ -154,7 +148,7 @@ if __name__ == "__main__":
         print("Val:", val_inputs.shape, val_targets.shape)
 
         np.savez_compressed(
-            "data_val_smooth.npz",
+            "data/data_val.npz",
             chord_classes=CHORD_CLASSES,
             inputs=val_inputs,
             targets=val_targets

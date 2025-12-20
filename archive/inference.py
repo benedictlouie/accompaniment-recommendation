@@ -1,12 +1,12 @@
 import torch
 import numpy as np
-# from model import SequenceToChordTransformer, load_checkpoint
-from gru import SequenceToChordGRU, load_checkpoint
-from prepare_training_data import break_down_one_song_into_sequences
-from constants import DEVICE, CHORD_CLASSES, REVERSE_CHORD_MAP, MEMORY, NUM_CLASSES, DEVICE, CHORD_TO_TETRAD, INPUT_DIM, CHORD_EMBEDDING_LENGTH
-from FifthsCircleLoss import FifthsCircleLoss
-from plot_chords import plot_chords_over_time
-from play import npz_to_midi
+# from archive.model import SequenceToChordTransformer, load_checkpoint
+from archive.gru import SequenceToChordGRU, load_checkpoint
+from data.prepare_training_data import break_down_one_song_into_sequences
+from utils.constants import DEVICE, CHORD_CLASSES, REVERSE_CHORD_MAP, MEMORY, NUM_CLASSES, DEVICE, CHORD_TO_TETRAD, INPUT_DIM, CHORD_EMBEDDING_LENGTH
+from utils.FifthsCircleLoss import FifthsCircleLoss
+from utils.plot_chords import plot_chords_over_time
+from utils.play import npz_to_midi
 
 # ----- Load Model -----
 model = SequenceToChordGRU(input_dim=INPUT_DIM)

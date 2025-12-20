@@ -18,7 +18,7 @@ def average_correlate(melody1, melody2):
 
 def get_song(song_num):
     song_num_str = f"{song_num:03d}"
-    npz_path = f'pop/melody_chords/{song_num_str}.npz'
+    npz_path = f'data/pop/melody_chords/{song_num_str}.npz'
     data = np.load(npz_path, allow_pickle=True)
     strong_beats = data['strong_beats']
     melody = data["melody"].flatten()

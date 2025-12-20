@@ -1,5 +1,5 @@
 import matplotlib.pyplot as plt
-from constants import FIFTHS, FIFTHS_CHORD_INDICES
+from utils.constants import FIFTHS, FIFTHS_CHORD_INDICES
 
 def plot_chords_over_time(*chord_sequences):
     """

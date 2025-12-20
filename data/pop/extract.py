@@ -143,8 +143,8 @@ def export_melody_and_chords(strong_beats, melody_notes, chords_aligned, filenam
 # ------------------------------
 
 if __name__ == "__main__":
-    base_dir = "pop/POP909"
-    out_dir = "pop/melody_chords"
+    base_dir = "data/pop/POP909"
+    out_dir = "data/pop/melody_chords"
     os.makedirs(out_dir, exist_ok=True)
 
     for num in range(1, 910):

@@ -2,9 +2,9 @@ import pygame
 import numpy as np
 import torch
 import time
-from chord_melody_relation import predict_chords
-from constants import REVERSE_ROOT_MAP, CHORD_CLASSES, NUM_CLASSES, CHORD_TO_TETRAD, FIFTHS_CHORD_LIST, FIFTHS_CHORD_INDICES, TEMPERATURE
-from crf import key_probs
+from CRF.chord_melody_relation import predict_chords
+from utils.constants import REVERSE_ROOT_MAP, CHORD_CLASSES, NUM_CLASSES, CHORD_TO_TETRAD, FIFTHS_CHORD_LIST, FIFTHS_CHORD_INDICES, TEMPERATURE
+from CRF.crf import key_probs
 
 # Initialize pygame
 pygame.init()
@@ -17,7 +17,7 @@ BEATS_PER_BAR = 4
 BAR_DURATION = BEAT_DURATION * BEATS_PER_BAR
 
 # Load metronome click
-CLICK_SOUND = pygame.mixer.Sound("click.wav")
+CLICK_SOUND = pygame.mixer.Sound("utils/click.wav")
 
 # Key mapping (1.5 octaves starting from C4)
 KEYBOARD_MAP = {
@@ -93,7 +93,7 @@ def next_chord(bar_history, delta):
     num_steps, num_chords = probs.shape
     log_probs = np.log(probs + 1e-12)
 
-    transition_matrix = np.load("chord_transition_matrix.npy") # (25, 25)
+    transition_matrix = np.load("crf/chord_transition_matrix.npy") # (25, 25)
     transitions = np.sum(transition_matrix, axis=2) + 1e-12
     transitions /= transitions.sum(axis=1)
     log_transitions = np.log(transitions) * 0.3

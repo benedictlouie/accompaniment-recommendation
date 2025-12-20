@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
 import numpy as np
-from constants import MELODY_NOTES_PER_BEAT, NUM_CLASSES, LEARNING_RATE, DROPOUT_RATE, WEIGHT_DECAY, BATCH_SIZE
+from utils.constants import MELODY_NOTES_PER_BEAT, NUM_CLASSES, LEARNING_RATE, DROPOUT_RATE, WEIGHT_DECAY, BATCH_SIZE
 from torch.utils.tensorboard import SummaryWriter
 import os
 
@@ -166,8 +166,8 @@ if __name__ == "__main__":
     writer = SummaryWriter()
 
     model = train_model(
-        train_path="data_train_smooth.npz",
-        val_path="data_val_smooth.npz",
+        train_path="data/data_train_smooth.npz",
+        val_path="data/data_val_smooth.npz",
         num_classes=NUM_CLASSES,
         epochs=20,
         batch_size=BATCH_SIZE,

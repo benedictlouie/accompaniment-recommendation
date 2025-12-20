@@ -6,7 +6,7 @@ import math
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
-from constants import CHORD_CLASSES
+from utils.constants import CHORD_CLASSES
 
 class FifthsCircleLoss(nn.Module):
     def __init__(self, num_chords=25, factor_minor=0.8, k=99.0, no_chord_penalty=3, eta=0.2):

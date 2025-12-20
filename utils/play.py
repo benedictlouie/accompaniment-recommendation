@@ -1,17 +1,17 @@
 import numpy as np
 from mido import Message, MidiFile, MidiTrack, MetaMessage, bpm2tempo
-from constants import REVERSE_ROOT_MAP, CHORD_TO_TETRAD
+from utils.constants import REVERSE_ROOT_MAP, CHORD_TO_TETRAD
 
 def npz_to_midi(song_num, chords, output_path="output.mid", bpm=80):
     """
-    Convert an NPZ file with 'melody' (in pop/melody_chords/{song_num}.npz)
+    Convert an NPZ file with 'melody' (in data/pop/melody_chords/{song_num}.npz)
     and a provided 'chords' list into a MIDI file.
     - melody: numeric note values (each becomes a 16th note)
     - chords: list of chord names like ['C:maj', 'A:min', 'N', ...] (one per beat)
     """
 
     # === Load melody ===
-    npz_path = f'pop/melody_chords/{song_num}.npz'
+    npz_path = f'data/pop/melody_chords/{song_num}.npz'
     data = np.load(npz_path, allow_pickle=True)
     melody = data['melody'].flatten()
 
