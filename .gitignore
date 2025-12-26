@@ -1,12 +1,15 @@
 .DS_Store
 .vscode
 __pycache__/
+checkpoints/
 runs/
 data/pop/POP909/
 data/pop/melody_chords/
 data/pop/.DS_Store
-checkpoints/
-output.mid
+data/pop-ewld/ewld/
+data/pop-ewld/melody_chords/
+data/pop-ewld/midi_files/
+data/melodyhub
 data/data_train.npz
 data/data_val.npz
 data/data_train_smooth.npz
