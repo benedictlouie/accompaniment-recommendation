@@ -9,6 +9,7 @@ data/pop/.DS_Store
 data/pop-ewld/ewld/
 data/pop-ewld/melody_chords/
 data/pop-ewld/midi_files/
+data/prepare_training_data_smoother.py
 data/melodyhub
 data/data_train.npz
 data/data_val.npz

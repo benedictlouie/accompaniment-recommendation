@@ -41,6 +41,8 @@ def prepare_one_song_for_training(npz_path, transpose=0):
     # Flatten melody back into 1D
     melody = melody.flatten()
 
+    melody = np.where(melody > 10, melody + transpose, -1)  # transpose melody
+    
     processed_chords = []
     for chord in chords:
         chord = simplify_chord(chord)
@@ -50,15 +52,19 @@ def prepare_one_song_for_training(npz_path, transpose=0):
             chord = f"{root}:{qual}"
         processed_chords.append(chord)
 
-    chord_indices = np.array([REVERSE_CHORD_MAP.get(c, NUM_CLASSES-1) for c in processed_chords], dtype=np.int16)
-    chord_embeddings = np.array([CHORD_TO_TETRAD.get(c, [-1, -1, -1, -1]) for c in processed_chords], dtype=np.int16)
-
-    melody = np.where(melody > 10, melody + transpose, -1)  # transpose melody
-    num_beats = min(len(chord_indices), len(melody) // MELODY_NOTES_PER_BEAT) - 1
-
+    num_beats = min(len(processed_chords), len(melody) // MELODY_NOTES_PER_BEAT) - 1
     melody_chunks = np.reshape(melody[:num_beats * MELODY_NOTES_PER_BEAT],
                                (num_beats, MELODY_NOTES_PER_BEAT))
     strong_beats = strong_beats[:num_beats, None]
+
+    chord_indices = np.array([REVERSE_CHORD_MAP.get(c, NUM_CLASSES-1) for c in processed_chords], dtype=np.int16)
+    chord_embeddings = np.array([CHORD_TO_TETRAD.get(c, [NUM_CLASSES-1] * 4) for c in processed_chords], dtype=np.int16)
+    
+    for i in range(num_beats):
+        if np.all(melody_chunks[i] == NUM_CLASSES-1):
+            chord_indices[i] = NUM_CLASSES-1
+            chord_embeddings[i] = [NUM_CLASSES-1] * 4
+
     chord_vecs = chord_embeddings[:num_beats]  # shape (num_beats, 4)
     targets = chord_indices[1:num_beats + 1, None]  # next chord index
 
@@ -66,9 +72,7 @@ def prepare_one_song_for_training(npz_path, transpose=0):
     return inputs, targets
 
 
-def break_down_one_song_into_sequences(song_num, test=False):
-    song_num = f"{song_num:03d}"
-    npz_path = f'data/pop/melody_chords/{song_num}.npz'
+def break_down_one_song_into_sequences(npz_path, test=False):
 
     feature_size = 1 + MELODY_NOTES_PER_BEAT + CHORD_EMBEDDING_LENGTH
 
@@ -90,7 +94,14 @@ def break_down_one_song_into_sequences(song_num, test=False):
             seqs.append(seq)
 
         all_inputs.append(np.stack(seqs))
-        all_targets.append(targets)
+
+        seqs = []
+        for i in range(targets.shape[0]):
+            seq = targets[max(0, i - MEMORY + 1):i + 2]
+            seq = pad_sequence(seq, MEMORY+1, pad_value=NUM_CLASSES-1)
+            seqs.append(seq)
+        
+        all_targets.append(np.stack(seqs))
 
     if not all_inputs:
         return np.empty((0, MEMORY, feature_size)), np.empty((0, 1), dtype=np.int16)
@@ -114,8 +125,9 @@ def break_down_one_song_into_sequences(song_num, test=False):
 if __name__ == "__main__":
     # ---------- TRAINING DATA ----------
     train_inputs, train_targets = [], []
-    for num in range(1, 301):
-        X, Y = break_down_one_song_into_sequences(num)
+    for num in range(1, 701):
+        npz_path = f"data/pop/melody_chords/{num:03d}.npz"
+        X, Y = break_down_one_song_into_sequences(npz_path)
         if X.size == 0:
             continue
         train_inputs.append(X)
@@ -136,7 +148,8 @@ if __name__ == "__main__":
     # ---------- VALIDATION DATA ----------
     val_inputs, val_targets = [], []
     for num in range(801, 901):
-        X, Y = break_down_one_song_into_sequences(num, test=True)
+        npz_path = f"data/pop/melody_chords/{num:03d}.npz"
+        X, Y = break_down_one_song_into_sequences(npz_path, test=True)
         if X.size == 0:
             continue
         val_inputs.append(X)

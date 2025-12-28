@@ -238,7 +238,7 @@ if __name__ == "__main__":
     # Loop through all .mxl files in the input directory and its subdirectories
     for root, dirs, files in os.walk(input_directory):  # Walk through all subdirectories
         for filename in files:
-            if filename.endswith("Moonlight_Serenade.mxl"):
+            if filename.endswith(".mxl"):
                 # Get the full path to the .mxl file
                 mxl_file_path = os.path.join(root, filename)
 

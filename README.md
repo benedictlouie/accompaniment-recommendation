@@ -19,7 +19,7 @@ Train the model using the prepared dataset.
 - To monitor the training progress and visualize the loss, use **TensorBoard**. Start it with the following command:
 
   ```bash
-  tensorboard --logdir=runs --port=6006
+  python3 -m tensorboard.main --logdir=runs --port=6006
   ```
 
 - Visit [http://localhost:6006](http://localhost:6006) in your browser to view the logs and charts.
