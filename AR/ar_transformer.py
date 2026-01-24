@@ -4,7 +4,7 @@ import torch.optim as optim
 import numpy as np
 import os
 from torch.utils.tensorboard import SummaryWriter
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset, DataLoader, Subset
 from utils.constants import DEVICE, INPUT_DIM, MEMORY, LEARNING_RATE, NUM_CLASSES
 from utils.FifthsCircleLoss import FifthsCircleLoss
 
@@ -19,7 +19,7 @@ MAX_LEN = MEMORY + 1
 # -------------------------
 class TransformerModel(nn.Module):
     def __init__(self, input_dim, output_dim, d_model=128, nhead=8,
-                 num_encoder_layers=4, num_decoder_layers=4):
+                 num_encoder_layers=6, num_decoder_layers=6):
         super().__init__()
         self.d_model = d_model
         self.output_dim = output_dim
@@ -66,10 +66,10 @@ class TransformerModel(nn.Module):
         # ----- Autoregressive decode -----
         # Initialize target with first true token (if provided) or zeros
         if target_seq is not None:
-            # Teacher forcing mode
-            target_tokens = target_seq[:, :, 0]
+            if isinstance(target_seq, np.ndarray):
+                target_seq = torch.from_numpy(target_seq).long().to(device)
+            target_tokens = target_seq[:, :, 0]  # first token per position
         else:
-            # inference mode, start from zeros
             target_tokens = torch.zeros(B, OUTPUT_DIM, dtype=torch.long, device=device)
 
         output_sequence = torch.zeros(B, MAX_LEN, self.output_dim, device=device)
@@ -185,6 +185,11 @@ if __name__ == "__main__":
     print(f"Total trainable parameters: {total_params}")
 
     train_data = MusicDataset("data/data_train.npz")
+
+    num_samples = 60000
+    indices = torch.randperm(len(train_data))[:num_samples]
+    train_data = Subset(train_data, indices)
+
     train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True)
 
     optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)

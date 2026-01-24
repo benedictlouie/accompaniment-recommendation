@@ -16,3 +16,4 @@ data/data_val.npz
 data/data_train_smooth.npz
 data/data_val_smooth.npz
 chord_transition_matrix.npy
+output.mid

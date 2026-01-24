@@ -39,7 +39,7 @@ def key_probs(X):
 
 if __name__ == "__main__":
 
-    song_num = 867
+    song_num = 330
     song_num_str = f"{song_num:03d}"
 
     npz_path = f'data/pop/melody_chords/{song_num_str}.npz'
@@ -56,7 +56,7 @@ if __name__ == "__main__":
     num_steps, num_chords = probs.shape
     log_probs = np.log(probs + 1e-12)
 
-    transition_matrix = np.load("chord_transition_matrix.npy") # (25, 25)
+    transition_matrix = np.load("CRF/chord_transition_matrix.npy") # (25, 25)
     transitions = np.sum(transition_matrix, axis=2) + 1e-12
     transitions /= transitions.sum(axis=1)
     log_transitions = np.log(transitions) * 0.3

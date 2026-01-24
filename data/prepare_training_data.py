@@ -68,7 +68,10 @@ def prepare_one_song_for_training(npz_path, transpose=0):
     chord_vecs = chord_embeddings[:num_beats]  # shape (num_beats, 4)
     targets = chord_indices[1:num_beats + 1, None]  # next chord index
 
-    inputs = np.concatenate([strong_beats, melody_chunks, chord_vecs], axis=1)
+    inputs = np.concatenate([strong_beats, melody_chunks], axis=1)
+    if CHORD_EMBEDDING_LENGTH:
+        inputs = np.concatenate([strong_beats, melody_chunks, chord_vecs], axis=1)
+        
     return inputs, targets
 
 
