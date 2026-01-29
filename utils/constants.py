@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+import pygame
 
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -60,3 +61,42 @@ MAJOR = np.array([6.35, 2.23, 3.48, 2.33, 4.38, 4.09,
                   2.52, 5.19, 2.39, 3.66, 2.29, 2.88])
 MINOR = np.array([6.33, 2.68, 3.52, 5.38, 2.60, 3.53,
                   2.54, 4.75, 3.98, 2.69, 3.34, 3.17])
+
+
+# Settings
+BPM = 80
+BEAT_DURATION = 60 / BPM
+BEATS_PER_BAR = 4
+BAR_DURATION = BEAT_DURATION * BEATS_PER_BAR
+
+pygame.init()
+pygame.mixer.init(frequency=44100, size=-16, channels=1)
+
+# Load metronome click
+CLICK_SOUND = pygame.mixer.Sound("utils/click.wav")
+CLICK_SOUND_STRONG = pygame.mixer.Sound("utils/click_strong.wav")
+
+# Key mapping (1.5 octaves starting from C4)
+KEYBOARD_MAP = {
+    'a': 'C4', 'w': 'C#4', 's': 'D4', 'e': 'D#4', 'd': 'E4',
+    'f': 'F4', 't': 'F#4', 'g': 'G4', 'y': 'G#4', 'h': 'A4',
+    'u': 'A#4', 'j': 'B4', 'k': 'C5', 'o': 'C#5', 'l': 'D5',
+    'p': 'D#5', ';': 'E5', "'": 'F5'
+}
+NOTE_TO_KEYBOARD = {v: k for k, v in KEYBOARD_MAP.items()}
+FONT = pygame.font.SysFont(None, 24)
+
+# Frequencies for each note
+NOTE_FREQS = {
+    'C4': 261.63, 'C#4': 277.18, 'D4': 293.66, 'D#4': 311.13, 'E4': 329.63,
+    'F4': 349.23, 'F#4': 369.99, 'G4': 392.00, 'G#4': 415.30, 'A4': 440.00,
+    'A#4': 466.16, 'B4': 493.88, 'C5': 523.25, 'C#5': 554.37, 'D5': 587.33,
+    'D#5': 622.25, 'E5': 659.25, 'F5': 698.46
+}
+
+NOTE_TO_MIDI = {
+    'C4': 60, 'C#4': 61, 'D4': 62, 'D#4': 63, 'E4': 64,
+    'F4': 65, 'F#4': 66, 'G4': 67, 'G#4': 68, 'A4': 69,
+    'A#4': 70, 'B4': 71, 'C5': 72, 'C#5': 73, 'D5': 74,
+    'D#5': 75, 'E5': 76, 'F5': 77
+}

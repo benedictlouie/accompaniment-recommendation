@@ -49,53 +49,59 @@ class TransformerModel(nn.Module):
     def _causal_mask(self, T, device):
         return torch.triu(torch.full((T, T), float("-inf"), device=device), diagonal=1)
 
-    def forward(self, input_seq, target_seq=None):
+    def forward(self, input_seq):
         """
+        Closed-loop autoregressive generation (no teacher forcing)
+
         input_seq: [B, MEMORY, INPUT_DIM]
-        target_seq: [B, MEMORY] integer class indices (optional, for teacher forcing)
-        returns: [B, MAX_LEN, OUTPUT_DIM] logits (excluding start token)
+        returns:   [B, MAX_LEN, OUTPUT_DIM] logits
         """
         B = input_seq.size(0)
         device = input_seq.device
 
         # ----- Encoder -----
         x = self.feature_to_embedding(input_seq.float())  # [B, MEMORY, d_model]
-        x = x + self.pos_encoder[:, :MEMORY]
+        x = x + self.pos_encoder[:, :x.size(1)]
         memory = self.encoder(x)  # [B, MEMORY, d_model]
 
-        # ----- Autoregressive decode -----
-        # Initialize target with first true token (if provided) or zeros
-        if target_seq is not None:
-            if isinstance(target_seq, np.ndarray):
-                target_seq = torch.from_numpy(target_seq).long().to(device)
-            target_tokens = target_seq[:, :, 0]  # first token per position
-        else:
-            target_tokens = torch.zeros(B, OUTPUT_DIM, dtype=torch.long, device=device)
+        # ----- Autoregressive decoder -----
+        # Start with BOS token
+        generated_tokens = torch.full(
+            (B, 1),
+            NUM_CLASSES - 1,  # BOS token index
+            dtype=torch.long,
+            device=device
+        )
 
-        output_sequence = torch.zeros(B, MAX_LEN, self.output_dim, device=device)
+        output_logits = torch.zeros(
+            B, MAX_LEN, OUTPUT_DIM, device=device
+        )
 
         for t in range(MAX_LEN):
-            tgt_emb = self.embedding_output(target_tokens)  # [B, t+1, d_model]
-            tgt_emb = tgt_emb + self.pos_encoder[:, :tgt_emb.size(1)]
-            tgt_mask = self._causal_mask(tgt_emb.size(1), device)
+            # Embed generated tokens so far
+            decoder_emb = self.embedding_output(generated_tokens)  # [B, t+1, d_model]
+            decoder_emb = decoder_emb + self.pos_encoder[:, :decoder_emb.size(1)]
 
+            # Causal mask
+            tgt_mask = self._causal_mask(decoder_emb.size(1), device)
+
+            # Decode
             dec_out = self.decoder(
-                tgt=tgt_emb,
+                tgt=decoder_emb,
                 memory=memory,
                 tgt_mask=tgt_mask
             )
 
-            next_token_logits = self.fc_out(dec_out[:, -1:])  # [B, 1, OUTPUT_DIM]
-            output_sequence[:, t] = next_token_logits.squeeze(1)
+            # Predict next token
+            logits = self.fc_out(dec_out[:, -1])  # [B, OUTPUT_DIM]
+            output_logits[:, t] = logits
 
-            # Teacher forcing if targets provided
-            # if target_seq is not None and t+1 < target_seq.size(1):
-            #     next_token = target_seq[:, t:t+1]  # use true token
-            # else:
-            #     next_token = torch.argmax(next_token_logits, dim=-1)  # greedy
-            # target_tokens = torch.cat([target_tokens, next_token], dim=1)
+            # CLOSED LOOP: feed model output back in
+            next_token = torch.argmax(logits, dim=-1, keepdim=True)
+            generated_tokens = torch.cat([generated_tokens, next_token], dim=1)
 
-        return output_sequence  # [B, MAX_LEN, OUTPUT_DIM]
+        return output_logits
+
 
 # -------------------------
 # Dataset
@@ -131,7 +137,7 @@ def train(model, train_loader, optimizer, num_epochs=10):
             input_seq, target_seq = input_seq.to(DEVICE), target_seq.to(DEVICE)
             optimizer.zero_grad()
 
-            output = model(input_seq, target_seq)  # [B, MAX_LEN, OUTPUT_DIM]
+            output = model(input_seq)  # [B, MAX_LEN, OUTPUT_DIM]
 
             # Flatten for loss
             logits = output.view(-1, OUTPUT_DIM)         # [B*MAX_LEN, OUTPUT_DIM]
@@ -186,7 +192,7 @@ if __name__ == "__main__":
 
     train_data = MusicDataset("data/data_train.npz")
 
-    num_samples = 60000
+    num_samples = 200000
     indices = torch.randperm(len(train_data))[:num_samples]
     train_data = Subset(train_data, indices)
 
@@ -194,7 +200,7 @@ if __name__ == "__main__":
 
     optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
 
-    checkpoint_path = "checkpoints/transformer_model.pth"
+    checkpoint_path = "checkpoints/transformer_model_2.pth"
     load_model_checkpoint(model, checkpoint_path)
 
     train(model, train_loader, optimizer, num_epochs=num_epochs)

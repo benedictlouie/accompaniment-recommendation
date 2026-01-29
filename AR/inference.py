@@ -8,7 +8,7 @@ from utils.FifthsCircleLoss import FifthsCircleLoss
 from utils.plot_chords import plot_chords_over_time
 from utils.play import npz_to_midi
 
-def generate_chords(model, melody, target):
+def generate_chords(model, melody, target=None):
     """
     melody: np.array or torch tensor (1, T, feature_dim)
     returns: predicted chord indices (1, T)
@@ -19,9 +19,14 @@ def generate_chords(model, melody, target):
     melody = melody.to(DEVICE)
     B, T, _ = melody.shape
 
+    np.set_printoptions(threshold=np.inf)
+    print(melody[:, -1].numpy())
+
     with torch.no_grad():
-        outputs = model(melody, target)  # fully autoregressive
+        outputs = model(melody)  # fully autoregressive
         preds = outputs.argmax(dim=-1)  # (B,T)
+
+    print(preds[:, :].numpy())
     return preds.cpu().numpy()
 
 if __name__ == "__main__":

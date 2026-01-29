@@ -3,39 +3,8 @@ import numpy as np
 import torch
 import time
 from CRF.chord_melody_relation import predict_chords
-from utils.constants import REVERSE_ROOT_MAP, CHORD_CLASSES, NUM_CLASSES, CHORD_TO_TETRAD, FIFTHS_CHORD_LIST, FIFTHS_CHORD_INDICES, TEMPERATURE
+from utils.constants import *
 from CRF.crf import key_probs
-
-# Initialize pygame
-pygame.init()
-pygame.mixer.init(frequency=44100, size=-16, channels=1)
-
-# Settings
-BPM = 100
-BEAT_DURATION = 60 / BPM
-BEATS_PER_BAR = 4
-BAR_DURATION = BEAT_DURATION * BEATS_PER_BAR
-
-# Load metronome click
-CLICK_SOUND = pygame.mixer.Sound("utils/click.wav")
-
-# Key mapping (1.5 octaves starting from C4)
-KEYBOARD_MAP = {
-    'a': 'C4', 'w': 'C#4', 's': 'D4', 'e': 'D#4', 'd': 'E4',
-    'f': 'F4', 't': 'F#4', 'g': 'G4', 'y': 'G#4', 'h': 'A4',
-    'u': 'A#4', 'j': 'B4', 'k': 'C5', 'o': 'C#5', 'l': 'D5',
-    'p': 'D#5', ';': 'E5', "'": 'F5'
-}
-NOTE_TO_KEYBOARD = {v: k for k, v in KEYBOARD_MAP.items()}
-FONT = pygame.font.SysFont(None, 24)
-
-# Frequencies for each note
-NOTE_FREQS = {
-    'C4': 261.63, 'C#4': 277.18, 'D4': 293.66, 'D#4': 311.13, 'E4': 329.63,
-    'F4': 349.23, 'F#4': 369.99, 'G4': 392.00, 'G#4': 415.30, 'A4': 440.00,
-    'A#4': 466.16, 'B4': 493.88, 'C5': 523.25, 'C#5': 554.37, 'D5': 587.33,
-    'D#5': 622.25, 'E5': 659.25, 'F5': 698.46
-}
 
 # Pre-generate pygame Sounds for all notes (1s long)
 def generate_note_sound(freq, duration=1.0):
@@ -146,11 +115,14 @@ while running:
     # Metronome tick
     if current_time - last_beat_time >= BEAT_DURATION:
 
-        CLICK_SOUND.play()
         last_beat_time = current_time
         current_beat += 1
-        
-        if current_beat >= BEATS_PER_BAR:
+
+        if 1 < current_beat <= BEATS_PER_BAR:
+            CLICK_SOUND.play()
+        else:
+            CLICK_SOUND_STRONG.play()
+
             bar_end_time = current_time
             bar_proportions = {}
             for note, start, end in notes_played:
@@ -171,7 +143,7 @@ while running:
             print("Previous bar:", bar_proportions)
             print("STRONG BEAT")
             notes_played.clear()
-            current_beat = 0
+            current_beat = 1
             bar_start_time = current_time
     
     # Draw keys
