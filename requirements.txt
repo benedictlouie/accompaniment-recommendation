@@ -1,5 +1,7 @@
 torch
 numpy
+tensorboard
 mido
 music21
 python-rtmidi
+pygame
