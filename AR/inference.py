@@ -26,7 +26,7 @@ def generate_chords(model, melody, target=None):
         outputs = model(melody)  # fully autoregressive
         preds = outputs.argmax(dim=-1)  # (B,T)
 
-    print(preds[:, :].numpy())
+    print(preds[:, -1].numpy())
     return preds.cpu().numpy()
 
 if __name__ == "__main__":

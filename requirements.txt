@@ -1,0 +1,5 @@
+torch
+numpy
+mido
+music21
+python-rtmidi

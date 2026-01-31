@@ -11,8 +11,6 @@ data/pop-ewld/melody_chords/
 data/pop-ewld/midi_files/
 data/prepare_training_data_smoother.py
 data/melodyhub
-data/data_train.npz
-data/data_val.npz
 data/data_train_smooth.npz
 data/data_val_smooth.npz
 chord_transition_matrix.npy

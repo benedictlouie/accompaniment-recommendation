@@ -13,6 +13,7 @@ from utils.FifthsCircleLoss import FifthsCircleLoss
 # -------------------------
 OUTPUT_DIM = NUM_CLASSES
 MAX_LEN = MEMORY + 1
+BOS_TOKEN_INDEX = NUM_CLASSES
 
 # -------------------------
 # Transformer Model
@@ -68,7 +69,7 @@ class TransformerModel(nn.Module):
         # Start with BOS token
         generated_tokens = torch.full(
             (B, 1),
-            NUM_CLASSES - 1,  # BOS token index
+            BOS_TOKEN_INDEX,  # BOS token index
             dtype=torch.long,
             device=device
         )
@@ -200,7 +201,7 @@ if __name__ == "__main__":
 
     optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
 
-    checkpoint_path = "checkpoints/transformer_model_2.pth"
+    checkpoint_path = "checkpoints/transformer_model.pth"
     load_model_checkpoint(model, checkpoint_path)
 
     train(model, train_loader, optimizer, num_epochs=num_epochs)
