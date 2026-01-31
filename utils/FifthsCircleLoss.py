@@ -24,7 +24,7 @@ class FifthsCircleLoss(nn.Module):
 
         # precompute chord coordinates
         coords = torch.stack([self.map_to_circle(torch.tensor(i, dtype=torch.float32)) 
-                              for i in range(num_chords)])  # [num_chords, 2]
+                              for i in range(num_chords + 1)])  # [num_chords, 2]
         self.register_buffer("chord_coords", coords)
 
     def map_to_circle(self, x):
@@ -53,7 +53,7 @@ class FifthsCircleLoss(nn.Module):
         """
         probs = torch.softmax(logits, dim=-1)  # [B, num_chords]
     
-        pred_coords = probs @ self.chord_coords  # [B, 3]
+        pred_coords = probs @ self.chord_coords[:probs.shape[-1]]  # [B, 3]
         target_coords = self.chord_coords[target_idx]  # [B, 3]
         coord_loss = torch.norm(pred_coords - target_coords, dim=1).mean()
         cat_loss = F.cross_entropy(logits, target_idx)

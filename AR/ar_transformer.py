@@ -11,7 +11,7 @@ from utils.FifthsCircleLoss import FifthsCircleLoss
 # -------------------------
 # Constants
 # -------------------------
-OUTPUT_DIM = NUM_CLASSES
+OUTPUT_DIM = NUM_CLASSES + 1
 MAX_LEN = MEMORY + 1
 BOS_TOKEN_INDEX = NUM_CLASSES
 
