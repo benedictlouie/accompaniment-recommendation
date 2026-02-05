@@ -39,7 +39,7 @@ def key_probs(X):
 
 if __name__ == "__main__":
 
-    song_num = 330
+    song_num = 707
     song_num_str = f"{song_num:03d}"
 
     npz_path = f'data/pop/melody_chords/{song_num_str}.npz'

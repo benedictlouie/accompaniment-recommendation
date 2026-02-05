@@ -13,7 +13,7 @@ from utils.FifthsCircleLoss import FifthsCircleLoss
 # -------------------------
 OUTPUT_DIM = NUM_CLASSES + 1
 MAX_LEN = MEMORY + 1
-BOS_TOKEN_INDEX = NUM_CLASSES
+BOS_TOKEN_INDEX = NUM_CLASSES - 1
 
 # -------------------------
 # Transformer Model
@@ -27,82 +27,53 @@ class TransformerModel(nn.Module):
 
         # Embeddings
         self.feature_to_embedding = nn.Linear(input_dim, d_model)
-        self.embedding_output = nn.Embedding(output_dim, d_model)  # use integer class indices
+        self.embedding_output = nn.Embedding(output_dim, d_model) 
 
-        # Positional encoding (learned, batch-first)
-        self.pos_encoder = nn.Parameter(torch.randn(1, MAX_LEN, d_model))
+        # Positional encoding
+        self.pos_encoder = nn.Parameter(torch.randn(1, MEMORY, d_model))
 
-        # Encoder
+        # Encoder & Decoder
         self.encoder = nn.TransformerEncoder(
             nn.TransformerEncoderLayer(d_model=d_model, nhead=nhead, batch_first=True),
             num_layers=num_encoder_layers
         )
-
-        # Decoder
         self.decoder = nn.TransformerDecoder(
             nn.TransformerDecoderLayer(d_model=d_model, nhead=nhead, batch_first=True),
             num_layers=num_decoder_layers
         )
 
-        # Final linear layer
         self.fc_out = nn.Linear(d_model, output_dim)
 
-    def _causal_mask(self, T, device):
-        return torch.triu(torch.full((T, T), float("-inf"), device=device), diagonal=1)
-
     def forward(self, input_seq):
-        """
-        Closed-loop autoregressive generation (no teacher forcing)
-
-        input_seq: [B, MEMORY, INPUT_DIM]
-        returns:   [B, MAX_LEN, OUTPUT_DIM] logits
-        """
         B = input_seq.size(0)
         device = input_seq.device
 
-        # ----- Encoder -----
-        x = self.feature_to_embedding(input_seq.float())  # [B, MEMORY, d_model]
-        x = x + self.pos_encoder[:, :x.size(1)]
-        memory = self.encoder(x)  # [B, MEMORY, d_model]
+        # Encoder "thinks" about the input context
+        memory = self.encoder(self.feature_to_embedding(input_seq) + self.pos_encoder)
 
-        # ----- Autoregressive decoder -----
-        # Start with BOS token
-        generated_tokens = torch.full(
-            (B, 1),
-            BOS_TOKEN_INDEX,  # BOS token index
-            dtype=torch.long,
-            device=device
-        )
-
-        output_logits = torch.zeros(
-            B, MAX_LEN, OUTPUT_DIM, device=device
-        )
+        # We need ONE starting state. We can use'dummy' zeros to get the first logit.
+        output_logits = []
+        current_tokens = None
 
         for t in range(MAX_LEN):
-            # Embed generated tokens so far
-            decoder_emb = self.embedding_output(generated_tokens)  # [B, t+1, d_model]
-            decoder_emb = decoder_emb + self.pos_encoder[:, :decoder_emb.size(1)]
+            # If no tokens yet, we use a dummy 'start' embedding
+            # to query the encoder memory for the first note
+            if current_tokens is None:
+                tgt_emb = torch.zeros(B, 1, self.d_model, device=device)
+            else:
+                tgt_emb = self.embedding_output(current_tokens)
+            
+            out = self.decoder(tgt=tgt_emb, memory=memory) 
+            logits = self.fc_out(out[:, -1, :])
+            output_logits.append(logits)
 
-            # Causal mask
-            tgt_mask = self._causal_mask(decoder_emb.size(1), device)
+            next_tok = torch.argmax(logits, dim=-1, keepdim=True)
+            if current_tokens is None:
+                current_tokens = next_tok
+            else:
+                current_tokens = torch.cat([current_tokens, next_tok], dim=1)
 
-            # Decode
-            dec_out = self.decoder(
-                tgt=decoder_emb,
-                memory=memory,
-                tgt_mask=tgt_mask
-            )
-
-            # Predict next token
-            logits = self.fc_out(dec_out[:, -1])  # [B, OUTPUT_DIM]
-            output_logits[:, t] = logits
-
-            # CLOSED LOOP: feed model output back in
-            next_token = torch.argmax(logits, dim=-1, keepdim=True)
-            generated_tokens = torch.cat([generated_tokens, next_token], dim=1)
-
-        return output_logits
-
+        return torch.stack(output_logits, dim=1)
 
 # -------------------------
 # Dataset
