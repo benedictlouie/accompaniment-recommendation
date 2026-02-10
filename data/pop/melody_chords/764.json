@@ -1,0 +1,812 @@
+[
+  {
+    "strong_beat": 0,
+    "chord": "N",
+    "melody": [
+      -1,
+      -1,
+      -1,
+      -1
+    ]
+  },
+  {
+    "strong_beat": 1,
+    "chord": "F:maj",
+    "melody": [
+      -1,
+      -1,
+      -1,
+      -1
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "F:maj",
+    "melody": [
+      -1,
+      -1,
+      -1,
+      -1
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "F:maj",
+    "melody": [
+      -1,
+      -1,
+      -1,
+      -1
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "F:maj",
+    "melody": [
+      -1,
+      -1,
+      -1,
+      -1
+    ]
+  },
+  {
+    "strong_beat": 1,
+    "chord": "F:maj",
+    "melody": [
+      -1,
+      -1,
+      -1,
+      -1
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "F:maj",
+    "melody": [
+      -1,
+      -1,
+      -1,
+      -1
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "F:maj",
+    "melody": [
+      -1,
+      -1,
+      -1,
+      -1
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "F:maj",
+    "melody": [
+      -1,
+      -1,
+      -1,
+      -1
+    ]
+  },
+  {
+    "strong_beat": 1,
+    "chord": "F:maj",
+    "melody": [
+      69,
+      69,
+      69,
+      69
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "F:maj",
+    "melody": [
+      70,
+      70,
+      72,
+      72
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "A:min/5",
+    "melody": [
+      69,
+      69,
+      -1,
+      -1
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "A:min/5",
+    "melody": [
+      67,
+      67,
+      -1,
+      -1
+    ]
+  },
+  {
+    "strong_beat": 1,
+    "chord": "D:min",
+    "melody": [
+      65,
+      -1,
+      65,
+      65
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "D:min",
+    "melody": [
+      67,
+      67,
+      69,
+      69
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "A:min",
+    "melody": [
+      69,
+      69,
+      69,
+      69
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "A:min",
+    "melody": [
+      69,
+      64,
+      64,
+      64
+    ]
+  },
+  {
+    "strong_beat": 1,
+    "chord": "Bb:maj",
+    "melody": [
+      62,
+      62,
+      69,
+      69
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "C:maj",
+    "melody": [
+      67,
+      67,
+      67,
+      -1
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "Bb:maj",
+    "melody": [
+      62,
+      62,
+      69,
+      69
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "C:maj",
+    "melody": [
+      67,
+      67,
+      -1,
+      -1
+    ]
+  },
+  {
+    "strong_beat": 1,
+    "chord": "Bb:maj",
+    "melody": [
+      62,
+      62,
+      69,
+      69
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "C:maj",
+    "melody": [
+      67,
+      67,
+      -1,
+      65
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "D:min",
+    "melody": [
+      65,
+      65,
+      65,
+      65
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "D:min",
+    "melody": [
+      65,
+      65,
+      65,
+      -1
+    ]
+  },
+  {
+    "strong_beat": 1,
+    "chord": "D:min",
+    "melody": [
+      -1,
+      -1,
+      -1,
+      -1
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "D:min",
+    "melody": [
+      -1,
+      -1,
+      -1,
+      -1
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "F:maj",
+    "melody": [
+      69,
+      69,
+      69,
+      69
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "F:maj",
+    "melody": [
+      70,
+      70,
+      72,
+      72
+    ]
+  },
+  {
+    "strong_beat": 1,
+    "chord": "A:min/5",
+    "melody": [
+      69,
+      69,
+      -1,
+      -1
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "A:min/5",
+    "melody": [
+      67,
+      67,
+      -1,
+      -1
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "D:min",
+    "melody": [
+      65,
+      -1,
+      65,
+      65
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "D:min",
+    "melody": [
+      67,
+      67,
+      69,
+      69
+    ]
+  },
+  {
+    "strong_beat": 1,
+    "chord": "A:min",
+    "melody": [
+      69,
+      69,
+      69,
+      69
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "A:min",
+    "melody": [
+      69,
+      64,
+      64,
+      64
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "Bb:maj",
+    "melody": [
+      62,
+      62,
+      69,
+      69
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "C:maj",
+    "melody": [
+      67,
+      67,
+      67,
+      -1
+    ]
+  },
+  {
+    "strong_beat": 1,
+    "chord": "Bb:maj",
+    "melody": [
+      62,
+      62,
+      69,
+      69
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "C:maj",
+    "melody": [
+      67,
+      67,
+      -1,
+      -1
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "Bb:maj",
+    "melody": [
+      62,
+      62,
+      69,
+      69
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "C:maj",
+    "melody": [
+      67,
+      67,
+      -1,
+      65
+    ]
+  },
+  {
+    "strong_beat": 1,
+    "chord": "D:min",
+    "melody": [
+      65,
+      65,
+      65,
+      65
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "D:min",
+    "melody": [
+      65,
+      65,
+      65,
+      -1
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "C:maj",
+    "melody": [
+      -1,
+      -1,
+      -1,
+      -1
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "C:maj",
+    "melody": [
+      69,
+      69,
+      67,
+      67
+    ]
+  },
+  {
+    "strong_beat": 1,
+    "chord": "F:maj",
+    "melody": [
+      67,
+      72,
+      72,
+      72
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "F:maj",
+    "melody": [
+      -1,
+      -1,
+      70,
+      70
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "A:min/5",
+    "melody": [
+      69,
+      67,
+      67,
+      67
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "A:min/5",
+    "melody": [
+      67,
+      -1,
+      72,
+      70
+    ]
+  },
+  {
+    "strong_beat": 1,
+    "chord": "D:min",
+    "melody": [
+      69,
+      69,
+      70,
+      72
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "D:min",
+    "melody": [
+      72,
+      72,
+      69,
+      69
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "C:maj",
+    "melody": [
+      67,
+      67,
+      67,
+      67
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "C:maj",
+    "melody": [
+      67,
+      -1,
+      -1,
+      65
+    ]
+  },
+  {
+    "strong_beat": 1,
+    "chord": "Bb:maj",
+    "melody": [
+      62,
+      62,
+      69,
+      69
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "C:maj",
+    "melody": [
+      67,
+      67,
+      -1,
+      62
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "A:min",
+    "melody": [
+      60,
+      60,
+      67,
+      67
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "D:maj",
+    "melody": [
+      65,
+      65,
+      65,
+      65
+    ]
+  },
+  {
+    "strong_beat": 1,
+    "chord": "G:min",
+    "melody": [
+      70,
+      69,
+      70,
+      69
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "G:min",
+    "melody": [
+      65,
+      65,
+      65,
+      -1
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "C:maj",
+    "melody": [
+      70,
+      70,
+      69,
+      69
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "C:maj",
+    "melody": [
+      65,
+      65,
+      -1,
+      67
+    ]
+  },
+  {
+    "strong_beat": 1,
+    "chord": "F:maj",
+    "melody": [
+      67,
+      67,
+      65,
+      65
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "F:maj",
+    "melody": [
+      65,
+      65,
+      65,
+      65
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "A:min/5",
+    "melody": [
+      65,
+      65,
+      65,
+      -1
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "A:min/5",
+    "melody": [
+      -1,
+      -1,
+      -1,
+      -1
+    ]
+  },
+  {
+    "strong_beat": 1,
+    "chord": "D:min",
+    "melody": [
+      -1,
+      -1,
+      -1,
+      -1
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "D:min",
+    "melody": [
+      -1,
+      -1,
+      -1,
+      -1
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "D:min",
+    "melody": [
+      -1,
+      -1,
+      -1,
+      -1
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "A:min",
+    "melody": [
+      -1,
+      -1,
+      -1,
+      -1
+    ]
+  },
+  {
+    "strong_beat": 1,
+    "chord": "A:min",
+    "melody": [
+      -1,
+      -1,
+      -1,
+      -1
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "Bb:maj",
+    "melody": [
+      -1,
+      -1,
+      -1,
+      -1
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "C:maj",
+    "melody": [
+      -1,
+      -1,
+      -1,
+      -1
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "A:min",
+    "melody": [
+      -1,
+      -1,
+      -1,
+      -1
+    ]
+  },
+  {
+    "strong_beat": 1,
+    "chord": "D:min",
+    "melody": [
+      -1,
+      -1,
+      -1,
+      -1
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "C:sus2",
+    "melody": [
+      -1,
+      -1,
+      -1,
+      -1
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "C:sus2",
+    "melody": [
+      -1,
+      -1,
+      -1,
+      -1
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "C:sus2",
+    "melody": [
+      -1,
+      -1,
+      -1,
+      -1
+    ]
+  },
+  {
+    "strong_beat": 1,
+    "chord": "C:sus2",
+    "melody": [
+      -1,
+      -1,
+      -1,
+      -1
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "F:maj",
+    "melody": [
+      -1,
+      -1,
+      -1,
+      -1
+    ]
+  },
+  {
+    "strong_beat": 1,
+    "chord": "F:maj",
+    "melody": [
+      -1,
+      -1,
+      -1,
+      -1
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "F:maj",
+    "melody": [
+      -1,
+      -1,
+      -1,
+      -1
+    ]
+  }
+]

@@ -1,0 +1,542 @@
+[
+  {
+    "strong_beat": 0,
+    "chord": "N",
+    "melody": [
+      -1,
+      -1,
+      -1,
+      -1
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "N",
+    "melody": [
+      -1,
+      -1,
+      -1,
+      -1
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "N",
+    "melody": [
+      -1,
+      -1,
+      -1,
+      -1
+    ]
+  },
+  {
+    "strong_beat": 1,
+    "chord": "N",
+    "melody": [
+      -1,
+      -1,
+      -1,
+      -1
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "C#:maj",
+    "melody": [
+      -1,
+      -1,
+      -1,
+      -1
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "C#:maj",
+    "melody": [
+      -1,
+      -1,
+      -1,
+      -1
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "C#:maj",
+    "melody": [
+      -1,
+      -1,
+      -1,
+      -1
+    ]
+  },
+  {
+    "strong_beat": 1,
+    "chord": "C#:maj",
+    "melody": [
+      -1,
+      -1,
+      -1,
+      -1
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "F:min",
+    "melody": [
+      -1,
+      -1,
+      -1,
+      -1
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "F:min",
+    "melody": [
+      -1,
+      -1,
+      -1,
+      -1
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "F:min",
+    "melody": [
+      -1,
+      -1,
+      -1,
+      -1
+    ]
+  },
+  {
+    "strong_beat": 1,
+    "chord": "F:min",
+    "melody": [
+      -1,
+      -1,
+      -1,
+      -1
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "C#:maj",
+    "melody": [
+      -1,
+      -1,
+      -1,
+      -1
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "C#:maj",
+    "melody": [
+      -1,
+      -1,
+      -1,
+      -1
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "C#:maj",
+    "melody": [
+      -1,
+      -1,
+      -1,
+      -1
+    ]
+  },
+  {
+    "strong_beat": 1,
+    "chord": "C#:maj",
+    "melody": [
+      -1,
+      -1,
+      -1,
+      -1
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "F:min",
+    "melody": [
+      -1,
+      -1,
+      -1,
+      -1
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "F:min",
+    "melody": [
+      -1,
+      -1,
+      -1,
+      -1
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "F:min",
+    "melody": [
+      -1,
+      -1,
+      -1,
+      -1
+    ]
+  },
+  {
+    "strong_beat": 1,
+    "chord": "F:min",
+    "melody": [
+      -1,
+      -1,
+      72,
+      75
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "C#:maj",
+    "melody": [
+      75,
+      75,
+      68,
+      68
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "C#:maj",
+    "melody": [
+      -1,
+      -1,
+      72,
+      75
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "F:min/b3",
+    "melody": [
+      75,
+      75,
+      68,
+      68
+    ]
+  },
+  {
+    "strong_beat": 1,
+    "chord": "F:min/b3",
+    "melody": [
+      72,
+      72,
+      70,
+      70
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "Bb:min",
+    "melody": [
+      70,
+      70,
+      70,
+      70
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "Bb:min",
+    "melody": [
+      70,
+      70,
+      70,
+      70
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "Bb:min",
+    "melody": [
+      70,
+      70,
+      70,
+      -1
+    ]
+  },
+  {
+    "strong_beat": 1,
+    "chord": "Bb:min",
+    "melody": [
+      -1,
+      -1,
+      72,
+      75
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "C#:maj",
+    "melody": [
+      75,
+      75,
+      68,
+      68
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "C#:maj",
+    "melody": [
+      -1,
+      -1,
+      72,
+      75
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "Ab:maj",
+    "melody": [
+      75,
+      75,
+      68,
+      68
+    ]
+  },
+  {
+    "strong_beat": 1,
+    "chord": "Ab:maj",
+    "melody": [
+      72,
+      72,
+      70,
+      -1
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "Bb:min",
+    "melody": [
+      70,
+      -1,
+      70,
+      70
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "Bb:min",
+    "melody": [
+      70,
+      70,
+      70,
+      -1
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "Bb:min",
+    "melody": [
+      -1,
+      68,
+      68,
+      68
+    ]
+  },
+  {
+    "strong_beat": 1,
+    "chord": "Bb:min",
+    "melody": [
+      77,
+      77,
+      77,
+      79
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "C#:maj",
+    "melody": [
+      80,
+      80,
+      80,
+      75
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "C#:maj",
+    "melody": [
+      75,
+      75,
+      75,
+      73
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "Ab:maj",
+    "melody": [
+      72,
+      72,
+      72,
+      70
+    ]
+  },
+  {
+    "strong_beat": 1,
+    "chord": "Ab:maj",
+    "melody": [
+      70,
+      70,
+      70,
+      70
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "Eb:maj",
+    "melody": [
+      68,
+      68,
+      72,
+      72
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "Eb:maj",
+    "melody": [
+      72,
+      72,
+      72,
+      72
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "F:min",
+    "melody": [
+      72,
+      72,
+      72,
+      72
+    ]
+  },
+  {
+    "strong_beat": 1,
+    "chord": "F:min",
+    "melody": [
+      73,
+      73,
+      73,
+      73
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "Bb:min",
+    "melody": [
+      73,
+      73,
+      75,
+      75
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "Bb:min",
+    "melody": [
+      75,
+      75,
+      75,
+      68
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "Eb:maj",
+    "melody": [
+      70,
+      70,
+      70,
+      70
+    ]
+  },
+  {
+    "strong_beat": 1,
+    "chord": "Eb:maj",
+    "melody": [
+      68,
+      68,
+      68,
+      68
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "C#:maj",
+    "melody": [
+      68,
+      68,
+      68,
+      68
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "C#:maj",
+    "melody": [
+      68,
+      68,
+      68,
+      68
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "C#:maj",
+    "melody": [
+      68,
+      68,
+      68,
+      68
+    ]
+  },
+  {
+    "strong_beat": 1,
+    "chord": "Ab:maj",
+    "melody": [
+      68,
+      -1,
+      72,
+      75
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "C#:maj",
+    "melody": [
+      75,
+      75,
+      68,
+      68
+    ]
+  },
+  {
+    "strong_beat": 0,
+    "chord": "C#:maj",
+    "melody": [
+      68,
+      -1,
+      -1,
+      -1
+    ]
+  }
+]
