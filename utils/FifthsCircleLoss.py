@@ -6,7 +6,7 @@ import math
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
-from utils.constants import CHORD_CLASSES
+from utils.constants import CHORD_CLASSES, DEVICE
 
 class FifthsCircleLoss(nn.Module):
     def __init__(self, num_chords=25, factor_minor=0.8, k=99.0, no_chord_penalty=3, eta=0.2):
@@ -20,10 +20,10 @@ class FifthsCircleLoss(nn.Module):
         self.factor_minor = factor_minor
         self.k = k
         self.eta = eta
-        self.no_chord_penalty = torch.tensor(no_chord_penalty)
+        self.no_chord_penalty = torch.tensor(no_chord_penalty, device=DEVICE)
 
         # precompute chord coordinates
-        coords = torch.stack([self.map_to_circle(torch.tensor(i, dtype=torch.float32)) 
+        coords = torch.stack([self.map_to_circle(torch.tensor(i, dtype=torch.float32, device=DEVICE)) 
                               for i in range(num_chords + 1)])  # [num_chords, 2]
         self.register_buffer("chord_coords", coords)
 
@@ -41,9 +41,9 @@ class FifthsCircleLoss(nn.Module):
 
         angle_major = 2 * math.pi * dist_major / 12
         angle_minor = 2 * math.pi * dist_minor / 12
-        coord_major = torch.stack([torch.cos(angle_major), torch.sin(angle_major), self.no_chord_penalty])
-        coord_minor = factor * torch.stack([torch.cos(angle_minor), torch.sin(angle_minor), self.no_chord_penalty])
-        coords = is_N * torch.zeros(3) + (1 - is_N) * ((1 - is_minor) * coord_major + is_minor * coord_minor)
+        coord_major = torch.tensor([torch.cos(angle_major), torch.sin(angle_major), self.no_chord_penalty], device=DEVICE)
+        coord_minor = factor * torch.tensor([torch.cos(angle_minor), torch.sin(angle_minor), self.no_chord_penalty], device=DEVICE)
+        coords = is_N * torch.zeros(3, device=DEVICE) + (1 - is_N) * ((1 - is_minor) * coord_major + is_minor * coord_minor)
         return coords
 
     def forward(self, logits, target_idx):
@@ -52,7 +52,7 @@ class FifthsCircleLoss(nn.Module):
         target_idx: [batch_size] long tensor of chord indices
         """
         probs = torch.softmax(logits, dim=-1)  # [B, num_chords]
-    
+        
         pred_coords = probs @ self.chord_coords[:probs.shape[-1]]  # [B, 3]
         target_coords = self.chord_coords[target_idx]  # [B, 3]
         coord_loss = torch.norm(pred_coords - target_coords, dim=1).mean()

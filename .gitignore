@@ -1,10 +1,10 @@
 .DS_Store
 .vscode
 __pycache__/
-checkpoints/
+checkpoints/*
+!checkpoints/transformer_model.pth
 runs/
 data/pop/POP909/
-data/pop/melody_chords/
 data/pop/.DS_Store
 data/pop-ewld/ewld/
 data/pop-ewld/melody_chords/
@@ -15,3 +15,5 @@ data/data_train_smooth.npz
 data/data_val_smooth.npz
 chord_transition_matrix.npy
 output.mid
+.venv
+.python-version

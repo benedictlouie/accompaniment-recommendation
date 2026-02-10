@@ -20,17 +20,17 @@ def generate_chords(model, melody, target=None):
     B, T, _ = melody.shape
 
     np.set_printoptions(threshold=np.inf)
-    print(melody[:, -1].numpy())
+    print(melody[:, -1].cpu().numpy())
 
     with torch.no_grad():
         outputs = model(melody)  # fully autoregressive
         preds = outputs.argmax(dim=-1)  # (B,T)
 
-    print(preds[:, -1].numpy())
+    print(preds[:, -1].cpu().numpy())
     return preds.cpu().numpy()
 
 if __name__ == "__main__":
-    model = TransformerModel(INPUT_DIM, NUM_CLASSES).to(DEVICE)
+    model = TransformerModel(INPUT_DIM, NUM_CLASSES+1).to(DEVICE)
     checkpoint = torch.load("checkpoints/transformer_model.pth", map_location=DEVICE)
     model.load_state_dict(checkpoint)
 

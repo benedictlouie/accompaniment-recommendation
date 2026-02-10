@@ -49,7 +49,8 @@ class TransformerModel(nn.Module):
         device = input_seq.device
 
         # Encoder "thinks" about the input context
-        memory = self.encoder(self.feature_to_embedding(input_seq) + self.pos_encoder)
+
+        memory = self.encoder(self.feature_to_embedding(torch.where(input_seq > 10, input_seq % 12, input_seq)) + self.pos_encoder)
 
         # We need ONE starting state. We can use'dummy' zeros to get the first logit.
         output_logits = []
@@ -164,7 +165,7 @@ if __name__ == "__main__":
 
     train_data = MusicDataset("data/data_train.npz")
 
-    num_samples = 200000
+    num_samples = len(train_data)
     indices = torch.randperm(len(train_data))[:num_samples]
     train_data = Subset(train_data, indices)
 

@@ -1,5 +1,7 @@
 torch
 numpy
+seaborn
+scikit-learn
 tensorboard
 mido
 music21
