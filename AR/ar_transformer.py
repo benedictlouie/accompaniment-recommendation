@@ -11,9 +11,8 @@ from utils.FifthsCircleLoss import FifthsCircleLoss
 # -------------------------
 # Constants
 # -------------------------
-OUTPUT_DIM = NUM_CLASSES + 1
+OUTPUT_DIM = NUM_CLASSES
 MAX_LEN = MEMORY + 1
-BOS_TOKEN_INDEX = NUM_CLASSES - 1
 
 # -------------------------
 # Transformer Model

@@ -1,12 +1,15 @@
 import os
 import music21
+from music21 import *
 import mido
 import math
 from mido import MidiFile, MidiTrack, Message, MetaMessage
 import numpy as np
+import re
 
 # Define the ticks per quarter note (standard is 480 ticks per quarter note)
 TICKS_PER_QUARTER_NOTE = 480
+TICKS_PER_16TH_NOTE = TICKS_PER_QUARTER_NOTE // 4  # 1/16th note duration in ticks
 
 def convert_mxl_to_midi(mxl_file_path, midi_output_path):
     # Parse the MusicXML file using music21
@@ -130,12 +133,33 @@ def convert_mxl_to_midi(mxl_file_path, midi_output_path):
     # Save the MIDI file
     midi_file.save(midi_output_path)
 
+def convert(chord):
+    # Extract root (only first note part)
+    match = re.match(r'^([A-G])([+-]?)(.*)', chord)
+    note = match.group(1)
+    accidental = match.group(2)
+    rest = match.group(3)
 
-import numpy as np
-from music21 import *
+    # Handle root +/- only
+    if accidental == '+':
+        root = note + '#'
+    elif accidental == '-':
+        root = note + 'b'
+    else:
+        root = note
 
-TICKS_PER_QUARTER_NOTE = 480  # Define the number of ticks per quarter note
-TICKS_PER_16TH_NOTE = TICKS_PER_QUARTER_NOTE // 4  # 1/16th note duration in ticks
+    # Quality mapping (ignore +/- here)
+    rest = rest.replace('+', '').replace('-', '')
+    quality = rest.split(' ')[0]
+    quality = re.sub(r'm(?!aj)(\d*)', r'min\1', quality)
+    if 'ø' in rest or 'o' in rest:
+        quality = 'dim'
+    elif 'sus' in rest:
+        quality = 'sus2'
+    elif rest == '':
+        quality = 'maj'
+    return f"{root}:{quality}"
+
 
 def extract_data_from_mxl_to_npz(mxl_file_path, npz_output_path):
     # Parse the MusicXML file using music21
@@ -185,6 +209,7 @@ def extract_data_from_mxl_to_npz(mxl_file_path, npz_output_path):
                     chord_symbol = element.figure
                     while len(chords_in_bar) < int(element.offset * denominator / 4):
                         chords_in_bar.append(last_chord)
+                    chord_symbol = convert(chord_symbol)
 
                     chords_in_bar.append(chord_symbol)
                     last_chord = chord_symbol

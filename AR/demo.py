@@ -84,7 +84,7 @@ def bar_to_midi_grid(notes_played, bar_start, strong_beat: int):
 # Model stubs
 # -----------------------------
 def next_chord(bar_history):
-    model = TransformerModel(INPUT_DIM, NUM_CLASSES+1).to(DEVICE)
+    model = TransformerModel(INPUT_DIM, NUM_CLASSES).to(DEVICE)
     checkpoint = torch.load("checkpoints/transformer_model.pth", map_location=DEVICE)
     model.load_state_dict(checkpoint)
     predicted_chord = generate_chords(model, bar_history[np.newaxis, :, :])[-1, -1]

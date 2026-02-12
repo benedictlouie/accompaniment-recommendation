@@ -37,7 +37,7 @@ def generate_chords(model, melody, target=None):
     return preds.cpu().numpy()
 
 if __name__ == "__main__":
-    model = TransformerModel(INPUT_DIM, NUM_CLASSES+1).to(DEVICE)
+    model = TransformerModel(INPUT_DIM, NUM_CLASSES).to(DEVICE)
     checkpoint = torch.load("checkpoints/transformer_model.pth", map_location=DEVICE)
     model.load_state_dict(checkpoint)
 

@@ -1,6 +1,8 @@
 import numpy as np
 import os
 import random
+
+from openai import files
 from utils.constants import ROOTS, QUALITIES, CHORD_CLASSES, NUM_CLASSES, REVERSE_CHORD_MAP, REVERSE_ROOT_MAP, FLAT_TO_SHARP, QUALITY_SIMPLIFIER, MEMORY, MELODY_NOTES_PER_BEAT, CHORD_TO_TETRAD, CHORD_EMBEDDING_LENGTH
 
 # ------------------------- #
@@ -12,6 +14,11 @@ def simplify_chord(chord_str):
         return "N"
     chord_str = chord_str.split('/')[0]
     root, qual = chord_str.split(':')
+    if root == 'E#': root = 'F'
+    elif root == 'B#': root = 'C'
+    elif root == 'Cb': root = 'B'
+    elif root == 'Fb': root = 'E'
+
     if root.endswith('b'):
         root = FLAT_TO_SHARP.get(root, root)
     qual = QUALITY_SIMPLIFIER.get(qual, qual)
@@ -114,9 +121,8 @@ def break_down_one_song_into_sequences(npz_path, test=False):
 
     if not test:
         melody_part = all_inputs[:, :, 1:1 + MELODY_NOTES_PER_BEAT]
-        mask = np.any(melody_part != -1, axis=(1, 2))
-        all_inputs = all_inputs[mask]
-        all_targets = all_targets[mask]
+        mask = np.all(melody_part == -1, axis=(1, 2))
+        all_targets[mask] = NUM_CLASSES - 1     # Set target to "N" for sequences where melody is all -1
 
     return all_inputs, all_targets
 
@@ -126,16 +132,39 @@ def break_down_one_song_into_sequences(npz_path, test=False):
 # ------------------------- #
 
 if __name__ == "__main__":
+
     # ---------- TRAINING DATA ----------
     train_inputs, train_targets = [], []
     for num in range(1, 701):
         npz_path = f"data/pop/melody_chords/{num:03d}.npz"
         X, Y = break_down_one_song_into_sequences(npz_path)
-        if X.size == 0:
-            continue
+        if X.size == 0: continue
         train_inputs.append(X)
         train_targets.append(Y)
+    
+    # ---------- VALIDATION DATA ----------
+    val_inputs, val_targets = [], []
+    for num in range(801, 901):
+        npz_path = f"data/pop/melody_chords/{num:03d}.npz"
+        X, Y = break_down_one_song_into_sequences(npz_path, test=True)
+        if X.size == 0: continue
+        val_inputs.append(X)
+        val_targets.append(Y)
 
+    # Second dataset (EWLD)
+    directory_path = "data/pop-ewld/melody_chords"
+    split_index = int(len(os.listdir(directory_path)) * 0.8)
+    for i, filename in enumerate(os.listdir(directory_path)):
+        full_path = os.path.join(directory_path, filename)
+        X, Y = break_down_one_song_into_sequences(full_path)
+        if X.size == 0: continue
+        if i < split_index:
+            train_inputs.append(X)
+            train_targets.append(Y)
+        else:
+            val_inputs.append(X)
+            val_targets.append(Y)
+    
     if train_inputs:
         train_inputs = np.concatenate(train_inputs, axis=0)
         train_targets = np.concatenate(train_targets, axis=0)
@@ -147,16 +176,6 @@ if __name__ == "__main__":
             inputs=train_inputs,
             targets=train_targets
         )
-
-    # ---------- VALIDATION DATA ----------
-    val_inputs, val_targets = [], []
-    for num in range(801, 901):
-        npz_path = f"data/pop/melody_chords/{num:03d}.npz"
-        X, Y = break_down_one_song_into_sequences(npz_path, test=True)
-        if X.size == 0:
-            continue
-        val_inputs.append(X)
-        val_targets.append(Y)
 
     if val_inputs:
         val_inputs = np.concatenate(val_inputs, axis=0)
