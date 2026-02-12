@@ -84,7 +84,7 @@ def bar_to_midi_grid(notes_played, bar_start, strong_beat: int):
 # Model stubs
 # -----------------------------
 def next_chord(bar_history):
-    model = TransformerModel(INPUT_DIM, NUM_CLASSES).to(DEVICE)
+    model = TransformerModel(INPUT_DIM, NUM_CLASSES+1).to(DEVICE)
     checkpoint = torch.load("checkpoints/transformer_model.pth", map_location=DEVICE)
     model.load_state_dict(checkpoint)
     predicted_chord = generate_chords(model, bar_history[np.newaxis, :, :])[-1, -1]
@@ -102,7 +102,7 @@ def play_chord(midi_grid, bar_history):
     print("Predicted chord:", decision)
 
     for i, midi in enumerate(CHORD_TO_TETRAD[decision]):
-        freq = 440 * 2 ** ((midi - 69) / 12)
+        freq = 440 * 2 ** (1 + (midi - 69) / 12)
         wave = generate_note_sound(freq, BAR_DURATION)
         pygame.mixer.Channel(len(NOTE_FREQS) + i).play(wave)
 

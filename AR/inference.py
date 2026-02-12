@@ -25,7 +25,7 @@ def generate_chords(model, melody, target=None):
     with torch.no_grad():
         outputs = model(melody)  # fully autoregressive
         
-        temperature = 0.5
+        temperature = 0.3
         probs = torch.nn.functional.softmax(outputs / temperature, dim=-1)
         preds = torch.multinomial(
             probs.view(-1, probs.size(-1)), 1

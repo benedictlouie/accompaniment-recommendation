@@ -3,6 +3,7 @@
 __pycache__/
 checkpoints/*
 !checkpoints/transformer_model*.pth
+!checkpoints/small_melody_chord_model.pth
 runs/
 data/pop/POP909/
 data/pop/.DS_Store
