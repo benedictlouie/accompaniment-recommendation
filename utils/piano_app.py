@@ -1,11 +1,19 @@
 import pygame
 import numpy as np
 import time
-from CRF.chord_engine import ChordEngine
+
+from engines.factory import create_engine
 from utils.constants import *
 
 pygame.init()
 pygame.mixer.init(frequency=44100, size=-16, channels=2)
+
+# --------------------------------------------------
+# ENGINE
+# --------------------------------------------------
+
+ENGINE_TYPE = "crf"  # "crf" or "transformer"
+engine = create_engine(ENGINE_TYPE)
 
 # --------------------------------------------------
 # CONFIG
@@ -30,7 +38,6 @@ WHITE = (240, 240, 240)
 BLACK = (20, 20, 20)
 BLUE = (80, 160, 255)
 RED = (255, 80, 80)
-GREEN = (120, 220, 120)
 GRAY = (120, 120, 120)
 
 # --------------------------------------------------
@@ -44,6 +51,7 @@ def generate_note_sound(freq, duration=1.0):
     wave = np.int16(wave * 32767)
     stereo = np.column_stack([wave, wave])
     return pygame.sndarray.make_sound(stereo)
+
 
 NOTE_SOUNDS = {
     note: generate_note_sound(freq * 2)
@@ -62,21 +70,31 @@ HARMONY_CHANNELS = [
     for i in range(4)
 ]
 
+def play_harmony(chord_name, duration):
+    if chord_name not in CHORD_TO_TETRAD:
+        return
+
+    for i, midi in enumerate(CHORD_TO_TETRAD[chord_name]):
+        freq = 440 * 2 ** (1 + (midi - 69) / 12)
+        sound = generate_note_sound(freq, duration)
+        HARMONY_CHANNELS[i].play(sound)
+
+
 # --------------------------------------------------
 # TEMPO
 # --------------------------------------------------
 
 TEMPO_OPTIONS = list(range(40, 241, 5))
-tempo_index = TEMPO_OPTIONS.index(120)
+tempo_index = TEMPO_OPTIONS.index(100)
 tempo = TEMPO_OPTIONS[tempo_index]
 
 CENTER_X = WIDTH // 2
 BTN_MINUS = pygame.Rect(CENTER_X - 160, 35, 40, 40)
 BTN_PLUS  = pygame.Rect(CENTER_X + 120, 35, 40, 40)
 
-
 def beat_duration():
     return 60.0 / tempo
+
 
 # --------------------------------------------------
 # METRONOME
@@ -85,7 +103,6 @@ def beat_duration():
 BEATS_PER_BAR = 4
 current_beat = 1
 last_beat_time = time.time()
-bar_start_time = last_beat_time
 
 # --------------------------------------------------
 # PIANO LAYOUT
@@ -107,22 +124,7 @@ BLACK_KEY_HEIGHT = int(PIANO_HEIGHT * 0.6)
 notes_pressed = {}
 notes_played = []
 
-engine = ChordEngine()
-
 predicted_chord_display = "-"
-
-# --------------------------------------------------
-# PLAY HARMONY
-# --------------------------------------------------
-
-def play_harmony(chord_name, duration):
-    if chord_name not in CHORD_TO_TETRAD:
-        return
-
-    for i, midi in enumerate(CHORD_TO_TETRAD[chord_name]):
-        freq = 440 * 2 ** (1 + (midi - 69) / 12)
-        sound = generate_note_sound(freq, duration)
-        HARMONY_CHANNELS[i].play(sound)
 
 # --------------------------------------------------
 # MAIN LOOP
@@ -134,38 +136,34 @@ while running:
 
     current_time = time.time()
 
-    # ------------------ METRONOME ------------------
+    # ------------------ BEAT CLOCK ------------------
 
     if current_time - last_beat_time >= beat_duration():
-        last_beat_time = current_time
 
-        if current_beat < BEATS_PER_BAR:
-            CLICK_SOUND.play()
-            current_beat += 1
-        else:
+        beat_start_time = last_beat_time
+        last_beat_time += beat_duration()
+
+        # Ask engine (works for both CRF & Transformer)
+        chord, duration = engine.process_beat(
+            notes_played,
+            beat_start_time,
+            current_beat
+        )
+        notes_played.clear()
+
+        # Metronome click
+        if current_beat % BEATS_PER_BAR == 0:
             CLICK_SOUND_STRONG.play()
+        else:
+            CLICK_SOUND.play()
 
-            bar_end_time = current_time
-            bar_proportions = {}
+        if chord:
+            play_harmony(chord, duration)
+            predicted_chord_display = chord
 
-            for note, start, end in notes_played:
-                start = max(start, bar_start_time)
-                end = min(end, bar_end_time)
-                duration = max(0, end - start)
-                bar_proportions[note] = bar_proportions.get(note, 0) + duration
-
-            for note in bar_proportions:
-                bar_proportions[note] /= (beat_duration() * BEATS_PER_BAR)
-
-            chord = engine.process_bar(bar_proportions)
-
-            if chord:
-                play_harmony(chord, beat_duration() * BEATS_PER_BAR)
-                predicted_chord_display = chord
-
-            notes_played.clear()
+        current_beat += 1
+        if current_beat > BEATS_PER_BAR:
             current_beat = 1
-            bar_start_time = current_time
 
     # ------------------ DRAW ------------------
 
@@ -184,16 +182,15 @@ while running:
 
     SCREEN.blit(FONT_BIG.render("-", True, WHITE),
                 (BTN_MINUS.centerx - 8, BTN_MINUS.centery - 20))
-
     SCREEN.blit(FONT_BIG.render("+", True, WHITE),
                 (BTN_PLUS.centerx - 10, BTN_PLUS.centery - 20))
 
-    # Beat indicator (circles)
+    # Beat indicator dots
     DOT_SPACING = 50
-    TOTAL_WIDTH = DOT_SPACING * 3
+    TOTAL_WIDTH = DOT_SPACING * (BEATS_PER_BAR - 1)
     START_X = WIDTH // 2 - TOTAL_WIDTH // 2
 
-    for i in range(4):
+    for i in range(BEATS_PER_BAR):
         x = START_X + i * DOT_SPACING
         y = 20
         color = RED if (i + 1) == current_beat else GRAY
@@ -210,6 +207,7 @@ while running:
 
     for i, key in enumerate(WHITE_KEYS):
         note_name = key + ('4' if i < 7 else '5')
+
         rect = pygame.Rect(i * WHITE_KEY_WIDTH,
                            PIANO_TOP,
                            WHITE_KEY_WIDTH,
@@ -226,6 +224,7 @@ while running:
     for i, key in enumerate(BLACK_KEYS):
         if key:
             note_name = key + ('4' if i < 7 else '5')
+
             rect = pygame.Rect(
                 i * WHITE_KEY_WIDTH + 0.7 * WHITE_KEY_WIDTH,
                 PIANO_TOP,
