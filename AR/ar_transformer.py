@@ -94,7 +94,7 @@ class MusicDataset(Dataset):
 # Training function
 # -------------------------
 def train(model, train_loader, optimizer, num_epochs=10):
-    criterion = FifthsCircleLoss()  # expects [B*MAX_LEN, OUTPUT_DIM] logits and [B*MAX_LEN] targets
+    criterion = nn.CrossEntropyLoss()
 
     os.makedirs("checkpoints", exist_ok=True)
     writer = SummaryWriter(log_dir='runs/transformer_model')
