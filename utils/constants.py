@@ -13,6 +13,10 @@ REVERSE_CHORD_MAP = {c: i for i, c in enumerate(CHORD_CLASSES)}
 FLAT_TO_SHARP = {'Ab': 'G#', 'Bb': 'A#', 'Db': 'C#', 'Eb': 'D#', 'Gb': 'F#'}
 QUALITY_SIMPLIFIER = {'maj7': 'maj', 'min7': 'min', 'aug': 'min', 'dim': 'min', 'dim7': 'min', 'sus2': 'maj', 'sus4': 'maj', '7': 'maj'}
 
+QUALITIES_ALL = ['maj', 'min', 'maj7', 'min7', 'aug', 'dim', 'dim7', 'sus2', 'sus4', '7']
+CHORD_CLASSES_ALL = np.array([f"{r}:{q}" for r in ROOTS for q in QUALITIES_ALL] + ["N"])
+NUM_CLASSES_ALL = len(CHORD_CLASSES_ALL)
+
 # ENCODING CHORDS
 CHORD_TO_TETRAD = {'N': [-1, -1, -1, -1]}
 BASE_OCTAVE = 36  # C2 (~two octaves below middle C)
@@ -20,6 +24,14 @@ for name, offset in REVERSE_ROOT_MAP.items():
     root = BASE_OCTAVE + offset
     CHORD_TO_TETRAD[f"{name}:maj"] = [root, root + 4, root + 7, root + 12]
     CHORD_TO_TETRAD[f"{name}:min"] = [root, root + 3, root + 7, root + 12]
+    CHORD_TO_TETRAD[f"{name}:maj7"] = [root, root + 4, root + 7, root + 11]
+    CHORD_TO_TETRAD[f"{name}:min7"] = [root, root + 3, root + 7, root + 10]
+    CHORD_TO_TETRAD[f"{name}:aug"] = [root, root + 4, root + 8, root + 12]
+    CHORD_TO_TETRAD[f"{name}:dim"] = [root, root + 3, root + 6, root + 12]
+    CHORD_TO_TETRAD[f"{name}:dim7"] = [root, root + 3, root + 6, root + 9]
+    CHORD_TO_TETRAD[f"{name}:sus2"] = [root, root + 2, root + 7, root + 12]
+    CHORD_TO_TETRAD[f"{name}:sus4"] = [root, root + 5, root + 7, root + 12]
+    CHORD_TO_TETRAD[f"{name}:7"] = [root, root + 4, root + 7, root + 10]
 
 # INPUT DIMENSIONS
 MEMORY = 32

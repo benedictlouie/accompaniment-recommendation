@@ -2,7 +2,7 @@ import numpy as np
 import os
 import random
 
-from utils.constants import ROOTS, QUALITIES, CHORD_CLASSES, NUM_CLASSES, REVERSE_CHORD_MAP, REVERSE_ROOT_MAP, FLAT_TO_SHARP, QUALITY_SIMPLIFIER, MEMORY, MELODY_NOTES_PER_BEAT, CHORD_TO_TETRAD, CHORD_EMBEDDING_LENGTH
+from utils.constants import ROOTS, QUALITIES_ALL, CHORD_CLASSES_ALL, NUM_CLASSES_ALL, REVERSE_CHORD_MAP, REVERSE_ROOT_MAP, FLAT_TO_SHARP, QUALITY_SIMPLIFIER, MEMORY, MELODY_NOTES_PER_BEAT, CHORD_TO_TETRAD, CHORD_EMBEDDING_LENGTH
 
 # ------------------------- #
 #     CHORD UTILITIES       #
@@ -20,8 +20,8 @@ def simplify_chord(chord_str):
 
     if root.endswith('b'):
         root = FLAT_TO_SHARP.get(root, root)
-    qual = QUALITY_SIMPLIFIER.get(qual, qual)
-    if qual not in QUALITIES:
+    # qual = QUALITY_SIMPLIFIER.get(qual, qual)
+    if qual not in QUALITIES_ALL:
         qual = 'maj'
     return f"{root}:{qual}"
 
@@ -63,13 +63,13 @@ def prepare_one_song_for_training(npz_path, transpose=0):
                                (num_beats, MELODY_NOTES_PER_BEAT))
     strong_beats = strong_beats[:num_beats, None]
 
-    chord_indices = np.array([REVERSE_CHORD_MAP.get(c, NUM_CLASSES-1) for c in processed_chords], dtype=np.int16)
-    chord_embeddings = np.array([CHORD_TO_TETRAD.get(c, [NUM_CLASSES-1] * 4) for c in processed_chords], dtype=np.int16)
+    chord_indices = np.array([REVERSE_CHORD_MAP.get(c, NUM_CLASSES_ALL-1) for c in processed_chords], dtype=np.int16)
+    chord_embeddings = np.array([CHORD_TO_TETRAD.get(c, [NUM_CLASSES_ALL-1] * 4) for c in processed_chords], dtype=np.int16)
     
     for i in range(num_beats):
-        if np.all(melody_chunks[i] == NUM_CLASSES-1):
-            chord_indices[i] = NUM_CLASSES-1
-            chord_embeddings[i] = [NUM_CLASSES-1] * 4
+        if np.all(melody_chunks[i] == NUM_CLASSES_ALL-1):
+            chord_indices[i] = NUM_CLASSES_ALL-1
+            chord_embeddings[i] = [NUM_CLASSES_ALL-1] * 4
 
     chord_vecs = chord_embeddings[:num_beats]  # shape (num_beats, 4)
     targets = chord_indices[1:num_beats + 1, None]  # next chord index
@@ -93,6 +93,16 @@ def break_down_one_song_into_sequences(npz_path, test=False):
 
     for tr in transpositions:
         inputs, targets = prepare_one_song_for_training(npz_path, transpose=tr)
+
+        # Arbitrarily transpose part of the song
+        random.seed(42)
+        if random.random() < 0.3:
+            shift = random.choice([-5, -4, 1, 2, 4, 5])
+            inputs_aug, targets_aug = prepare_one_song_for_training(npz_path, transpose=tr+shift)
+            split_idx = random.randint(0, len(inputs) - 1)
+            inputs[split_idx:] = inputs_aug[split_idx:]
+            targets[split_idx:] = targets_aug[split_idx:]
+
         if inputs.size == 0:
             continue
 
@@ -107,7 +117,7 @@ def break_down_one_song_into_sequences(npz_path, test=False):
         seqs = []
         for i in range(targets.shape[0]):
             seq = targets[max(0, i - MEMORY + 1):i + 2]
-            seq = pad_sequence(seq, MEMORY+1, pad_value=NUM_CLASSES-1)
+            seq = pad_sequence(seq, MEMORY+1, pad_value=NUM_CLASSES_ALL-1)
             seqs.append(seq)
         
         all_targets.append(np.stack(seqs))
@@ -121,7 +131,7 @@ def break_down_one_song_into_sequences(npz_path, test=False):
     if not test:
         melody_part = all_inputs[:, :, 1:1 + MELODY_NOTES_PER_BEAT]
         mask = np.all(melody_part == -1, axis=(1, 2))
-        all_targets[mask] = NUM_CLASSES - 1     # Set target to "N" for sequences where melody is all -1
+        all_targets[mask] = NUM_CLASSES_ALL - 1     # Set target to "N" for sequences where melody is all -1
 
     return all_inputs, all_targets
 
@@ -171,7 +181,7 @@ if __name__ == "__main__":
 
         np.savez_compressed(
             "data/data_train.npz",
-            chord_classes=CHORD_CLASSES,
+            chord_classes=CHORD_CLASSES_ALL,
             inputs=train_inputs,
             targets=train_targets
         )
@@ -183,7 +193,7 @@ if __name__ == "__main__":
 
         np.savez_compressed(
             "data/data_val.npz",
-            chord_classes=CHORD_CLASSES,
+            chord_classes=CHORD_CLASSES_ALL,
             inputs=val_inputs,
             targets=val_targets
         )

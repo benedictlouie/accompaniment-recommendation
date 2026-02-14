@@ -5,13 +5,13 @@ import numpy as np
 import os
 from torch.utils.tensorboard import SummaryWriter
 from torch.utils.data import Dataset, DataLoader, Subset
-from utils.constants import DEVICE, INPUT_DIM, MEMORY, LEARNING_RATE, NUM_CLASSES
+from utils.constants import DEVICE, INPUT_DIM, MEMORY, LEARNING_RATE, NUM_CLASSES_ALL
 from utils.FifthsCircleLoss import FifthsCircleLoss
 
 # -------------------------
 # Constants
 # -------------------------
-OUTPUT_DIM = NUM_CLASSES
+OUTPUT_DIM = NUM_CLASSES_ALL
 MAX_LEN = MEMORY + 1
 
 # -------------------------
