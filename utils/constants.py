@@ -16,6 +16,7 @@ QUALITY_SIMPLIFIER = {'maj7': 'maj', 'min7': 'min', 'aug': 'min', 'dim': 'min', 
 QUALITIES_ALL = ['maj', 'min', 'maj7', 'min7', 'aug', 'dim', 'dim7', 'sus2', 'sus4', '7']
 CHORD_CLASSES_ALL = np.array([f"{r}:{q}" for r in ROOTS for q in QUALITIES_ALL] + ["N"])
 NUM_CLASSES_ALL = len(CHORD_CLASSES_ALL)
+REVERSE_CHORD_MAP_ALL = {c: i for i, c in enumerate(CHORD_CLASSES_ALL)}
 
 # ENCODING CHORDS
 CHORD_TO_TETRAD = {'N': [-1, -1, -1, -1]}

@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
 import os
 from AR.ar_transformer import TransformerModel
-from utils.constants import INPUT_DIM, NUM_CLASSES, DEVICE, CHORD_CLASSES
+from utils.constants import INPUT_DIM, NUM_CLASSES_ALL, DEVICE, CHORD_CLASSES_ALL
 # ----------------------------
 # Load Model
 # ----------------------------
@@ -45,8 +45,8 @@ def visualize_class_weights_3d(model):
 
     # Annotate class indices
     for i in range(len(xs)):
-        if i < len(CHORD_CLASSES):
-            ax.text(xs[i], ys[i], zs[i], CHORD_CLASSES[i], size=8)
+        if i < len(CHORD_CLASSES_ALL):
+            ax.text(xs[i], ys[i], zs[i], CHORD_CLASSES_ALL[i], size=8)
         else:
             ax.text(xs[i], ys[i], zs[i], f"Class {i}", size=8)
 
@@ -66,5 +66,5 @@ if __name__ == "__main__":
     if not os.path.exists(MODEL_PATH):
         raise FileNotFoundError(f"{MODEL_PATH} not found!")
 
-    model = load_model(MODEL_PATH, INPUT_DIM, NUM_CLASSES)
+    model = load_model(MODEL_PATH, INPUT_DIM, NUM_CLASSES_ALL)
     visualize_class_weights_3d(model)

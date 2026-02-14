@@ -7,3 +7,5 @@ mido
 music21
 python-rtmidi
 pygame
+sounddevice
+liveaudio

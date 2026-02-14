@@ -2,7 +2,7 @@ import numpy as np
 import os
 import random
 
-from utils.constants import ROOTS, QUALITIES_ALL, CHORD_CLASSES_ALL, NUM_CLASSES_ALL, REVERSE_CHORD_MAP, REVERSE_ROOT_MAP, FLAT_TO_SHARP, QUALITY_SIMPLIFIER, MEMORY, MELODY_NOTES_PER_BEAT, CHORD_TO_TETRAD, CHORD_EMBEDDING_LENGTH
+from utils.constants import ROOTS, QUALITIES_ALL, CHORD_CLASSES_ALL, NUM_CLASSES_ALL, REVERSE_CHORD_MAP_ALL, REVERSE_ROOT_MAP, FLAT_TO_SHARP, QUALITY_SIMPLIFIER, MEMORY, MELODY_NOTES_PER_BEAT, CHORD_TO_TETRAD, CHORD_EMBEDDING_LENGTH
 
 # ------------------------- #
 #     CHORD UTILITIES       #
@@ -63,7 +63,7 @@ def prepare_one_song_for_training(npz_path, transpose=0):
                                (num_beats, MELODY_NOTES_PER_BEAT))
     strong_beats = strong_beats[:num_beats, None]
 
-    chord_indices = np.array([REVERSE_CHORD_MAP.get(c, NUM_CLASSES_ALL-1) for c in processed_chords], dtype=np.int16)
+    chord_indices = np.array([REVERSE_CHORD_MAP_ALL.get(c, NUM_CLASSES_ALL-1) for c in processed_chords], dtype=np.int16)
     chord_embeddings = np.array([CHORD_TO_TETRAD.get(c, [NUM_CLASSES_ALL-1] * 4) for c in processed_chords], dtype=np.int16)
     
     for i in range(num_beats):
@@ -96,10 +96,10 @@ def break_down_one_song_into_sequences(npz_path, test=False):
 
         # Arbitrarily transpose part of the song
         random.seed(42)
-        if random.random() < 0.3:
+        if not test and random.random() < 0.3:
             shift = random.choice([-5, -4, 1, 2, 4, 5])
             inputs_aug, targets_aug = prepare_one_song_for_training(npz_path, transpose=tr+shift)
-            split_idx = random.randint(0, len(inputs) - 1)
+            split_idx = random.randint(len(inputs) // 2, len(inputs) - 1)
             inputs[split_idx:] = inputs_aug[split_idx:]
             targets[split_idx:] = targets_aug[split_idx:]
 
@@ -165,12 +165,14 @@ if __name__ == "__main__":
     split_index = int(len(os.listdir(directory_path)) * 0.8)
     for i, filename in enumerate(os.listdir(directory_path)):
         full_path = os.path.join(directory_path, filename)
-        X, Y = break_down_one_song_into_sequences(full_path)
-        if X.size == 0: continue
         if i < split_index:
+            X, Y = break_down_one_song_into_sequences(full_path)
+            if X.size == 0: continue
             train_inputs.append(X)
             train_targets.append(Y)
         else:
+            X, Y = break_down_one_song_into_sequences(full_path, test=True)
+            if X.size == 0: continue
             val_inputs.append(X)
             val_targets.append(Y)
     
