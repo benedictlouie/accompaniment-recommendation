@@ -2,26 +2,31 @@ import numpy as np
 import os
 import random
 
-from utils.constants import ROOTS, QUALITIES_ALL, CHORD_CLASSES_ALL, NUM_CLASSES_ALL, REVERSE_CHORD_MAP_ALL, REVERSE_ROOT_MAP, FLAT_TO_SHARP, QUALITY_SIMPLIFIER, MEMORY, MELODY_NOTES_PER_BEAT, CHORD_TO_TETRAD, CHORD_EMBEDDING_LENGTH
+from utils.constants import ROOTS, QUALITIES_ALL, CHORD_CLASSES_ALL, NUM_CLASSES_ALL, REVERSE_CHORD_MAP_ALL, REVERSE_ROOT_MAP, FLAT_TO_SHARP, QUALITY_SIMPLIFIER_ALL, MEMORY, MELODY_NOTES_PER_BEAT, CHORD_TO_TETRAD, CHORD_EMBEDDING_LENGTH
 
 # ------------------------- #
 #     CHORD UTILITIES       #
 # ------------------------- #
 
+quality_stats = {}
 def simplify_chord(chord_str):
     if chord_str == "N" or chord_str is None:
         return "N"
     chord_str = chord_str.split('/')[0]
     root, qual = chord_str.split(':')
+    if qual not in quality_stats: quality_stats[qual] = 0
+    quality_stats[qual] += 1
+
     if root == 'E#': root = 'F'
     elif root == 'B#': root = 'C'
     elif root == 'Cb': root = 'B'
     elif root == 'Fb': root = 'E'
-
     if root.endswith('b'):
         root = FLAT_TO_SHARP.get(root, root)
-    # qual = QUALITY_SIMPLIFIER.get(qual, qual)
+    
+    qual = QUALITY_SIMPLIFIER_ALL.get(qual, qual)
     if qual not in QUALITIES_ALL:
+        print(f"Warning: Unrecognized chord quality '{qual}' in chord '{chord_str}'")
         qual = 'maj'
     return f"{root}:{qual}"
 
@@ -199,3 +204,5 @@ if __name__ == "__main__":
             inputs=val_inputs,
             targets=val_targets
         )
+    
+    print("Chord quality distribution:", sorted(quality_stats.items(), key=lambda item: item[1], reverse=True))

@@ -1,6 +1,7 @@
 import mido
 import numpy as np
 import os
+import re
 
 # ------------------------------
 # Beat and chord reading
@@ -21,7 +22,19 @@ def read_chords(filename):
                 start, end, name = line.strip().split(maxsplit=2)
                 starts.append(float(start))
                 ends.append(float(end))
+                
+                name = re.split(r"[/(]", name)[0]
+                if name != "N":
+                    root = name.split(":")[0]
+                    qual = name.split(":")[1]
+                    if "hdim" in qual:
+                        name = f"{root}:m7b5"
+                    elif "minmaj" in qual:
+                        name = f"{root}:mM7"
+                    elif "maj6" in qual:
+                        name = f"{root}:6"
                 names.append(name)
+
     return np.array(starts), np.array(ends), np.array(names)
 
 

@@ -13,7 +13,8 @@ REVERSE_CHORD_MAP = {c: i for i, c in enumerate(CHORD_CLASSES)}
 FLAT_TO_SHARP = {'Ab': 'G#', 'Bb': 'A#', 'Db': 'C#', 'Eb': 'D#', 'Gb': 'F#'}
 QUALITY_SIMPLIFIER = {'maj7': 'maj', 'min7': 'min', 'aug': 'min', 'dim': 'min', 'dim7': 'min', 'sus2': 'maj', 'sus4': 'maj', '7': 'maj'}
 
-QUALITIES_ALL = ['maj', 'min', 'maj7', 'min7', 'aug', 'dim', 'dim7', 'sus2', 'sus4', '7']
+QUALITIES_ALL = ['maj', 'min', 'maj7', 'min7', 'aug', 'dim', 'dim7', 'sus2', 'sus4', '7', '6', 'min6', 'm7b5', 'mM7']
+QUALITY_SIMPLIFIER_ALL = {'9': '7', '11': '7', '13': '7', 'maj9': 'maj7', 'min9': 'min7', 'maj9': 'maj7', 'min11': 'min7', 'maj13': 'maj7', 'min13': 'min7', 'pedal': 'sus2', 'power': 'sus2'}
 CHORD_CLASSES_ALL = np.array([f"{r}:{q}" for r in ROOTS for q in QUALITIES_ALL] + ["N"])
 NUM_CLASSES_ALL = len(CHORD_CLASSES_ALL)
 REVERSE_CHORD_MAP_ALL = {c: i for i, c in enumerate(CHORD_CLASSES_ALL)}

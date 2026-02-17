@@ -46,7 +46,7 @@ def visualize_class_weights_3d(model):
     ys = reduced[:, 1]
     zs = reduced[:, 2]
 
-    ax.scatter(xs, ys, zs, c=np.arange(len(xs))%10, cmap=plt.cm.get_cmap("tab20", 12), s=60)
+    ax.scatter(xs, ys, zs, c=np.arange(len(xs))%14, cmap=plt.cm.get_cmap("tab20", 12), s=60)
 
     # Annotate class indices
     for i in range(NUM_CLASSES_ALL):

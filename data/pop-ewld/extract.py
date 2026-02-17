@@ -135,7 +135,8 @@ def convert_mxl_to_midi(mxl_file_path, midi_output_path):
 
 def convert(chord):
     # Extract root (only first note part)
-    match = re.match(r'^([A-G])([+-]?)(.*)', chord)
+    chord = chord.split('/')[0]
+    match = re.match(r'^([A-G])([-+#]?)(.*)', chord)
     note = match.group(1)
     accidental = match.group(2)
     rest = match.group(3)
@@ -151,12 +152,15 @@ def convert(chord):
     # Quality mapping (ignore +/- here)
     rest = rest.replace('+', '').replace('-', '')
     quality = rest.split(' ')[0]
-    quality = re.sub(r'm(?!aj)(\d*)', r'min\1', quality)
-    if 'ø' in rest or 'o' in rest:
-        quality = 'dim'
+    quality = re.sub(r'^m(\d*)$', r'min\1', quality)
+    quality = re.sub(r'^M(\d*)$', r'maj\1', quality)
+    if 'o7' in rest:
+        quality = 'dim7'
+    elif 'ø' in rest:
+        quality = 'm7b5'
     elif 'sus' in rest:
         quality = 'sus2'
-    elif rest == '':
+    elif quality == '':
         quality = 'maj'
     return f"{root}:{quality}"
 
