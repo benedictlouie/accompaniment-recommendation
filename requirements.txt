@@ -5,7 +5,8 @@ scikit-learn
 tensorboard
 mido
 music21
-python-rtmidi
 pygame
+pyqt6
+python-rtmidi
 sounddevice
 liveaudio

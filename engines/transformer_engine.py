@@ -12,10 +12,10 @@ STEP_DURATION = BEAT_DURATION / STEPS_PER_BEAT
 
 class ARTransformerEngine(BaseChordEngine):
 
-    def __init__(self, checkpoint_path="checkpoints/transformer_model_feb12.pth"):
+    def __init__(self, checkpoint_path="checkpoints/transformer_model.pth"):
         self.device = DEVICE
 
-        self.model = TransformerModel(INPUT_DIM, NUM_CLASSES + 1).to(self.device)
+        self.model = TransformerModel(INPUT_DIM, NUM_CLASSES_ALL).to(self.device)
         checkpoint = torch.load(checkpoint_path, map_location=self.device)
         self.model.load_state_dict(checkpoint)
         self.model.eval()
@@ -36,7 +36,7 @@ class ARTransformerEngine(BaseChordEngine):
             padded[np.newaxis, :, :]
         )[-1, -1]
 
-        chord_name = CHORD_CLASSES[predicted]
+        chord_name = CHORD_CLASSES_ALL[predicted]
 
         self.history = padded[-MEMORY:]
 

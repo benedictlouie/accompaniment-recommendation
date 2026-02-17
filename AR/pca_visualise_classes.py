@@ -1,11 +1,16 @@
 import torch
 import torch.nn as nn
 import numpy as np
+
+import matplotlib
 import matplotlib.pyplot as plt
+matplotlib.use("QtAgg")
+
 from sklearn.decomposition import PCA
 import os
 from AR.ar_transformer import TransformerModel
 from utils.constants import INPUT_DIM, NUM_CLASSES_ALL, DEVICE, CHORD_CLASSES_ALL
+
 # ----------------------------
 # Load Model
 # ----------------------------
@@ -28,7 +33,7 @@ def visualize_class_weights_3d(model):
     print("Weight matrix shape:", weights.shape)
 
     # Apply PCA to reduce to 3 components
-    pca = PCA(n_components=3)
+    pca = PCA(n_components=6)
     reduced = pca.fit_transform(weights)
 
     print("Explained variance ratio:", pca.explained_variance_ratio_)
@@ -41,20 +46,96 @@ def visualize_class_weights_3d(model):
     ys = reduced[:, 1]
     zs = reduced[:, 2]
 
-    ax.scatter(xs, ys, zs, c=np.arange(len(xs)), cmap="tab20", s=60)
+    ax.scatter(xs, ys, zs, c=np.arange(len(xs))%10, cmap=plt.cm.get_cmap("tab20", 12), s=60)
 
     # Annotate class indices
-    for i in range(len(xs)):
-        if i < len(CHORD_CLASSES_ALL):
-            ax.text(xs[i], ys[i], zs[i], CHORD_CLASSES_ALL[i], size=8)
-        else:
-            ax.text(xs[i], ys[i], zs[i], f"Class {i}", size=8)
+    for i in range(NUM_CLASSES_ALL):
+        ax.text(xs[i], ys[i], zs[i], CHORD_CLASSES_ALL[i], size=8)
 
     ax.set_title("Chord Similarity")
     ax.set_xlabel("PC1")
     ax.set_ylabel("PC2")
     ax.set_zlabel("PC3")
+    plt.show()
 
+# ----------------------------
+# PCA + 2D Plot (PC2 vs PC3, color = PC1)
+# ----------------------------
+
+def visualize_class_weights_2d(model):
+    weights = model.fc_out.weight.detach().cpu().numpy()
+
+    pca = PCA(n_components=6)
+    reduced = pca.fit_transform(weights)
+
+    pc1 = reduced[:, 0]
+    pc2 = reduced[:, 1]
+    pc3 = reduced[:, 2]
+
+    # Convert (PC2, PC3) → phase angle
+    phase = np.arctan2(pc3, pc2)   # range: [-pi, pi]
+
+    # Optional: radius (strength of harmonic structure)
+    radius = np.sqrt(pc2**2 + pc3**2)
+
+    plt.figure(figsize=(10, 8))
+
+    scatter = plt.scatter(pc1, phase, c=radius, cmap="viridis", s=80)
+
+    cbar = plt.colorbar(scatter)
+    cbar.set_label("Radius (sqrt(PC2² + PC3²))")
+
+    for i in range(NUM_CLASSES_ALL):
+        plt.text(pc1[i], phase[i], CHORD_CLASSES_ALL[i], fontsize=8)
+
+    plt.title("PC1 vs Phase(PC2, PC3)")
+    plt.xlabel("PC1")
+    plt.ylabel("Phase (radians)")
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
+
+def visualize_class_weights_4d(model):
+    
+    # Extract weights
+    weights = model.fc_out.weight.detach().cpu().numpy()
+    print("Weight matrix shape:", weights.shape)
+
+    # PCA → 6D
+    pca = PCA(n_components=6)
+    reduced = pca.fit_transform(weights)
+    print("Explained variance ratio:", pca.explained_variance_ratio_)
+
+    pc1 = reduced[:, 0]
+    pc2 = reduced[:, 1]
+    pc3 = reduced[:, 2]
+    pc4 = reduced[:, 3]
+
+    # Cylindrical transform
+    r = np.sqrt(pc3**2 + pc4**2)
+    theta = np.arctan2(pc4, pc3)   # phase in [-π, π]
+    percentiles = np.argsort(np.argsort(r)) / (len(r) - 1)
+
+    # 3D Plot
+    fig = plt.figure(figsize=(18, 16), dpi=150)
+    ax = fig.add_subplot(111, projection='3d')
+
+    sc = ax.scatter(pc1, pc2, theta, c=percentiles, cmap="viridis", s=20, alpha=0.9)
+    ax.set_box_aspect([1,1,0.8])
+    fig.subplots_adjust(left=0.05, right=0.85, top=0.95, bottom=0.05)
+
+    cbar = plt.colorbar(sc, shrink=0.7, pad=0.1)
+    cbar.set_label("Percentile of Radius √(PC3² + PC4²)")
+
+    # Labels (optional — remove if cluttered)
+    for i in range(NUM_CLASSES_ALL):
+        ax.text(pc1[i], pc2[i], theta[i], CHORD_CLASSES_ALL[i], size=4)
+
+    ax.set_title("Chord Embedding", fontsize=14)
+    ax.set_xlabel("PC1")
+    ax.set_ylabel("PC2")
+    ax.set_zlabel("Phase θ (PC3/PC4)")
+    plt.tight_layout()
     plt.show()
 
 # ----------------------------
@@ -67,4 +148,6 @@ if __name__ == "__main__":
         raise FileNotFoundError(f"{MODEL_PATH} not found!")
 
     model = load_model(MODEL_PATH, INPUT_DIM, NUM_CLASSES_ALL)
-    visualize_class_weights_3d(model)
+    visualize_class_weights_4d(model)
+    # visualize_class_weights_3d(model)
+    # visualize_class_weights_2d(model)

@@ -12,7 +12,7 @@ pygame.mixer.init(frequency=44100, size=-16, channels=2)
 # ENGINE
 # --------------------------------------------------
 
-ENGINE_TYPE = "crf"  # "crf" or "transformer"
+ENGINE_TYPE = "transformer"  # "crf" or "transformer"
 engine = create_engine(ENGINE_TYPE)
 
 # --------------------------------------------------
@@ -75,6 +75,7 @@ def play_harmony(chord_name, duration):
         return
 
     for i, midi in enumerate(CHORD_TO_TETRAD[chord_name]):
+        if midi < 10: continue
         freq = 440 * 2 ** (1 + (midi - 69) / 12)
         sound = generate_note_sound(freq, duration)
         HARMONY_CHANNELS[i].play(sound)
