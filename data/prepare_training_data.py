@@ -1,8 +1,9 @@
 import numpy as np
 import os
 import random
+random.seed(42)
 
-from utils.constants import ROOTS, QUALITIES_ALL, CHORD_CLASSES_ALL, NUM_CLASSES_ALL, REVERSE_CHORD_MAP_ALL, REVERSE_ROOT_MAP, FLAT_TO_SHARP, QUALITY_SIMPLIFIER_ALL, MEMORY, MELODY_NOTES_PER_BEAT, CHORD_TO_TETRAD, CHORD_EMBEDDING_LENGTH
+from utils.constants import ROOTS, QUALITIES_ALL, CHORD_CLASSES_ALL, NUM_CLASSES_ALL, REVERSE_CHORD_MAP_ALL, REVERSE_ROOT_MAP, FLAT_TO_SHARP, QUALITY_SIMPLIFIER_ALL, MEMORY, MELODY_NOTES_PER_BEAT, CHORD_TO_TETRAD, CHORD_EMBEDDING_LENGTH, INPUT_DIM
 
 # ------------------------- #
 #     CHORD UTILITIES       #
@@ -88,7 +89,7 @@ def prepare_one_song_for_training(npz_path, transpose=0):
 
 def break_down_one_song_into_sequences(npz_path, test=False):
 
-    feature_size = 1 + MELODY_NOTES_PER_BEAT + CHORD_EMBEDDING_LENGTH
+    feature_size = INPUT_DIM
 
     if not os.path.exists(npz_path):
         return np.empty((0, MEMORY, feature_size)), np.empty((0, 1), dtype=np.int16)
@@ -100,9 +101,8 @@ def break_down_one_song_into_sequences(npz_path, test=False):
         inputs, targets = prepare_one_song_for_training(npz_path, transpose=tr)
 
         # Arbitrarily transpose part of the song
-        random.seed(42)
-        if not test and random.random() < 0.3:
-            shift = random.choice([-5, -4, 1, 2, 4, 5])
+        if not test and random.random() < 0.1:
+            shift = random.choice([-5, -3, -1, 1, 1, 1, 2, 3, 5])
             inputs_aug, targets_aug = prepare_one_song_for_training(npz_path, transpose=tr+shift)
             split_idx = random.randint(len(inputs) // 2, len(inputs) - 1)
             inputs[split_idx:] = inputs_aug[split_idx:]
