@@ -27,10 +27,16 @@ def generate_chords(model, melody, target=None):
 
         temperature = 0.5
         probs = torch.nn.functional.softmax(outputs / temperature, dim=-1)
+        
+        last_probs = probs[:, -1, :]          # (B, V)
+        top_probs, top_indices = torch.topk(last_probs, k=8, dim=-1)
+        for prob, index in zip(top_probs, top_indices):
+            # print([idx.item() for idx in prob])
+            print([str(CHORD_CLASSES_ALL[idx.item()]) for idx in index])
+
         preds = torch.multinomial(
             probs.view(-1, probs.size(-1)), 1
         ).view(outputs.size(0), outputs.size(1))
-
         # preds = outputs.argmax(dim=-1)  # (B,T)
 
     if target is not None:

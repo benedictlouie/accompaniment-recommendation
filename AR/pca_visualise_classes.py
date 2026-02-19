@@ -148,6 +148,6 @@ if __name__ == "__main__":
         raise FileNotFoundError(f"{MODEL_PATH} not found!")
 
     model = load_model(MODEL_PATH, INPUT_DIM, NUM_CLASSES_ALL)
-    visualize_class_weights_4d(model)
-    # visualize_class_weights_3d(model)
-    # visualize_class_weights_2d(model)
+    # visualize_class_weights_4d(model)
+    visualize_class_weights_3d(model)
+    visualize_class_weights_2d(model)
