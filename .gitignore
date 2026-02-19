@@ -18,3 +18,4 @@ chord_transition_matrix.npy
 output.mid
 .venv
 .python-version
+soundfonts
