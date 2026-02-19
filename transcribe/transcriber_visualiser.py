@@ -88,7 +88,7 @@ SPEC_W = WIDTH - 180
 SPEC_H = 250
 
 MIDI_MIN = 36
-MIDI_MAX = 84
+MIDI_MAX = 96
 MIDI_RANGE = MIDI_MAX - MIDI_MIN
 
 # =============================

@@ -75,6 +75,11 @@ predicted_chord = "-"
 last_note = "-"
 note_memory = []
 
+# Buttons
+button_width, button_height = 50, 50
+plus_button_rect = pygame.Rect(WIDTH//2 + 100, 25, button_width, button_height)
+minus_button_rect = pygame.Rect(WIDTH//2 - 150, 25, button_width, button_height)
+
 while running:
 
     now = time.time()
@@ -149,12 +154,34 @@ while running:
     pygame.draw.rect(SCREEN, GREEN, (80, 300, float(level), 20))
     pygame.draw.rect(SCREEN, WHITE, (80, 300, 300, 20), 2)
 
+    # ===========================
+    # BPM BUTTONS
+    # ===========================
+    CENTER_X = WIDTH // 2
+    BTN_MINUS = pygame.Rect(CENTER_X - 160, 35, 40, 40)
+    BTN_PLUS  = pygame.Rect(CENTER_X + 120, 35, 40, 40)
+    pygame.draw.rect(SCREEN, BLUE, BTN_MINUS, border_radius=8)
+    pygame.draw.rect(SCREEN, BLUE, BTN_PLUS, border_radius=8)
+    SCREEN.blit(FONT_BIG.render("-", True, WHITE),
+                (BTN_MINUS.centerx - 8, BTN_MINUS.centery - 20))
+    SCREEN.blit(FONT_BIG.render("+", True, WHITE),
+                (BTN_PLUS.centerx - 10, BTN_PLUS.centery - 20))
+
     pygame.display.flip()
 
-    # Quit event
+    # ===========================
+    # EVENTS
+    # ===========================
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
+
+        # Check for button clicks
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            if plus_button_rect.collidepoint(event.pos):
+                tempo += 5
+            elif minus_button_rect.collidepoint(event.pos):
+                tempo = max(20, tempo - 5)
 
     pygame.time.delay(10)
 

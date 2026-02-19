@@ -14,7 +14,7 @@ class Transcriber:
         hop_length=512,
         volume_threshold=0.01,
         midi_min=36,
-        midi_max=84,
+        midi_max=96,
         spec_width=128
     ):
         # =============================

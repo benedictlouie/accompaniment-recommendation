@@ -253,6 +253,4 @@ while running:
                     notes_played.append((note, start_time, current_time))
                     NOTE_CHANNELS[note].stop()
 
-    pygame.time.delay(10)
-
 pygame.quit()
