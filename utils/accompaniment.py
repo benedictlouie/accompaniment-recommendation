@@ -134,7 +134,7 @@ def play_harmony(chord_name, duration, harmony_channels, creative=True, timbre="
         pan = random.uniform(-0.7, 0.7)
 
         # 🎲 random delay in first half of duration
-        delay = min(1, i) * duration * random.choice([0, 0.3])
+        delay = min(1, i) * duration * random.choice([0, 0.4])
         delay_samples = int(delay * SAMPLE_RATE)
 
         sound = generate_note_sound(
