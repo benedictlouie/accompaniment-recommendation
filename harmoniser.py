@@ -150,9 +150,9 @@ while running:
     SCREEN.blit(FONT_MED.render(predicted_chord, True, BLUE), (650, 230))
 
     # Mic level meter
-    level = min(transcriber.current_amplitude * 300, 300)
-    pygame.draw.rect(SCREEN, GREEN, (80, 300, float(level), 20))
-    pygame.draw.rect(SCREEN, WHITE, (80, 300, 300, 20), 2)
+    level = min(transcriber.current_amplitude * 150, 150)
+    pygame.draw.rect(SCREEN, GREEN, (80, 150, float(level), 20))
+    pygame.draw.rect(SCREEN, WHITE, (80, 150, 150, 20), 2)
 
     # ===========================
     # BPM BUTTONS

@@ -4,7 +4,10 @@ import numpy as np
 
 import matplotlib
 import matplotlib.pyplot as plt
+from typer import prompt
 matplotlib.use("QtAgg")
+
+from matplotlib.widgets import RangeSlider, Button
 
 from sklearn.decomposition import PCA
 import os
@@ -138,6 +141,81 @@ def visualize_class_weights_4d(model):
     plt.tight_layout()
     plt.show()
 
+def progressive_pca(model, n_steps=5):
+    # ----------------------------
+    # Extract weights
+    # ----------------------------
+    weights = model.fc_out.weight.detach().cpu().numpy()
+
+    # Stable color assignment (ONLY ONCE)
+    num_points = weights.shape[0]
+    base_colors = np.arange(num_points) % 14
+    cmap = plt.cm.get_cmap("tab20", 14)
+
+    # Working copies
+    current_weights = weights.copy()
+    current_labels = np.array(CHORD_CLASSES_ALL)
+    current_colors = base_colors.copy()
+
+    for step in range(n_steps):
+        if len(current_weights) < 2:
+            print("Too few classes remaining. Stopping.")
+            break
+
+        print(f"\n--- PCA Step {step + 1} ---")
+
+        # Recompute PCA
+        pca = PCA(n_components=2)
+        reduced = pca.fit_transform(current_weights)
+
+        x = reduced[:, 0]
+        y = reduced[:, 1]
+
+        # ----------------------------
+        # Plot
+        # ----------------------------
+        plt.figure(figsize=(8, 7))
+        plt.scatter(
+            x,
+            y,
+            c=current_colors,
+            cmap=cmap,
+            s=80,
+            edgecolor="k",
+            linewidth=0.5,
+        )
+
+        for i, label in enumerate(current_labels):
+            plt.text(x[i], y[i], label, fontsize=8, alpha=0.75)
+
+        plt.title(f"Progressive PCA Step {step + 1}")
+        plt.xlabel("PC1")
+        plt.ylabel("PC2")
+        plt.gca().set_aspect('equal', adjustable='box')
+        plt.show()
+
+        # ----------------------------
+        # User range input
+        # ----------------------------
+        def get_float(prompt):
+            while True:
+                try:
+                    return float(input(prompt))
+                except ValueError:
+                    print("Invalid input. Please enter a valid number.")
+
+        xmin = get_float("Enter xmin: ")
+        xmax = get_float("Enter xmax: ")
+
+        mask = (x >= xmin) & (x <= xmax)
+
+        # Filter EVERYTHING consistently
+        current_weights = current_weights[mask]
+        current_labels = current_labels[mask]
+        current_colors = current_colors[mask]
+
+        print(f"Remaining classes: {len(current_labels)}")        
+
 # ----------------------------
 # Main
 # ----------------------------
@@ -148,6 +226,4 @@ if __name__ == "__main__":
         raise FileNotFoundError(f"{MODEL_PATH} not found!")
 
     model = load_model(MODEL_PATH, INPUT_DIM, NUM_CLASSES_ALL)
-    # visualize_class_weights_4d(model)
-    visualize_class_weights_3d(model)
-    visualize_class_weights_2d(model)
+    progressive_pca(model)
