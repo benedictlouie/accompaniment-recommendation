@@ -103,13 +103,27 @@ while running:
         beat_start = last_beat_time
         last_beat_time += beat_duration()
 
-        # Generate harmony for the beat using the notes captured in this beat
+        # 🔥 Get accurate 4x16ths from full beat audio
+        accurate_notes = transcriber.capture_beat_4_16ths()
+
+        # Convert to engine format (note, start_time, end_time)
+        processed_notes = []
+        slice_duration = beat_duration() / 4
+
+        for i, note in enumerate(accurate_notes):
+            if note not in ["quiet", "no pitch"]:
+                slice_start = beat_start + i * slice_duration
+                slice_end = slice_start + slice_duration
+                processed_notes.append((note, slice_start, slice_end))
+
+        # Generate harmony from accurate notes
         chord, duration = engine.process_beat(
-            note_memory,
+            processed_notes,
             beat_start,
             current_beat
         )
 
+        # Clear old memory (we no longer use live note_memory)
         note_memory.clear()
 
         # Metronome click

@@ -130,7 +130,8 @@ while running:
         subdiv_index += 1
 
         if len(beat_results) == SUBDIV:
-            print(f"Beat {beat_count + 1}: {beat_results}")
+            accurate_results = transcriber.capture_beat_4_16ths()
+            print(f"Beat {beat_count + 1}: {accurate_results}")
             beat_results = []
             beat_count += 1
 

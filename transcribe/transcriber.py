@@ -6,6 +6,7 @@ from liveaudio.LivePyin import LivePyin
 from liveaudio.buffers import CircularBuffer
 from utils.constants import ROOTS
 
+
 class Transcriber:
     def __init__(
         self,
@@ -29,17 +30,24 @@ class Transcriber:
         self.current_amplitude = 0.0
 
         # Pitch limits
-        fmin = librosa.note_to_hz('C2')
-        fmax = librosa.note_to_hz('C6')
+        self.fmin = librosa.note_to_hz('C2')
+        self.fmax = librosa.note_to_hz('C6')
 
+        # Live pyin (original system)
         self.lpyin = LivePyin(
-            fmin, fmax,
+            self.fmin,
+            self.fmax,
             sr=self.SAMPLE_RATE,
             frame_length=self.FRAME_LENGTH,
             hop_length=self.HOP_LENGTH,
         )
 
         self.buffer = CircularBuffer(self.FRAME_LENGTH, self.HOP_LENGTH)
+
+        # =============================
+        # OFFLINE BEAT BUFFER
+        # =============================
+        self.beat_audio_buffer = []
 
         # =============================
         # VISUAL BUFFERS
@@ -80,6 +88,7 @@ class Transcriber:
         self.waveform_buffer.extend(samples.tolist())
         self.current_amplitude = np.sqrt(np.mean(samples ** 2))
 
+        # Push to live pitch detector (original behavior)
         self.buffer.push(samples)
 
         if self.buffer.full:
@@ -91,15 +100,18 @@ class Transcriber:
             else:
                 self.current_pitch = None
 
+        # ALSO accumulate raw audio for offline beat processing
+        self.beat_audio_buffer.extend(samples.tolist())
+
     # =============================
-    # BEAT CAPTURE
+    # ORIGINAL LIVE 16TH (UNCHANGED)
     # =============================
     def capture_16th(self):
         """
         Called by main clock every 16th note.
         Updates spectrogram + returns captured value.
         """
-        # Roll spectrogram
+
         self.spectrogram = np.roll(self.spectrogram, -1, axis=1)
         self.spectrogram[:, -1] = 0
 
@@ -116,7 +128,75 @@ class Transcriber:
             self.spectrogram[row, -1] = 1
 
         return self.midi_to_note_name(midi)
-    
+
+    # =============================
+    # NEW OFFLINE WHOLE-BEAT METHOD
+    # =============================
+    def capture_beat_4_16ths(self):
+        """
+        Called once per beat.
+        Processes entire beat audio using librosa.pyin
+        and returns 4 MIDI values (one per 16th).
+        """
+
+        if len(self.beat_audio_buffer) == 0:
+            return ["quiet"] * 4
+
+        audio = np.array(self.beat_audio_buffer)
+
+        # Clear immediately for next beat
+        self.beat_audio_buffer = []
+
+        if np.sqrt(np.mean(audio ** 2)) < self.VOLUME_THRESHOLD:
+            return ["quiet"] * 4
+
+        # Run full pyin on whole beat
+        f0, voiced_flag, _ = librosa.pyin(
+            audio,
+            fmin=self.fmin,
+            fmax=self.fmax,
+            sr=self.SAMPLE_RATE,
+            frame_length=self.FRAME_LENGTH,
+            hop_length=self.HOP_LENGTH,
+        )
+
+        if f0 is None:
+            return ["no pitch"] * 4
+
+        midi_track = []
+        for freq, voiced in zip(f0, voiced_flag):
+            if voiced and np.isfinite(freq):
+                midi_track.append(self.hz_to_midi(freq))
+            else:
+                midi_track.append(None)
+
+        midi_track = np.array(midi_track, dtype=object)
+
+        slices = np.array_split(midi_track, 4)
+
+        results = []
+
+        for slice_midis in slices:
+
+            self.spectrogram = np.roll(self.spectrogram, -1, axis=1)
+            self.spectrogram[:, -1] = 0
+
+            valid = [m for m in slice_midis if m is not None]
+
+            if len(valid) == 0:
+                results.append("no pitch")
+                continue
+
+            midi = collections.Counter(valid).most_common(1)[0][0]
+
+            if self.MIDI_MIN <= midi <= self.MIDI_MAX:
+                row = self.MIDI_MAX - midi
+                self.spectrogram[row, -1] = 1
+
+            results.append(self.midi_to_note_name(midi))
+
+        return results
+
     # =============================
     # STREAM CONTROL
     # =============================
