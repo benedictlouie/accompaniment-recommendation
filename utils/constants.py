@@ -14,7 +14,23 @@ FLAT_TO_SHARP = {'Ab': 'G#', 'Bb': 'A#', 'Db': 'C#', 'Eb': 'D#', 'Gb': 'F#'}
 QUALITY_SIMPLIFIER = {'maj7': 'maj', 'min7': 'min', 'aug': 'min', 'dim': 'min', 'dim7': 'min', 'sus2': 'maj', 'sus4': 'maj', '7': 'maj'}
 
 QUALITIES_ALL = ['maj', 'min', 'maj7', 'min7', 'aug', 'dim', 'dim7', 'sus2', 'sus4', '7', '6', 'min6', 'm7b5', 'mM7']
-QUALITY_SIMPLIFIER_ALL = {'9': '7', '11': '7', '13': '7', 'maj9': 'maj7', 'min9': 'min7', 'maj9': 'maj7', 'min11': 'min7', 'maj13': 'maj7', 'min13': 'min7', 'pedal': 'sus2', 'power': 'sus2'}
+QUALITY_SIMPLIFIER_ALL = {
+    # === dominant family → 7 ===
+    '9': '7', '11': '7', '13': '7', '79': '7', '79b': '7', '79#': '7', '7911': '7', '7911#': '7', '7913': '7', '7913b': '7', '79b13': '7', '79b13b': '7', '79#13': '7', '79#11#': '7', '7alt': '7',
+    # === major extensions → maj7 ===
+    'maj9': 'maj7', 'maj79': 'maj7', 'j79#': 'maj7', 'j7911#': 'maj7', 'j79#11#': 'maj7',
+    # === minor extensions → min7 ===
+    'min9': 'min7', 'min11': 'min7', 'min13': 'min7', 'min79': 'min7', 'min79b': 'min7', 'min7911': 'min7', 'min7913': 'min7',
+    # === minor-major extensions → mM7 ===
+    'mM7911#': 'mM7', 'mM7913': 'mM7',
+    # === 6-family extensions ===
+    '69': '6', '6911#': '6','min69': 'min6',
+    # === augmented family ===
+    'aug7': 'aug', 'aug79': 'aug', 'aug79#': 'aug', 'aug79b': 'aug', 'aug7911#': 'aug', 'augj7': 'aug',
+    # === special simplifications ===
+    'power': 'sus2', 'pedal': 'maj'
+}
+
 CHORD_CLASSES_ALL = np.array([f"{r}:{q}" for r in ROOTS for q in QUALITIES_ALL] + ["N"])
 NUM_CLASSES_ALL = len(CHORD_CLASSES_ALL)
 REVERSE_CHORD_MAP_ALL = {c: i for i, c in enumerate(CHORD_CLASSES_ALL)}

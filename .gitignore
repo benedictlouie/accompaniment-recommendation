@@ -14,6 +14,8 @@ data/prepare_training_data_smoother.py
 data/melodyhub
 data/data_train_smooth.npz
 data/data_val_smooth.npz
+data/wjazzd/quantised_npz
+*.db
 chord_transition_matrix.npy
 output.mid
 .venv

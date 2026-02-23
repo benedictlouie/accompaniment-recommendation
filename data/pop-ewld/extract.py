@@ -136,15 +136,15 @@ def convert_mxl_to_midi(mxl_file_path, midi_output_path):
 def convert(chord):
     # Extract root (only first note part)
     chord = chord.split('/')[0]
-    match = re.match(r'^([A-G])([-+#]?)(.*)', chord)
+    match = re.match(r'^([A-G])([-+#b]?)(.*)', chord)
     note = match.group(1)
     accidental = match.group(2)
     rest = match.group(3)
 
     # Handle root +/- only
-    if accidental == '+':
+    if accidental in ['+', '#']:
         root = note + '#'
-    elif accidental == '-':
+    elif accidental in ['-', 'b']:
         root = note + 'b'
     else:
         root = note

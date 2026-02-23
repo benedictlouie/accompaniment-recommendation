@@ -27,7 +27,7 @@ def simplify_chord(chord_str):
     
     qual = QUALITY_SIMPLIFIER_ALL.get(qual, qual)
     if qual not in QUALITIES_ALL:
-        print(f"Warning: Unrecognized chord quality '{qual}' in chord '{chord_str}'")
+        print(f"Warning: Unrecognised chord quality '{qual}' in chord '{chord_str}'")
         qual = 'maj'
     return f"{root}:{qual}"
 
@@ -104,9 +104,9 @@ def break_down_one_song_into_sequences(npz_path, test=False):
         if not test and random.random() < 0.1:
             shift = random.choice([-5, -3, -1, 1, 1, 1, 2, 3, 5])
             inputs_aug, targets_aug = prepare_one_song_for_training(npz_path, transpose=tr+shift)
-            split_idx = random.randint(len(inputs) // 2, len(inputs) - 1)
+            split_idx = random.randint(len(inputs) // 2, len(inputs) * 3 // 4)
             inputs[split_idx:] = inputs_aug[split_idx:]
-            targets[split_idx:] = targets_aug[split_idx:]
+            targets[split_idx+1:] = targets_aug[split_idx+1:]
 
         if inputs.size == 0:
             continue
@@ -167,6 +167,22 @@ if __name__ == "__main__":
 
     # Second dataset (EWLD)
     directory_path = "data/pop-ewld/melody_chords"
+    split_index = int(len(os.listdir(directory_path)) * 0.8)
+    for i, filename in enumerate(os.listdir(directory_path)):
+        full_path = os.path.join(directory_path, filename)
+        if i < split_index:
+            X, Y = break_down_one_song_into_sequences(full_path)
+            if X.size == 0: continue
+            train_inputs.append(X)
+            train_targets.append(Y)
+        else:
+            X, Y = break_down_one_song_into_sequences(full_path, test=True)
+            if X.size == 0: continue
+            val_inputs.append(X)
+            val_targets.append(Y)
+
+    # Third dataset (WJazzD)
+    directory_path = "data/wjazzd/quantised_npz"
     split_index = int(len(os.listdir(directory_path)) * 0.8)
     for i, filename in enumerate(os.listdir(directory_path)):
         full_path = os.path.join(directory_path, filename)
