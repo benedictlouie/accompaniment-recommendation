@@ -2,7 +2,25 @@ import numpy as np
 import random
 import pygame
 import time
+import fluidsynth
 from utils.constants import CHORD_TO_TETRAD, NOTE_FREQS
+
+
+# --------------------------------
+# FLUIDSYNTH ENGINE (GLOBAL)
+# --------------------------------
+
+fs = fluidsynth.Synth()
+fs.start(driver="coreaudio")
+
+SOUNDFONT_PATH = "soundfonts/Guitar.sf2"  # <-- change this
+sfid = fs.sfload(SOUNDFONT_PATH)
+fs.program_select(0, sfid, 0, 0)
+
+# Dummy silent sound (to keep callers working)
+pygame.mixer.pre_init(44100, -16, 2, 256)
+pygame.init()
+
 
 SAMPLE_RATE = 44100
 
@@ -122,39 +140,29 @@ def play_harmony(chord_name, duration, harmony_channels, creative=True, timbre="
     if creative:
         inversion = random.choice([0, 1, 2])
         notes = notes[inversion:] + notes[:inversion]
-        notes = [n + random.choice([-12, 0]) for n in notes]
+        notes = [n + random.choice([0, 12]) for n in notes]
 
     for i, midi in enumerate(notes):
         if midi < 10:
             continue
 
-        base_freq = 440 * 2 ** ((midi - 69) / 12)
+        velocity = int(random.uniform(0.9, 1.0) * 127)
 
-        velocity = random.uniform(0.6, 1.0)
-        pan = random.uniform(-0.7, 0.7)
-
-        delay = 0
         if creative:
-            delay = min(1, i) * duration * random.choice([0, 0.4])
-        delay_samples = int(delay * SAMPLE_RATE)
+            delay = min(1, i) * duration * random.choice([0, 0.5])
 
-        sound = generate_note_sound(
-            base_freq,
-            duration,
-            pan=pan,
-            velocity=velocity,
-            timbre=timbre
-        )
+        def play_note(m=midi, vel=velocity):
+            fs.noteon(0, m, vel)
 
-        sound_array = pygame.sndarray.array(sound)
+            def stop_note():
+                time.sleep(duration)
+                fs.noteoff(0, m)
 
-        if sound_array.ndim == 1:
-            silence = np.zeros(delay_samples, dtype=sound_array.dtype)
-            new_array = np.concatenate((silence, sound_array))
+            import threading
+            threading.Thread(target=stop_note, daemon=True).start()
+
+        if delay > 0:
+            import threading
+            threading.Timer(delay, play_note).start()
         else:
-            silence = np.zeros((delay_samples, sound_array.shape[1]), dtype=sound_array.dtype)
-            new_array = np.vstack((silence, sound_array))
-
-        # 🔹 Convert back to Sound
-        delayed_sound = pygame.sndarray.make_sound(new_array)
-        harmony_channels[i % len(harmony_channels)].play(delayed_sound)
+            play_note()

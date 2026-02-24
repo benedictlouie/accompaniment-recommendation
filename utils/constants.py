@@ -109,6 +109,8 @@ pygame.mixer.init(frequency=44100, size=-16, channels=1)
 # Load metronome click
 CLICK_SOUND = pygame.mixer.Sound("utils/click.wav")
 CLICK_SOUND_STRONG = pygame.mixer.Sound("utils/click_strong.wav")
+CLICK_SOUND.set_volume(0.3)
+CLICK_SOUND_STRONG.set_volume(0.3)
 
 # Key mapping (1.5 octaves starting from C4)
 KEYBOARD_MAP = {
