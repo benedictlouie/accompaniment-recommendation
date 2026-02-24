@@ -137,11 +137,13 @@ for melid in all_melids:
     for i, b in enumerate(beats):
         strong_beats[i] = (b["beat"] == 1)
         chord = b["chord"]
-        if not chord or 'N' in chord:
+        if 'N' in chord:
             chord = "N"
+        elif chord in (None, ""):
+            chord = ""
         else:
             chord = convert(chord)
-        chords[i] = chord if chord not in (None, "") else ""
+        chords[i] = chord
 
     # Forward-fill chords
     last = None

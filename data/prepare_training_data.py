@@ -9,9 +9,10 @@ from utils.constants import ROOTS, QUALITIES_ALL, CHORD_CLASSES_ALL, NUM_CLASSES
 #     CHORD UTILITIES       #
 # ------------------------- #
 
-quality_stats = {}
+quality_stats = {"N": 0}
 def simplify_chord(chord_str):
     if chord_str == "N" or chord_str is None:
+        quality_stats["N"] += 1
         return "N"
     chord_str = chord_str.split('/')[0]
     root, qual = chord_str.split(':')
