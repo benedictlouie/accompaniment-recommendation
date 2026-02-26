@@ -5,8 +5,7 @@ import numpy as np
 import os
 from torch.utils.tensorboard import SummaryWriter
 from torch.utils.data import Dataset, DataLoader, Subset
-from utils.constants import DEVICE, INPUT_DIM, MEMORY, LEARNING_RATE, NUM_CLASSES_ALL
-from utils.FifthsCircleLoss import FifthsCircleLoss
+from utils.constants import DEVICE, INPUT_DIM, MEMORY, LEARNING_RATE, NUM_CLASSES_ALL, TEMPERATURE
 
 # -------------------------
 # Constants
@@ -15,7 +14,7 @@ OUTPUT_DIM = NUM_CLASSES_ALL
 MAX_LEN = MEMORY + 1
 
 # -------------------------
-# Transformer Model
+# Transformer Model (Parallel Teacher Forcing)
 # -------------------------
 class TransformerModel(nn.Module):
     def __init__(self, input_dim, output_dim, d_model=128, nhead=8,
@@ -43,37 +42,54 @@ class TransformerModel(nn.Module):
 
         self.fc_out = nn.Linear(d_model, output_dim)
 
-    def forward(self, input_seq):
-        B = input_seq.size(0)
-        device = input_seq.device
+    def forward(self, input_seq, target_seq=None):
+        """
+        - Training: provide target_seq → teacher forcing
+        - Inference: target_seq=None → autoregressive generation
+        """
 
-        # Encoder "thinks" about the input context
+        B, device = input_seq.size(0), input_seq.device
 
-        memory = self.encoder(self.feature_to_embedding(torch.where(input_seq > 10, input_seq % 12, input_seq)) + self.pos_encoder)
+        # ---- Encoder ----
+        src_emb = self.feature_to_embedding(
+            torch.where(input_seq > 10, input_seq % 12, input_seq)
+        ) + self.pos_encoder[:, :input_seq.size(1), :]
+        memory = self.encoder(src_emb)
 
-        # We need ONE starting state. We can use'dummy' zeros to get the first logit.
-        output_logits = []
-        current_tokens = None
+        if target_seq is not None:
+            # ---- Teacher forcing (training) ----
+            if target_seq.dim() == 3:
+                target_seq = target_seq[:, :, 0]
 
-        for t in range(MAX_LEN):
-            # If no tokens yet, we use a dummy 'start' embedding
-            # to query the encoder memory for the first note
-            if current_tokens is None:
-                tgt_emb = torch.zeros(B, 1, self.d_model, device=device)
-            else:
+            T = target_seq.size(1)
+            tgt_emb = self.embedding_output(target_seq)
+            tgt_mask = nn.Transformer.generate_square_subsequent_mask(T).to(device)
+            out = self.decoder(tgt=tgt_emb, memory=memory, tgt_mask=tgt_mask)
+            logits = self.fc_out(out)
+            return logits  # shape (B, T, OUTPUT_DIM)
+
+        else:
+            # ---- Autoregressive generation (inference) ----
+            output_logits = []  # list to store logits at each timestep
+            current_tokens = torch.zeros(B, 1, dtype=torch.long, device=device)  # start token
+
+            for t in range(MAX_LEN):
                 tgt_emb = self.embedding_output(current_tokens)
-            
-            out = self.decoder(tgt=tgt_emb, memory=memory) 
-            logits = self.fc_out(out[:, -1, :])
-            output_logits.append(logits)
+                tgt_mask = nn.Transformer.generate_square_subsequent_mask(tgt_emb.size(1)).to(device)
+                out = self.decoder(tgt=tgt_emb, memory=memory, tgt_mask=tgt_mask)
+                logits = self.fc_out(out[:, -1, :])  # logits for last token
+                
+                # Save logits for this timestep
+                output_logits.append(logits.unsqueeze(1))  # shape (B, 1, OUTPUT_DIM)
 
-            next_tok = torch.argmax(logits, dim=-1, keepdim=True)
-            if current_tokens is None:
-                current_tokens = next_tok
-            else:
+                # Sample next token
+                probs = torch.softmax(logits / TEMPERATURE, dim=-1)
+                next_tok = torch.multinomial(probs, num_samples=1)
                 current_tokens = torch.cat([current_tokens, next_tok], dim=1)
 
-        return torch.stack(output_logits, dim=1)
+            # Concatenate along timestep dimension → (B, MAX_LEN, OUTPUT_DIM)
+            output_logits = torch.cat(output_logits, dim=1)
+            return output_logits
 
 # -------------------------
 # Dataset
@@ -93,7 +109,7 @@ class MusicDataset(Dataset):
 # -------------------------
 # Training function
 # -------------------------
-def train(model, train_loader, optimizer, num_epochs=10):
+def train(model, train_loader, val_loader, optimizer, num_epochs=10):
     criterion = nn.CrossEntropyLoss()
 
     os.makedirs("checkpoints", exist_ok=True)
@@ -107,26 +123,49 @@ def train(model, train_loader, optimizer, num_epochs=10):
 
         for i, (input_seq, target_seq) in enumerate(train_loader):
             input_seq, target_seq = input_seq.to(DEVICE), target_seq.to(DEVICE)
+
             optimizer.zero_grad()
 
-            output = model(input_seq)  # [B, MAX_LEN, OUTPUT_DIM]
+            # Teacher forcing: feed target sequence shifted right
+            logits = model(input_seq, target_seq[:, :])
+            targets = target_seq[:, :]
 
-            # Flatten for loss
-            logits = output.view(-1, OUTPUT_DIM)         # [B*MAX_LEN, OUTPUT_DIM]
-            targets = target_seq.view(-1)                # [B*MAX_LEN]
-
-            loss = criterion(logits, targets)
+            loss = criterion(
+                logits.reshape(-1, OUTPUT_DIM),
+                targets.reshape(-1)
+            )
             loss.backward()
             optimizer.step()
 
             running_loss += loss.item()
-            if i % 100 == 0:
-                writer.add_scalar('Loss/train', loss.item(), epoch * len(train_loader) + i)
-                print(f"Batch {i}/{len(train_loader)}, Loss: {loss.item():.4f}")
 
-        avg_loss = running_loss / len(train_loader)
-        print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {avg_loss:.4f}")
-        writer.add_scalar('Loss/epoch', avg_loss, epoch)
+            if i % 100 == 0:
+                # Training loss
+                avg_train_loss = running_loss / (i + 1)
+
+                # Validation loss
+                model.eval()
+                val_loss = 0.0
+                with torch.no_grad():
+                    for val_input, val_target in val_loader:
+                        val_input, val_target = val_input.to(DEVICE), val_target.to(DEVICE)
+                        val_logits = model(val_input, val_target[:, :])
+                        val_targets = val_target[:, :]
+                        v_loss = criterion(
+                            val_logits.reshape(-1, OUTPUT_DIM),
+                            val_targets.reshape(-1)
+                        )
+                        val_loss += v_loss.item()
+                avg_val_loss = val_loss / len(val_loader)
+
+                print(f"Epoch {epoch+1}/{num_epochs}, Batch {i+1}/{len(train_loader)}", f"Train Loss: {avg_train_loss:.4f}, Val Loss: {avg_val_loss:.4f}")
+                writer.add_scalar('Loss/train', avg_train_loss, epoch * len(train_loader) + i)
+                writer.add_scalar('Loss/val', avg_val_loss, epoch * len(train_loader) + i)
+                model.train()
+
+        epoch_loss = running_loss / len(train_loader)
+        print(f"Epoch [{epoch+1}/{num_epochs}], Avg Train Loss: {epoch_loss:.4f}")
+        writer.add_scalar('Loss/epoch', epoch_loss, epoch)
 
         # Save checkpoint
         torch.save(model.state_dict(), "checkpoints/transformer_model.pth")
@@ -145,9 +184,6 @@ def load_model_checkpoint(model, checkpoint_path):
         print("No checkpoint found, starting from scratch.")
         return False
 
-# -------------------------
-# Main
-# -------------------------
 if __name__ == "__main__":
     d_model = 128
     nhead = 8
@@ -162,17 +198,18 @@ if __name__ == "__main__":
     total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(f"Total trainable parameters: {total_params}")
 
-    train_data = MusicDataset("data/data_train.npz")
+    # Load training dataset
+    train_dataset = MusicDataset("data/data_train.npz")
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 
-    num_samples = len(train_data)
-    indices = torch.randperm(len(train_data))[:num_samples]
-    train_data = Subset(train_data, indices)
-
-    train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True)
+    # Load validation dataset
+    val_dataset = MusicDataset("data/data_val.npz")
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 
     optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
 
     checkpoint_path = "checkpoints/transformer_model.pth"
     load_model_checkpoint(model, checkpoint_path)
 
-    train(model, train_loader, optimizer, num_epochs=num_epochs)
+    # Train with separate validation dataset
+    train(model, train_loader, val_loader, optimizer, num_epochs=num_epochs)

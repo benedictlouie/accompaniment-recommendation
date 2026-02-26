@@ -27,11 +27,14 @@ def generate_chords(model, melody, target=None):
 
         probs = torch.nn.functional.softmax(outputs / TEMPERATURE, dim=-1)
         
+        preds = probs[torch.randint(0, probs.size(0), (1,)).item()].argmax(dim=-1)
+        print("Last 8 predicted chords:", [str(CHORD_CLASSES_ALL[chord_idx.item()]) for chord_idx in preds[-8:]])
+
         last_probs = probs[:, -1, :]          # (B, V)
         top_probs, top_indices = torch.topk(last_probs, k=8, dim=-1)
         for prob, index in zip(top_probs, top_indices):
             # print([idx.item() for idx in prob])
-            print([str(CHORD_CLASSES_ALL[idx.item()]) for idx in index])
+            print([str(CHORD_CLASSES_ALL[chord_idx.item()]) for chord_idx in index])
 
         preds = torch.multinomial(
             probs.view(-1, probs.size(-1)), 1
@@ -52,11 +55,11 @@ def generate_chords(model, melody, target=None):
 
 if __name__ == "__main__":
     model = TransformerModel(INPUT_DIM, NUM_CLASSES_ALL).to(DEVICE)
-    checkpoint = torch.load("checkpoints/transformer_model.pth", map_location=DEVICE)
+    checkpoint = torch.load("checkpoints/transformer_model_feb25.pth", map_location=DEVICE)
     model.load_state_dict(checkpoint)
 
     # example melody
-    song_num = 707
+    song_num = 777
     npz_path = f"data/pop/melody_chords/{song_num:03d}.npz"
     melody, target_chords = break_down_one_song_into_sequences(npz_path, test=True)
     predicted_chords = generate_chords(model, melody, target_chords)
