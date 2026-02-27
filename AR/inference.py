@@ -55,7 +55,7 @@ def generate_chords(model, melody, target=None):
 
 if __name__ == "__main__":
     model = TransformerModel(INPUT_DIM, NUM_CLASSES_ALL).to(DEVICE)
-    checkpoint = torch.load("checkpoints/transformer_model_feb25.pth", map_location=DEVICE)
+    checkpoint = torch.load("checkpoints/transformer_model.pth", map_location=DEVICE)
     model.load_state_dict(checkpoint)
 
     # example melody
