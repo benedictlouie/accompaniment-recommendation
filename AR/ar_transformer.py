@@ -43,13 +43,33 @@ class TransformerModel(nn.Module):
 
         self.fc_out = nn.Linear(d_model, output_dim)
 
-    def forward(self, input_seq):
+    def forward(self, input_seq, target_seq=None):
         B = input_seq.size(0)
         device = input_seq.device
 
         # Encoder "thinks" about the input context
+        memory = self.encoder(
+            self.feature_to_embedding(
+                torch.where(input_seq > 10, input_seq % 12, input_seq)
+            ) + self.pos_encoder
+        )
 
-        memory = self.encoder(self.feature_to_embedding(torch.where(input_seq > 10, input_seq % 12, input_seq)) + self.pos_encoder)
+        # If target_seq is provided, use teacher forcing (training)
+        if target_seq is not None:
+
+            if len(target_seq.shape) == 3:
+                target_seq = target_seq[:, :, 0]
+
+            # Shift target_seq for decoder input
+            # decoder_input = first MAX_LEN tokens except last
+            tgt_input = target_seq[:, :-1]  # [B, MAX_LEN-1]
+            tgt_emb = self.embedding_output(tgt_input)  # [B, MAX_LEN-1, d_model]
+            dummy_start = torch.zeros(B, 1, self.d_model, device=device)
+            tgt_emb = torch.cat([dummy_start, tgt_emb], dim=1)  # [B, MAX_LEN, d_model]
+            
+            out = self.decoder(tgt=tgt_emb, memory=memory)  # [B, MAX_LEN, d_model]
+            logits = self.fc_out(out)                        # [B, MAX_LEN, OUTPUT_DIM]
+            return logits
 
         # We need ONE starting state. We can use'dummy' zeros to get the first logit.
         output_logits = []
@@ -109,7 +129,7 @@ def train(model, train_loader, val_loader, optimizer, num_epochs=10):
             input_seq, target_seq = input_seq.to(DEVICE), target_seq.to(DEVICE)
             optimizer.zero_grad()
 
-            output = model(input_seq)  # [B, MAX_LEN, OUTPUT_DIM]
+            output = model(input_seq, target_seq)  # [B, MAX_LEN, OUTPUT_DIM]
 
             # Flatten for loss
             logits = output.view(-1, OUTPUT_DIM)         # [B*MAX_LEN, OUTPUT_DIM]
@@ -131,7 +151,7 @@ def train(model, train_loader, val_loader, optimizer, num_epochs=10):
                         outputs = outputs.view(-1, outputs.size(-1))   # [batch*seq_len, num_classes]
                         targets = targets.view(-1)
                         loss_val = criterion(outputs, targets)  # your loss function
-                        val_loss += loss_val.item() * inputs.size(0)  # accumulate weighted by batch size
+                        val_loss += loss_val * inputs.size(0)  # accumulate weighted by batch size
                 val_loss /= len(val_loader.dataset)
                 model.train()
 
