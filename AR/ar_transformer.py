@@ -54,46 +54,22 @@ class TransformerModel(nn.Module):
             ) + self.pos_encoder
         )
 
-        # If target_seq is provided, use teacher forcing (training)
-        if target_seq is not None:
-
-            if len(target_seq.shape) == 3:
-                target_seq = target_seq[:, :, 0]
-
-            # Shift target_seq for decoder input
-            # decoder_input = first MAX_LEN tokens except last
-            tgt_input = target_seq[:, :-1]  # [B, MAX_LEN-1]
-            tgt_emb = self.embedding_output(tgt_input)  # [B, MAX_LEN-1, d_model]
-            dummy_start = torch.zeros(B, 1, self.d_model, device=device)
-            tgt_emb = torch.cat([dummy_start, tgt_emb], dim=1)  # [B, MAX_LEN, d_model]
-            
-            out = self.decoder(tgt=tgt_emb, memory=memory)  # [B, MAX_LEN, d_model]
-            logits = self.fc_out(out)                        # [B, MAX_LEN, OUTPUT_DIM]
-            return logits
-
         # We need ONE starting state. We can use'dummy' zeros to get the first logit.
-        output_logits = []
-        current_tokens = None
+        output_logits = torch.zeros(B, MAX_LEN, OUTPUT_DIM, device=device)
+
+        # Start tgt_emb with a dummy embedding for t=0
+        tgt_emb = torch.zeros(B, 1, self.d_model, device=device)  # initial start token embedding
 
         for t in range(MAX_LEN):
-            # If no tokens yet, we use a dummy 'start' embedding
-            # to query the encoder memory for the first note
-            if current_tokens is None:
-                tgt_emb = torch.zeros(B, 1, self.d_model, device=device)
-            else:
-                tgt_emb = self.embedding_output(current_tokens)
-            
-            out = self.decoder(tgt=tgt_emb, memory=memory) 
-            logits = self.fc_out(out[:, -1, :])
-            output_logits.append(logits)
+            out = self.decoder(tgt=tgt_emb, memory=memory)
+            logits = self.fc_out(out[:, -1, :])  # shape [B, OUTPUT_DIM]
+            output_logits[:, t, :] = logits
 
-            next_tok = torch.argmax(logits, dim=-1, keepdim=True)
-            if current_tokens is None:
-                current_tokens = next_tok
-            else:
-                current_tokens = torch.cat([current_tokens, next_tok], dim=1)
+            new_emb = logits @ self.embedding_output.weight  # shape [B, D]
+            new_emb = new_emb.unsqueeze(1)                  # shape [B, 1, D]
+            tgt_emb = torch.cat([tgt_emb, new_emb], dim=1)
 
-        return torch.stack(output_logits, dim=1)
+        return output_logits
 
 # -------------------------
 # Dataset
@@ -141,6 +117,10 @@ def train(model, train_loader, val_loader, optimizer, num_epochs=10):
 
             running_loss += loss.item()
 
+            if i % 100 == 0:
+                writer.add_scalar('Loss/train', loss.item(), epoch * len(train_loader) + i)
+                print(f"Epoch {epoch+1}/{num_epochs}  Batch {i}/{len(train_loader)}, Training Loss: {loss.item():.4f}")
+            
             if i % 10000 == 0:
                 model.eval()
                 val_loss = 0.0
@@ -153,13 +133,9 @@ def train(model, train_loader, val_loader, optimizer, num_epochs=10):
                         loss_val = criterion(outputs, targets)  # your loss function
                         val_loss += loss_val * inputs.size(0)  # accumulate weighted by batch size
                 val_loss /= len(val_loader.dataset)
-                model.train()
                 writer.add_scalar('Loss/validation', val_loss.item(), epoch * len(train_loader) + i)
                 print(f"Validation Loss: {val_loss.item():.4f}")
-
-            if i % 100 == 0:
-                writer.add_scalar('Loss/train', loss.item(), epoch * len(train_loader) + i)
-                print(f"Epoch {epoch+1}/{num_epochs}  Batch {i}/{len(train_loader)}, Training Loss: {loss.item():.4f}")
+                model.train()
 
         avg_loss = running_loss / len(train_loader)
         print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {avg_loss:.4f}")
