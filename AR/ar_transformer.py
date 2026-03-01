@@ -141,7 +141,7 @@ def train(model, train_loader, val_loader, optimizer, num_epochs=10):
 
             running_loss += loss.item()
 
-            if i % 100 == 0:
+            if i % 10000 == 0:
                 model.eval()
                 val_loss = 0.0
                 with torch.no_grad():  # Disable gradient computation
@@ -154,10 +154,12 @@ def train(model, train_loader, val_loader, optimizer, num_epochs=10):
                         val_loss += loss_val * inputs.size(0)  # accumulate weighted by batch size
                 val_loss /= len(val_loader.dataset)
                 model.train()
-
-                writer.add_scalar('Loss/train', loss.item(), epoch * len(train_loader) + i)
                 writer.add_scalar('Loss/validation', val_loss.item(), epoch * len(train_loader) + i)
-                print(f"Epoch {epoch+1}/{num_epochs}  Batch {i}/{len(train_loader)}, Training Loss: {loss.item():.4f}, Validation Loss: {val_loss.item():.4f}")
+                print(f"Validation Loss: {val_loss.item():.4f}")
+
+            if i % 100 == 0:
+                writer.add_scalar('Loss/train', loss.item(), epoch * len(train_loader) + i)
+                print(f"Epoch {epoch+1}/{num_epochs}  Batch {i}/{len(train_loader)}, Training Loss: {loss.item():.4f}")
 
         avg_loss = running_loss / len(train_loader)
         print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {avg_loss:.4f}")
