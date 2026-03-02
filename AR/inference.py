@@ -28,7 +28,7 @@ def generate_chords(model, melody, target=None):
         probs = torch.nn.functional.softmax(outputs / TEMPERATURE, dim=-1)
         
         preds = probs[torch.randint(0, probs.size(0), (1,)).item()].argmax(dim=-1)
-        print("Last 8 predicted chords:", [str(CHORD_CLASSES_ALL[chord_idx.item()]) for chord_idx in preds[-8:]])
+        print("AR chord sequence:", [str(CHORD_CLASSES_ALL[chord_idx.item()]) for chord_idx in preds])
 
         last_probs = probs[:, -1, :]          # (B, V)
         top_probs, top_indices = torch.topk(last_probs, k=8, dim=-1)

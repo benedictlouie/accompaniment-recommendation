@@ -5,7 +5,7 @@ import numpy as np
 import os
 from torch.utils.tensorboard import SummaryWriter
 from torch.utils.data import Dataset, DataLoader, Subset
-from utils.constants import DEVICE, INPUT_DIM, MEMORY, LEARNING_RATE, NUM_CLASSES_ALL
+from utils.constants import DEVICE, INPUT_DIM, MEMORY, LEARNING_RATE, NUM_CLASSES_ALL, TEMPERATURE
 from utils.FifthsCircleLoss import FifthsCircleLoss
 
 # -------------------------
@@ -41,7 +41,11 @@ class TransformerModel(nn.Module):
             num_layers=num_decoder_layers
         )
 
+        # Output projection
         self.fc_out = nn.Linear(d_model, output_dim)
+
+        # Weight tying
+        self.fc_out.weight = self.embedding_output.weight
 
     def forward(self, input_seq, target_seq=None):
         B = input_seq.size(0)
@@ -65,7 +69,8 @@ class TransformerModel(nn.Module):
             logits = self.fc_out(out[:, -1, :])  # shape [B, OUTPUT_DIM]
             output_logits[:, t, :] = logits
 
-            new_emb = logits @ self.embedding_output.weight  # shape [B, D]
+            probs = torch.softmax(logits / TEMPERATURE, dim=-1)
+            new_emb = probs @ self.embedding_output.weight  # shape [B, D]
             new_emb = new_emb.unsqueeze(1)                  # shape [B, 1, D]
             tgt_emb = torch.cat([tgt_emb, new_emb], dim=1)
 
