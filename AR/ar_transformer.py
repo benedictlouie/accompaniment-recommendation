@@ -44,9 +44,6 @@ class TransformerModel(nn.Module):
         # Output projection
         self.fc_out = nn.Linear(d_model, output_dim)
 
-        # Weight tying
-        self.fc_out.weight = self.embedding_output.weight
-
     def forward(self, input_seq, target_seq=None):
         B = input_seq.size(0)
         device = input_seq.device
