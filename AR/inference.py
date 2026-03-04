@@ -26,9 +26,6 @@ def generate_chords(model, melody, target=None):
         outputs = model(melody)  # fully autoregressive
 
         probs = torch.nn.functional.softmax(outputs / TEMPERATURE, dim=-1)
-        
-        preds = probs[torch.randint(0, probs.size(0), (1,)).item()].argmax(dim=-1)
-        print("AR chord sequence:", [str(CHORD_CLASSES_ALL[chord_idx.item()]) for chord_idx in preds])
 
         last_probs = probs[:, -1, :]          # (B, V)
         top_probs, top_indices = torch.topk(last_probs, k=8, dim=-1)
@@ -49,7 +46,8 @@ def generate_chords(model, melody, target=None):
         criterion = torch.nn.CrossEntropyLoss(reduction="mean")
         loss = criterion(outputs[:, -1, :], target[:, -1].squeeze(-1))
         print("Final-step Average Cross Entropy:", loss.item())
-            
+    
+    print("AR chord sequence:", [str(CHORD_CLASSES_ALL[chord_idx.item()]) for chord_idx in preds[-1, :]])
     print(preds[:, -1].cpu().numpy())
     return preds.cpu().numpy()
 

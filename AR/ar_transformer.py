@@ -44,6 +44,9 @@ class TransformerModel(nn.Module):
         # Output projection
         self.fc_out = nn.Linear(d_model, output_dim)
 
+        # Weight tying
+        self.fc_out.weight = self.embedding_output.weight
+
     def forward(self, input_seq, target_seq=None):
         B = input_seq.size(0)
         device = input_seq.device
@@ -66,8 +69,7 @@ class TransformerModel(nn.Module):
             logits = self.fc_out(out[:, -1, :])  # shape [B, OUTPUT_DIM]
             output_logits[:, t, :] = logits
 
-            probs = torch.softmax(logits / TEMPERATURE, dim=-1)
-            new_emb = probs @ self.embedding_output.weight  # shape [B, D]
+            new_emb = logits @ self.embedding_output.weight  # shape [B, D]
             new_emb = new_emb.unsqueeze(1)                  # shape [B, 1, D]
             tgt_emb = torch.cat([tgt_emb, new_emb], dim=1)
 
