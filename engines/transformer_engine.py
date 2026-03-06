@@ -12,7 +12,7 @@ STEP_DURATION = BEAT_DURATION / STEPS_PER_BEAT
 
 class ARTransformerEngine(BaseChordEngine):
 
-    def __init__(self, checkpoint_path="checkpoints/transformer_model.pth"):
+    def __init__(self, checkpoint_path="checkpoints/transformer_model_feb25.pth"):
         self.device = DEVICE
 
         self.model = TransformerModel(INPUT_DIM, NUM_CLASSES_ALL).to(self.device)
@@ -27,9 +27,7 @@ class ARTransformerEngine(BaseChordEngine):
 
     def process_beat(self, notes_played, beat_start_time, beat_index):
 
-        midi_grid = self._build_grid(notes_played, beat_start_time, beat_index)
-
-        padded = self._build_memory(midi_grid)
+        padded = self.build_memory(notes_played, beat_start_time, beat_index)
 
         predicted = generate_chords(
             self.model,
@@ -42,9 +40,7 @@ class ARTransformerEngine(BaseChordEngine):
 
         return chord_name, BEAT_DURATION
 
-    # -----------------------
-
-    def _build_grid(self, notes_played, beat_start, beat_index):
+    def build_memory(self, notes_played, beat_start, beat_index):
 
         grid = -np.ones(STEPS_PER_BEAT)
 
@@ -67,9 +63,7 @@ class ARTransformerEngine(BaseChordEngine):
         strong_flag = 1 if beat_index == 1 else 0
         grid = np.concatenate(([strong_flag], grid))
 
-        return grid.reshape(1, INPUT_DIM)
-
-    def _build_memory(self, new_bar):
+        new_bar = grid.reshape(1, INPUT_DIM)
 
         if len(self.history) == 0:
             padding = np.tile(self._empty_bar(), MEMORY)

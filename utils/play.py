@@ -11,7 +11,7 @@ def npz_to_midi(song_num, chords, output_path="output.mid", bpm=80):
     """
 
     # === Load melody ===
-    npz_path = f'data/pop/melody_chords/{song_num}.npz'
+    npz_path = f'data/pop/melody_chords/{song_num:03d}.npz'
     data = np.load(npz_path, allow_pickle=True)
     melody = data['melody'].flatten()
 

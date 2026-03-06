@@ -15,6 +15,8 @@ data/melodyhub
 data/data_train_smooth.npz
 data/data_val_smooth.npz
 data/wjazzd/quantised_npz
+data/lpd/lpd_5_cleansed/
+data/lpd/midis
 *.db
 chord_transition_matrix.npy
 output.mid

@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 import pygame
+import joblib
 
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -149,3 +150,5 @@ NOTE_TO_MIDI = {
     'C#6': 85, 'D6': 86, 'D#6': 87, 'E6': 88, 'F6': 89, 'F#6': 90, 'G6': 91,
     'G#6': 92, 'A6': 93, 'A#6': 94, 'B6': 95
 }
+
+DRUM_NN, DRUMS = joblib.load("data/lpd/drum_nn.joblib")

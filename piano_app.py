@@ -3,8 +3,9 @@ import numpy as np
 import time
 
 from engines.factory import create_engine
-from utils.constants import *
-from utils.accompaniment import play_harmony, NOTE_SOUNDS
+from utils.constants import NOTE_FREQS, NOTE_TO_KEYBOARD, KEYBOARD_MAP, CLICK_SOUND, CLICK_SOUND_STRONG, DRUM_NN, DRUMS
+from accompaniment.accompaniment import play_harmony, NOTE_SOUNDS, play_drum_loop
+from accompaniment.drum_nn import get_drum_loop
 
 pygame.init()
 pygame.mixer.init(frequency=44100, size=-16, channels=2)
@@ -108,6 +109,7 @@ predicted_chord_display = "-"
 # --------------------------------------------------
 
 running = True
+prev_drum_loop = None
 
 while running:
 
@@ -126,7 +128,6 @@ while running:
             beat_start_time,
             current_beat
         )
-        notes_played.clear()
 
         # Metronome click
         if current_beat % BEATS_PER_BAR == 0:
@@ -134,9 +135,25 @@ while running:
         else:
             CLICK_SOUND.play()
 
+        # Harmony
         if chord:
             play_harmony(chord, duration, HARMONY_CHANNELS)
             predicted_chord_display = chord
+
+        # Drums
+        if current_beat % BEATS_PER_BAR == BEATS_PER_BAR - 1:
+            melody = engine.build_memory(notes_played, beat_start_time, current_beat)
+            melody = melody[-BEATS_PER_BAR:, 1:].flatten()
+            drum_loop = get_drum_loop(DRUM_NN, DRUMS, melody)
+            steps, pitches = np.nonzero(drum_loop)
+            if len(steps) < 10:
+                drum_loop = prev_drum_loop
+
+        if current_beat % BEATS_PER_BAR == 0 and drum_loop is not None:
+            play_drum_loop(drum_loop, bpm=tempo, beats_per_bar=BEATS_PER_BAR)
+            prev_drum_loop = drum_loop
+
+        notes_played.clear()
 
         current_beat += 1
         if current_beat > BEATS_PER_BAR:

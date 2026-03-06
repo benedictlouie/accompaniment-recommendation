@@ -3,8 +3,8 @@ import numpy as np
 import time
 from transcribe.transcriber import Transcriber
 from engines.factory import create_engine
-from utils.constants import *
-from utils.accompaniment import play_harmony
+from utils.constants import CLICK_SOUND, CLICK_SOUND_STRONG
+from accompaniment.accompaniment import play_harmony
 
 # =====================================================
 # PYGAME INIT
