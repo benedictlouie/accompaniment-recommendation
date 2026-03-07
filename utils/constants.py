@@ -2,6 +2,7 @@ import numpy as np
 import torch
 import pygame
 import joblib
+import fluidsynth
 
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -15,21 +16,21 @@ FLAT_TO_SHARP = {'Ab': 'G#', 'Bb': 'A#', 'Db': 'C#', 'Eb': 'D#', 'Gb': 'F#'}
 QUALITY_SIMPLIFIER = {'maj7': 'maj', 'min7': 'min', 'aug': 'min', 'dim': 'min', 'dim7': 'min', 'sus2': 'maj', 'sus4': 'maj', '7': 'maj'}
 
 QUALITIES_ALL = ['maj', 'min', 'maj7', 'min7', 'aug', 'dim', 'dim7', 'sus2', 'sus4', '7', '6', 'min6', 'm7b5', 'mM7']
+QUALITY_SIMPLIFIER_REVERSE = {
+    '7': ['9','11','13','79','79b','79#','7911','7911#','7913','7913b','79b13','79b13b','79#13','79#11#','7alt'],
+    'maj7': ['maj9','maj79','j79#','j7911#','j79#11#'],
+    'min7': ['min9','min11','min13','min79','min79b','min7911','min7913'],
+    'mM7': ['mM7911#','mM7913'],
+    '6': ['69','6911#'],
+    'min6': ['min69'],
+    'aug': ['aug7','aug79','aug79#','aug79b','aug7911#','augj7'],
+    'sus2': ['power'],
+    'maj': ['pedal']
+}
 QUALITY_SIMPLIFIER_ALL = {
-    # === dominant family → 7 ===
-    '9': '7', '11': '7', '13': '7', '79': '7', '79b': '7', '79#': '7', '7911': '7', '7911#': '7', '7913': '7', '7913b': '7', '79b13': '7', '79b13b': '7', '79#13': '7', '79#11#': '7', '7alt': '7',
-    # === major extensions → maj7 ===
-    'maj9': 'maj7', 'maj79': 'maj7', 'j79#': 'maj7', 'j7911#': 'maj7', 'j79#11#': 'maj7',
-    # === minor extensions → min7 ===
-    'min9': 'min7', 'min11': 'min7', 'min13': 'min7', 'min79': 'min7', 'min79b': 'min7', 'min7911': 'min7', 'min7913': 'min7',
-    # === minor-major extensions → mM7 ===
-    'mM7911#': 'mM7', 'mM7913': 'mM7',
-    # === 6-family extensions ===
-    '69': '6', '6911#': '6','min69': 'min6',
-    # === augmented family ===
-    'aug7': 'aug', 'aug79': 'aug', 'aug79#': 'aug', 'aug79b': 'aug', 'aug7911#': 'aug', 'augj7': 'aug',
-    # === special simplifications ===
-    'power': 'sus2', 'pedal': 'maj'
+    o: simplified
+    for simplified, originals in QUALITY_SIMPLIFIER_REVERSE.items()
+    for o in originals
 }
 
 CHORD_CLASSES_ALL = np.array([f"{r}:{q}" for r in ROOTS for q in QUALITIES_ALL] + ["N"])
@@ -97,15 +98,15 @@ MAJOR = np.array([6.35, 2.23, 3.48, 2.33, 4.38, 4.09,
 MINOR = np.array([6.33, 2.68, 3.52, 5.38, 2.60, 3.53,
                   2.54, 4.75, 3.98, 2.69, 3.34, 3.17])
 
-
 # Settings
-BPM = 80
-BEAT_DURATION = 60 / BPM
 BEATS_PER_BAR = 4
-BAR_DURATION = BEAT_DURATION * BEATS_PER_BAR
+STEPS_PER_BEAT = MELODY_NOTES_PER_BEAT
+STEPS_PER_BAR = BEATS_PER_BAR * STEPS_PER_BEAT
+
+SAMPLE_RATE = 44100
 
 pygame.init()
-pygame.mixer.init(frequency=44100, size=-16, channels=1)
+pygame.mixer.init(frequency=SAMPLE_RATE, size=-16, channels=1)
 
 # Load metronome click
 CLICK_SOUND = pygame.mixer.Sound("utils/click.wav")
@@ -122,6 +123,17 @@ KEYBOARD_MAP = {
 }
 NOTE_TO_KEYBOARD = {v: k for k, v in KEYBOARD_MAP.items()}
 FONT = pygame.font.SysFont(None, 24)
+FONT_BIG = pygame.font.SysFont("Arial", 42)
+FONT_MED = pygame.font.SysFont("Arial", 28)
+FONT_SMALL = pygame.font.SysFont("Arial", 18)
+
+BLACK = (20, 20, 20)
+DARK_GRAY = (40, 44, 52)
+WHITE = (240, 240, 240)
+GRAY = (120, 120, 120)
+BLUE = (90, 170, 255)
+RED = (255, 90, 90)
+GREEN = (80, 220, 140)
 
 # Frequencies for each note
 NOTE_FREQS = {
@@ -151,4 +163,7 @@ NOTE_TO_MIDI = {
     'G#6': 92, 'A6': 93, 'A#6': 94, 'B6': 95
 }
 
-DRUM_NN, DRUMS = joblib.load("data/lpd/drum_nn.joblib")
+NN, DRUMS = joblib.load("data/lpd/drum_nn.joblib")
+_, BASSES = joblib.load("data/lpd/bass_nn.joblib")
+_, GUITARS = joblib.load("data/lpd/guitar_nn.joblib")
+_, PIANOS = joblib.load("data/lpd/piano_nn.joblib")

@@ -1,12 +1,13 @@
 import numpy as np
 from engines.base_engine import BaseChordEngine
 from CRF.chord_engine import ChordEngine as InternalCRF
-from utils.constants import *
+from utils.constants import BEATS_PER_BAR
 
 
 class CRFChordEngine(BaseChordEngine):
 
-    def __init__(self):
+    def __init__(self, tempo):
+        super().__init__(tempo)
         self.engine = InternalCRF()
         self.current_bar_notes = []
         self.beat_counter = 0
@@ -20,6 +21,8 @@ class CRFChordEngine(BaseChordEngine):
 
     def process_beat(self, notes_played, beat_start_time, beat_index):
 
+        self.build_history(notes_played, beat_start_time, beat_index)
+
         if self.bar_start_time is None:
             self.bar_start_time = beat_start_time
 
@@ -30,7 +33,7 @@ class CRFChordEngine(BaseChordEngine):
             return None, 0
 
         # ---- BAR COMPLETE ----
-        bar_end_time = beat_start_time + BEAT_DURATION
+        bar_end_time = beat_start_time + self.beat_duration
 
         bar_proportions = {}
 
@@ -43,7 +46,7 @@ class CRFChordEngine(BaseChordEngine):
                 bar_proportions.get(note, 0) + duration
             )
 
-        total_bar_time = BEATS_PER_BAR * BEAT_DURATION
+        total_bar_time = BEATS_PER_BAR * self.beat_duration
 
         for note in bar_proportions:
             bar_proportions[note] /= total_bar_time
@@ -55,4 +58,4 @@ class CRFChordEngine(BaseChordEngine):
         self.beat_counter = 0
         self.bar_start_time = None
 
-        return chord, BEATS_PER_BAR * BEAT_DURATION
+        return chord, BEATS_PER_BAR * self.beat_duration

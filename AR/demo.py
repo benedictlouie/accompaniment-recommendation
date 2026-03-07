@@ -4,9 +4,11 @@ import torch
 import time
 from AR.ar_transformer import TransformerModel
 from AR.inference import generate_chords
-from utils.constants import *
+from utils.constants import STEPS_PER_BEAT, NOTE_FREQS, MEMORY, INPUT_DIM, DEVICE, CHORD_TO_TETRAD, NOTE_TO_MIDI, NUM_CLASSES, CHORD_CLASSES, BEATS_PER_BAR, FONT, NOTE_TO_KEYBOARD, CLICK_SOUND, CLICK_SOUND_STRONG, KEYBOARD_MAP, SAMPLE_RATE
 
-STEPS_PER_BEAT = 4                 # 16th notes
+BPM = 80
+BEAT_DURATION = 60 / BPM
+BAR_DURATION = BEAT_DURATION * BEATS_PER_BAR
 STEPS_PER_BAR = STEPS_PER_BEAT # * BEATS_PER_BAR
 STEP_DURATION = BEAT_DURATION / STEPS_PER_BEAT
 
@@ -14,8 +16,7 @@ STEP_DURATION = BEAT_DURATION / STEPS_PER_BEAT
 # Sound generation
 # -----------------------------
 def generate_note_sound(freq, duration=1.0):
-    sample_rate = 44100
-    t = np.linspace(0, duration, int(sample_rate * duration), False)
+    t = np.linspace(0, duration, int(SAMPLE_RATE * duration), False)
     wave = 0.3 * np.sin(2 * np.pi * freq * t)
     wave = np.int16(wave * 32767)
     return pygame.sndarray.make_sound(np.column_stack([wave, wave]))

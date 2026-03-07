@@ -3,19 +3,12 @@ import numpy as np
 import time
 
 from engines.factory import create_engine
-from utils.constants import NOTE_FREQS, NOTE_TO_KEYBOARD, KEYBOARD_MAP, CLICK_SOUND, CLICK_SOUND_STRONG, DRUM_NN, DRUMS
-from accompaniment.accompaniment import play_harmony, NOTE_SOUNDS, play_drum_loop
-from accompaniment.drum_nn import get_drum_loop
+from utils.constants import NOTE_FREQS, NOTE_TO_KEYBOARD, KEYBOARD_MAP, CLICK_SOUND, CLICK_SOUND_STRONG, BEATS_PER_BAR, SAMPLE_RATE, FONT_BIG, FONT_MED, FONT_SMALL, BLACK, DARK_GRAY, WHITE, BLACK, GRAY, BLUE, RED, GREEN
+from accompaniment.accompaniment import play_harmony, play_harmony_nn, play_drum_loop, get_fs, NOTE_SOUNDS
+from accompaniment.nn import get_all_loops
 
 pygame.init()
-pygame.mixer.init(frequency=44100, size=-16, channels=2)
-
-# --------------------------------------------------
-# ENGINE
-# --------------------------------------------------
-
-ENGINE_TYPE = "transformer"  # "crf" or "transformer"
-engine = create_engine(ENGINE_TYPE)
+pygame.mixer.init(frequency=SAMPLE_RATE, size=-16, channels=2)
 
 # --------------------------------------------------
 # CONFIG
@@ -28,19 +21,6 @@ PIANO_HEIGHT = HEIGHT - TOP_BAR_HEIGHT
 
 SCREEN = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Real-time Piano Accompaniment")
-
-FONT_SMALL = pygame.font.SysFont("Arial", 16)
-FONT_MED = pygame.font.SysFont("Arial", 22)
-FONT_BIG = pygame.font.SysFont("Arial", 40)
-
-# Colors
-BG = (28, 30, 34)
-TOP_BG = (40, 44, 52)
-WHITE = (240, 240, 240)
-BLACK = (20, 20, 20)
-BLUE = (80, 160, 255)
-RED = (255, 80, 80)
-GRAY = (120, 120, 120)
 
 # --------------------------------------------------
 # SOUND
@@ -70,15 +50,27 @@ CENTER_X = WIDTH // 2
 BTN_MINUS = pygame.Rect(CENTER_X - 160, 35, 40, 40)
 BTN_PLUS  = pygame.Rect(CENTER_X + 120, 35, 40, 40)
 
-def beat_duration():
-    return 60.0 / tempo
+# --------------------------------------------------
+# ENGINE
+# --------------------------------------------------
 
+ENGINE_TYPE = "transformer"  # "crf" or "transformer"
+engine = create_engine(ENGINE_TYPE, tempo)
+
+# --------------------------------------------------
+# FLUIDSYNTH
+# --------------------------------------------------
+FS = get_fs(
+    drum_sf="soundfonts/The_Definitive_Perfect_Drums_Soundfount_V1___1-12_.sf2",
+    guitar_sf="soundfonts/Guitar.sf2",
+    piano_sf="soundfonts/UprightPianoKW-small-bright-20190703.sf2",
+    bass_sf="soundfonts/Remix_10_Bass_Soundfont.sf2"
+)
 
 # --------------------------------------------------
 # METRONOME
 # --------------------------------------------------
 
-BEATS_PER_BAR = 4
 current_beat = 1
 last_beat_time = time.time()
 
@@ -110,6 +102,9 @@ predicted_chord_display = "-"
 
 running = True
 prev_drum_loop = None
+piano_loop = None
+guitar_loop = None
+bass_loop = None
 
 while running:
 
@@ -117,10 +112,10 @@ while running:
 
     # ------------------ BEAT CLOCK ------------------
 
-    if current_time - last_beat_time >= beat_duration():
+    if current_time - last_beat_time >= engine.beat_duration:
 
         beat_start_time = last_beat_time
-        last_beat_time += beat_duration()
+        last_beat_time += engine.beat_duration
 
         # Ask engine (works for both CRF & Transformer)
         chord, duration = engine.process_beat(
@@ -135,23 +130,25 @@ while running:
         else:
             CLICK_SOUND.play()
 
-        # Harmony
-        if chord:
-            play_harmony(chord, duration, HARMONY_CHANNELS)
-            predicted_chord_display = chord
+        if current_beat % BEATS_PER_BAR == 0:
+            melody = engine.last_bar
+            drum_loop, piano_loop, guitar_loop, bass_loop = get_all_loops(melody)
 
-        # Drums
-        if current_beat % BEATS_PER_BAR == BEATS_PER_BAR - 1:
-            melody = engine.build_memory(notes_played, beat_start_time, current_beat)
-            melody = melody[-BEATS_PER_BAR:, 1:].flatten()
-            drum_loop = get_drum_loop(DRUM_NN, DRUMS, melody)
+            # Drums (every bar)
             steps, pitches = np.nonzero(drum_loop)
             if len(steps) < 10:
                 drum_loop = prev_drum_loop
+            if chord != "N" and drum_loop is not None:
+                play_drum_loop(drum_loop, FS, tempo)
+                prev_drum_loop = drum_loop
 
-        if current_beat % BEATS_PER_BAR == 0 and drum_loop is not None:
-            play_drum_loop(drum_loop, bpm=tempo, beats_per_bar=BEATS_PER_BAR)
-            prev_drum_loop = drum_loop
+        # Harmony (every beat)
+        if chord:
+            # play_harmony(chord, duration, FS)
+            play_harmony_nn(chord, guitar_loop, current_beat % BEATS_PER_BAR, FS, "guitar", tempo)
+            play_harmony_nn(chord, piano_loop, current_beat % BEATS_PER_BAR, FS, "piano", tempo)
+            play_harmony_nn(chord, bass_loop, current_beat % BEATS_PER_BAR, FS, "bass", tempo)
+            predicted_chord_display = chord
 
         notes_played.clear()
 
@@ -161,10 +158,10 @@ while running:
 
     # ------------------ DRAW ------------------
 
-    SCREEN.fill(BG)
+    SCREEN.fill(BLACK)
 
     # TOP BAR
-    pygame.draw.rect(SCREEN, TOP_BG, (0, 0, WIDTH, TOP_BAR_HEIGHT))
+    pygame.draw.rect(SCREEN, DARK_GRAY, (0, 0, WIDTH, TOP_BAR_HEIGHT))
 
     # BPM display
     bpm_text = FONT_BIG.render(f"{tempo} BPM", True, WHITE)
@@ -246,10 +243,12 @@ while running:
             if BTN_MINUS.collidepoint(event.pos):
                 tempo_index = max(0, tempo_index - 1)
                 tempo = TEMPO_OPTIONS[tempo_index]
+                engine.set_tempo(tempo)
 
             if BTN_PLUS.collidepoint(event.pos):
                 tempo_index = min(len(TEMPO_OPTIONS) - 1, tempo_index + 1)
                 tempo = TEMPO_OPTIONS[tempo_index]
+                engine.set_tempo(tempo)
 
         elif event.type == pygame.KEYDOWN:
             key_name = pygame.key.name(event.key)

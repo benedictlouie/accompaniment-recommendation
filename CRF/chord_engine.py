@@ -3,7 +3,7 @@
 import numpy as np
 from CRF.chord_melody_relation import predict_chords
 from CRF.crf import key_probs
-from utils.constants import *
+from utils.constants import NUM_CLASSES, FIFTHS_CHORD_INDICES, CHORD_CLASSES, FIFTHS_CHORD_LIST, REVERSE_ROOT_MAP
 
 class ChordEngine:
     def __init__(self):

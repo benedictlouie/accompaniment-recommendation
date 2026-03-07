@@ -3,36 +3,19 @@ import numpy as np
 import time
 from transcribe.transcriber import Transcriber
 from engines.factory import create_engine
-from utils.constants import CLICK_SOUND, CLICK_SOUND_STRONG
-from accompaniment.accompaniment import play_harmony
+from utils.constants import CLICK_SOUND, CLICK_SOUND_STRONG, BEATS_PER_BAR, FONT_BIG, FONT_MED, FONT_SMALL, BLACK, WHITE, GRAY, BLUE, RED, GREEN, SAMPLE_RATE
+from accompaniment.accompaniment import play_harmony, get_fs
 
 # =====================================================
 # PYGAME INIT
 # =====================================================
 
 pygame.init()
-pygame.mixer.init(frequency=44100, size=-16, channels=2)
+pygame.mixer.init(frequency=SAMPLE_RATE, size=-16, channels=2)
 
 WIDTH, HEIGHT = 1000, 500
 SCREEN = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Real-Time Harmoniser")
-
-FONT_BIG = pygame.font.SysFont("Arial", 42)
-FONT_MED = pygame.font.SysFont("Arial", 28)
-FONT_SMALL = pygame.font.SysFont("Arial", 18)
-
-BG = (25, 27, 32)
-WHITE = (240, 240, 240)
-GRAY = (120, 120, 120)
-BLUE = (90, 170, 255)
-RED = (255, 90, 90)
-GREEN = (80, 220, 140)
-
-# =====================================================
-# ENGINE
-# =====================================================
-
-engine = create_engine("transformer")
 
 # =====================================================
 # TRANSCRIBER
@@ -46,18 +29,25 @@ transcriber.start()
 # =====================================================
 
 tempo = 100
-BEATS_PER_BAR = 4
 current_beat = 1
 
 # Beat & sixteenth note clocks
 last_beat_time = time.time()
 last_sixteenth_time = time.time()
 
-def beat_duration():
-    return 60.0 / tempo
+# =====================================================
+# ENGINE
+# =====================================================
 
-def sixteenth_duration():
-    return beat_duration() / 4
+engine = create_engine("transformer", tempo)
+
+
+# --------------------------------------------------
+# FLUIDSYNTH
+# --------------------------------------------------
+FS = get_fs(
+    guitar_sf="soundfonts/Guitar.sf2",
+)
 
 # =====================================================
 # AUDIO OUTPUT
@@ -87,8 +77,8 @@ while running:
     # ===========================
     # Sixteenth note clock (4x per beat)
     # ===========================
-    if now - last_sixteenth_time >= sixteenth_duration():
-        last_sixteenth_time += sixteenth_duration()
+    if now - last_sixteenth_time >= engine.step_duration:
+        last_sixteenth_time += engine.step_duration
 
         note = transcriber.capture_16th()
 
@@ -99,21 +89,20 @@ while running:
     # ===========================
     # Beat clock (once per beat)
     # ===========================
-    if now - last_beat_time >= beat_duration():
+    if now - last_beat_time >= engine.beat_duration:
         beat_start = last_beat_time
-        last_beat_time += beat_duration()
+        last_beat_time += engine.beat_duration
 
         # 🔥 Get accurate 4x16ths from full beat audio
         accurate_notes = transcriber.capture_beat_4_16ths()
 
         # Convert to engine format (note, start_time, end_time)
         processed_notes = []
-        slice_duration = beat_duration() / 4
 
         for i, note in enumerate(accurate_notes):
             if note not in ["quiet", "no pitch"]:
-                slice_start = beat_start + i * slice_duration
-                slice_end = slice_start + slice_duration
+                slice_start = beat_start + i * engine.step_duration
+                slice_end = slice_start + engine.step_duration
                 processed_notes.append((note, slice_start, slice_end))
 
         # Generate harmony from accurate notes
@@ -135,7 +124,7 @@ while running:
         # Play harmony
         if chord:
             predicted_chord = chord
-            play_harmony(chord, duration, channels)
+            play_harmony(chord, duration, FS)
 
         current_beat += 1
         if current_beat > BEATS_PER_BAR:
@@ -144,7 +133,7 @@ while running:
     # ===========================
     # DRAW
     # ===========================
-    SCREEN.fill(BG)
+    SCREEN.fill(BLACK)
 
     # BPM
     bpm_text = FONT_BIG.render(f"{tempo} BPM", True, WHITE)
@@ -194,8 +183,10 @@ while running:
         if event.type == pygame.MOUSEBUTTONDOWN:
             if plus_button_rect.collidepoint(event.pos):
                 tempo += 5
+                engine.set_tempo(tempo)
             elif minus_button_rect.collidepoint(event.pos):
                 tempo = max(20, tempo - 5)
+                engine.set_tempo(tempo)
 
     pygame.time.delay(10)
 

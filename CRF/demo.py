@@ -3,13 +3,16 @@ import numpy as np
 import torch
 import time
 from CRF.chord_melody_relation import predict_chords
-from utils.constants import *
+from utils.constants import BEATS_PER_BAR, NOTE_FREQS, FIFTHS_CHORD_INDICES, FIFTHS_CHORD_LIST, CHORD_CLASSES, NUM_CLASSES, CHORD_TO_TETRAD, CLICK_SOUND, CLICK_SOUND_STRONG, REVERSE_ROOT_MAP, NOTE_TO_KEYBOARD, FONT, KEYBOARD_MAP, SAMPLE_RATE
 from CRF.crf import key_probs
+
+BPM = 80
+BEAT_DURATION = 60 / BPM
+BAR_DURATION = BEAT_DURATION * BEATS_PER_BAR
 
 # Pre-generate pygame Sounds for all notes (1s long)
 def generate_note_sound(freq, duration=1.0):
-    sample_rate = 44100
-    t = np.linspace(0, duration, int(sample_rate * duration), False)
+    t = np.linspace(0, duration, int(SAMPLE_RATE * duration), False)
     wave = 0.3 * np.sin(2 * np.pi * freq * t)
     wave = np.int16(wave * 32767)
     return pygame.sndarray.make_sound(np.column_stack([wave, wave]))
@@ -17,7 +20,7 @@ def generate_note_sound(freq, duration=1.0):
 NOTE_SOUNDS = {note: generate_note_sound(freq*2) for note, freq in NOTE_FREQS.items()}
 
 # Initialize mixer
-pygame.mixer.init(frequency=44100, size=-16, channels=1)
+pygame.mixer.init(frequency=SAMPLE_RATE, size=-16, channels=1)
 
 # Ensure enough channels for all notes
 pygame.mixer.set_num_channels(len(NOTE_FREQS) + 4)

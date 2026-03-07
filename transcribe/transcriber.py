@@ -4,13 +4,12 @@ import librosa
 import collections
 from liveaudio.LivePyin import LivePyin
 from liveaudio.buffers import CircularBuffer
-from utils.constants import ROOTS
+from utils.constants import ROOTS, SAMPLE_RATE
 
 
 class Transcriber:
     def __init__(
         self,
-        sample_rate=44100,
         frame_length=2048,
         hop_length=512,
         volume_threshold=0.01,
@@ -21,7 +20,6 @@ class Transcriber:
         # =============================
         # AUDIO SETTINGS
         # =============================
-        self.SAMPLE_RATE = sample_rate
         self.FRAME_LENGTH = frame_length
         self.HOP_LENGTH = hop_length
         self.VOLUME_THRESHOLD = volume_threshold
@@ -37,7 +35,7 @@ class Transcriber:
         self.lpyin = LivePyin(
             self.fmin,
             self.fmax,
-            sr=self.SAMPLE_RATE,
+            sr=SAMPLE_RATE,
             frame_length=self.FRAME_LENGTH,
             hop_length=self.HOP_LENGTH,
         )
@@ -63,7 +61,7 @@ class Transcriber:
         # Stream
         self.stream = sd.InputStream(
             channels=1,
-            samplerate=self.SAMPLE_RATE,
+            samplerate=SAMPLE_RATE,
             blocksize=self.HOP_LENGTH,
             callback=self.audio_callback,
         )
@@ -155,7 +153,7 @@ class Transcriber:
             audio,
             fmin=self.fmin,
             fmax=self.fmax,
-            sr=self.SAMPLE_RATE,
+            sr=SAMPLE_RATE,
             frame_length=self.FRAME_LENGTH,
             hop_length=self.HOP_LENGTH,
         )

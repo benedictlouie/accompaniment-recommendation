@@ -3,27 +3,33 @@ import random
 import pygame
 import time
 import fluidsynth
-from utils.constants import CHORD_TO_TETRAD, NOTE_FREQS, DRUM_NN, DRUMS
-from accompaniment.drum_nn import get_drum_loop
+from utils.constants import CHORD_TO_TETRAD, NOTE_FREQS, STEPS_PER_BAR, STEPS_PER_BEAT, SAMPLE_RATE
 import threading
 
 # --------------------------------
 # FLUIDSYNTH ENGINE (GLOBAL)
 # --------------------------------
 
-fs = fluidsynth.Synth()
-fs.start(driver="coreaudio")
-
-SOUNDFONT_PATH = "soundfonts/Guitar.sf2"  # <-- change this
-sfid = fs.sfload(SOUNDFONT_PATH)
-fs.program_select(0, sfid, 0, 0)
+def get_fs(drum_sf=None, guitar_sf=None, piano_sf=None, bass_sf=None):
+    fs = fluidsynth.Synth(gain=3)
+    fs.start(driver="coreaudio")
+    if drum_sf is not None:
+        sfid = fs.sfload(drum_sf)
+        fs.program_select(9, sfid, 0, 0)
+    if guitar_sf is not None:
+        sfid = fs.sfload(guitar_sf)
+        fs.program_select(0, sfid, 0, 0)
+    if piano_sf is not None:
+        sfid = fs.sfload(piano_sf)
+        fs.program_select(1, sfid, 0, 0)
+    if bass_sf is not None:
+        sfid = fs.sfload(piano_sf)
+        fs.program_select(2, sfid, 0, 0)
+    return fs
 
 # Dummy silent sound (to keep callers working)
-pygame.mixer.pre_init(44100, -16, 2, 256)
+pygame.mixer.pre_init(SAMPLE_RATE, -16, 2, 256)
 pygame.init()
-
-
-SAMPLE_RATE = 44100
 
 def apply_lowpass(wave, cutoff):
     alpha = cutoff / (cutoff + SAMPLE_RATE)
@@ -132,7 +138,8 @@ def generate_note_sound(freq, duration=1.0, pan=0.0, velocity=1.0, timbre="piano
 
 NOTE_SOUNDS = { note: generate_note_sound(freq * 2) for note, freq in NOTE_FREQS.items() }
 
-def play_harmony(chord_name, duration, harmony_channels, creative=True, timbre="piano"):
+def play_harmony(chord_name, duration, fs, creative=True):
+    
     if chord_name not in CHORD_TO_TETRAD:
         return
 
@@ -167,27 +174,93 @@ def play_harmony(chord_name, duration, harmony_channels, creative=True, timbre="
         else:
             play_note()
 
+def snap_to_chord(target, chord):
+    best = None
+    best_dist = 1e9
 
-def play_drum_loop(drum_loop,
-                   soundfont="soundfonts/The_Definitive_Perfect_Drums_Soundfount_V1___1-12_.sf2",
-                   bpm=120,
-                   gain=1.0,
-                   beats_per_bar=4):
+    for octave in (-12, 0, 12):
+        for n in chord:
+            candidate = n + octave
+            d = abs(candidate - target)
+            if d < best_dist:
+                best_dist = d
+                best = candidate
+
+    return best
+
+ACTIVE_NOTES = {
+    "guitar": set(),
+    "piano": set(),
+    "bass": set(),
+}
+
+def play_harmony_nn(chord_name, loop, beat_index, fs, instrument, bpm):
+
+    if chord_name not in CHORD_TO_TETRAD:
+        return
+
+    chord = CHORD_TO_TETRAD[chord_name]
+
+    channel = {"guitar":0, "piano":1, "bass":2}[instrument]
+    velocity = {"guitar":85, "piano": 100, "bass":70}[instrument]
+
+    if instrument == "piano":
+        chord = [n+12 for n in chord]
+    if instrument == "bass":
+        chord = [n-12 for n in chord]
+
+    seconds_per_beat = 60.0 / bpm
+    step_duration = seconds_per_beat / STEPS_PER_BEAT
+
+    start_step = beat_index * STEPS_PER_BEAT
+
+    for sub in range(STEPS_PER_BEAT):
+
+        step = start_step + sub
+
+        if loop is None or step >= len(loop):
+            break
+
+        delay = sub * step_duration
+
+        notes_now = set()
+
+        for interval in loop[step]:
+
+            if interval < 0:
+                continue
+
+            target = chord[0] + interval
+            midi = snap_to_chord(target, chord)
+
+            notes_now.add(midi)
+
+        def process_step(notes_now=notes_now):
+
+            active = ACTIVE_NOTES[instrument]
+
+            # notes to stop
+            for n in active - notes_now:
+                fs.noteoff(channel, n)
+
+            # notes to start
+            for n in notes_now - active:
+                fs.noteon(channel, n, velocity)
+
+            ACTIVE_NOTES[instrument] = notes_now
+
+        threading.Timer(delay, process_step).start()
+
+def play_drum_loop(drum_loop, fs, bpm):
     """
     Play a (16,128) drum loop non-blocking, max velocity, adjustable gain.
     """
 
     def _play_loop(loop):
-        fs = fluidsynth.Synth(gain=gain)
-        fs.start(driver="coreaudio")
 
-        sfid = fs.sfload(soundfont)
-        fs.program_select(9, sfid, 0, 0)  # channel 9 = drums
+        step_duration = 60 / bpm / STEPS_PER_BEAT  # 16th notes
 
-        step_duration = 60 / bpm / 4  # 16th notes
-        total_steps = beats_per_bar * 4  # steps in the bar
-
-        for step in loop[:total_steps]:
+        for step in loop[:STEPS_PER_BAR]:
             notes = np.where(step > 0)[0]
 
             for n in notes:
@@ -197,8 +270,6 @@ def play_drum_loop(drum_loop,
 
             for n in notes:
                 fs.noteoff(9, int(n))
-
-        fs.delete()  # stop synth once finished
 
     # run playback in a separate thread (non-blocking)
     t = threading.Thread(target=_play_loop, args=(drum_loop,), daemon=True)

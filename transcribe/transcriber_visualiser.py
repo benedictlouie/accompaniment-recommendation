@@ -2,17 +2,17 @@ import time
 import pygame
 import numpy as np
 from transcribe.transcriber import Transcriber
+from utils.constants import STEPS_PER_BEAT, FONT_BIG, FONT_MED, FONT_SMALL, CLICK_SOUND, BLACK, DARK_GRAY, WHITE, GRAY, GREEN, RED
 
 # =============================
 # METRONOME SETTINGS
 # =============================
-BPM = 100
-SUBDIV = 4
 
+BPM = 100
 def update_timing():
     global SECONDS_PER_BEAT, SUBDIV_DURATION
     SECONDS_PER_BEAT = 60 / BPM
-    SUBDIV_DURATION = SECONDS_PER_BEAT / SUBDIV
+    SUBDIV_DURATION = SECONDS_PER_BEAT / STEPS_PER_BEAT
 
 update_timing()
 
@@ -26,26 +26,6 @@ pygame.display.set_caption("16th Note Quantised Pitch Visualiser")
 
 clock = pygame.time.Clock()
 pygame.mixer.init()
-click = pygame.mixer.Sound("utils/click.wav")
-
-# =============================
-# FONTS
-# =============================
-font_big = pygame.font.SysFont("Arial", 64)
-font_medium = pygame.font.SysFont("Arial", 28)
-font_small = pygame.font.SysFont("Arial", 18)
-
-# =============================
-# COLORS
-# =============================
-BG = (18, 18, 18)
-PANEL = (28, 28, 28)
-WHITE = (235, 235, 235)
-GREY = (140, 140, 140)
-GRID = (55, 55, 55)
-OCTAVE = (95, 95, 95)
-GREEN = (0, 255, 140)
-ACCENT = (255, 140, 0)
 
 # =============================
 # BUTTON CLASS
@@ -56,9 +36,9 @@ class Button:
         self.text = text
 
     def draw(self, surface):
-        pygame.draw.rect(surface, PANEL, self.rect, border_radius=8)
-        pygame.draw.rect(surface, ACCENT, self.rect, 2, border_radius=8)
-        label = font_medium.render(self.text, True, WHITE)
+        pygame.draw.rect(surface, DARK_GRAY, self.rect, border_radius=8)
+        pygame.draw.rect(surface, RED, self.rect, 2, border_radius=8)
+        label = FONT_MED.render(self.text, True, WHITE)
         surface.blit(label, (
             self.rect.centerx - label.get_width() // 2,
             self.rect.centery - label.get_height() // 2
@@ -101,7 +81,7 @@ beat_results = []
 running = True
 
 while running:
-    screen.fill(BG)
+    screen.fill(BLACK)
     now = time.time()
 
     # ================= EVENTS =================
@@ -121,24 +101,24 @@ while running:
     next_tick = start_time + subdiv_index * SUBDIV_DURATION
 
     if now >= next_tick:
-        if subdiv_index % SUBDIV == 0:
-            click.play()
+        if subdiv_index % STEPS_PER_BEAT == 0:
+            CLICK_SOUND.play()
 
         result = transcriber.capture_16th()
         beat_results.append(result)
 
         subdiv_index += 1
 
-        if len(beat_results) == SUBDIV:
+        if len(beat_results) == STEPS_PER_BEAT:
             accurate_results = transcriber.capture_beat_4_16ths()
             print(f"Beat {beat_count + 1}: {accurate_results}")
             beat_results = []
             beat_count += 1
 
     # ================= PANELS =================
-    pygame.draw.rect(screen, PANEL, (20, 20, WIDTH - 40, 170), border_radius=12)
-    pygame.draw.rect(screen, PANEL, (20, 210, WIDTH - 40, 180), border_radius=12)
-    pygame.draw.rect(screen, PANEL, (20, 410, WIDTH - 40, 280), border_radius=12)
+    pygame.draw.rect(screen, DARK_GRAY, (20, 20, WIDTH - 40, 170), border_radius=12)
+    pygame.draw.rect(screen, DARK_GRAY, (20, 210, WIDTH - 40, 180), border_radius=12)
+    pygame.draw.rect(screen, DARK_GRAY, (20, 410, WIDTH - 40, 280), border_radius=12)
 
     # ================= CURRENT NOTE =================
     current_midi = None
@@ -149,14 +129,14 @@ while running:
         current_midi = int(transcriber.hz_to_midi(transcriber.current_pitch))
         note_name = transcriber.midi_to_note_name(current_midi)
 
-        text = font_big.render(note_name, True, WHITE)
+        text = FONT_BIG.render(note_name, True, WHITE)
         screen.blit(text, (
             WIDTH // 2 - text.get_width() // 2,
             60
         ))
 
     # ================= BPM =================
-    bpm_text = font_medium.render(f"BPM: {BPM}", True, GREY)
+    bpm_text = FONT_MED.render(f"BPM: {BPM}", True, GRAY)
     screen.blit(bpm_text, (40, 60))
     btn_minus.draw(screen)
     btn_plus.draw(screen)
@@ -213,18 +193,18 @@ while running:
         y_pos = SPEC_Y + SPEC_H - (relative * SPEC_H)
 
         if midi % 12 == 0:
-            pygame.draw.line(screen, OCTAVE,
+            pygame.draw.line(screen, GRAY,
                              (SPEC_X-5, y_pos),
                              (SPEC_X + SPEC_W, y_pos), 2)
 
-            label = font_small.render(
+            label = FONT_SMALL.render(
                 transcriber.midi_to_note_name(midi),
                 True,
                 (210,210,210)
             )
             screen.blit(label, (SPEC_X-60, y_pos - 8))
         else:
-            pygame.draw.line(screen, GRID,
+            pygame.draw.line(screen, DARK_GRAY,
                              (SPEC_X, y_pos),
                              (SPEC_X + SPEC_W, y_pos), 1)
 
