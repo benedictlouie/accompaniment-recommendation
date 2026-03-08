@@ -16,6 +16,7 @@ FLAT_TO_SHARP = {'Ab': 'G#', 'Bb': 'A#', 'Db': 'C#', 'Eb': 'D#', 'Gb': 'F#'}
 QUALITY_SIMPLIFIER = {'maj7': 'maj', 'min7': 'min', 'aug': 'min', 'dim': 'min', 'dim7': 'min', 'sus2': 'maj', 'sus4': 'maj', '7': 'maj'}
 
 QUALITIES_ALL = ['maj', 'min', 'maj7', 'min7', 'aug', 'dim', 'dim7', 'sus2', 'sus4', '7', '6', 'min6', 'm7b5', 'mM7']
+NUM_QUALITIES_ALL = len(QUALITIES_ALL)
 QUALITY_SIMPLIFIER_REVERSE = {
     '7': ['9','11','13','79','79b','79#','7911','7911#','7913','7913b','79b13','79b13b','79#13','79#11#','7alt'],
     'maj7': ['maj9','maj79','j79#','j7911#','j79#11#'],

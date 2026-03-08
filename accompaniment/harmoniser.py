@@ -4,7 +4,7 @@ import time
 from transcribe.transcriber import Transcriber
 from engines.factory import create_engine
 from utils.constants import CLICK_SOUND, CLICK_SOUND_STRONG, BEATS_PER_BAR, FONT_BIG, FONT_MED, FONT_SMALL, BLACK, WHITE, GRAY, BLUE, RED, GREEN, SAMPLE_RATE
-from accompaniment.accompaniment import AccompanimentSystem
+from accompaniment.accompaniment_system import AccompanimentSystem
 
 # =====================================================
 # PYGAME INIT

@@ -4,7 +4,7 @@ import time
 
 from engines.factory import create_engine
 from utils.constants import NOTE_FREQS, NOTE_TO_KEYBOARD, KEYBOARD_MAP, CLICK_SOUND, CLICK_SOUND_STRONG, BEATS_PER_BAR, SAMPLE_RATE, FONT_BIG, FONT_MED, FONT_SMALL, BLACK, DARK_GRAY, WHITE, BLACK, GRAY, BLUE, RED, GREEN
-from accompaniment.accompaniment import AccompanimentSystem, SoundGenerator
+from accompaniment.accompaniment_system import AccompanimentSystem, SoundGenerator
 
 pygame.init()
 pygame.mixer.init(frequency=SAMPLE_RATE, size=-16, channels=2)

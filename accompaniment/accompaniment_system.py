@@ -324,9 +324,12 @@ class AccompanimentSystem:
 
                 drum_loop, piano_loop, guitar_loop, bass_loop = get_all_loops(melody)
 
-                self.guitar_loop = guitar_loop
-                self.piano_loop = piano_loop
-                self.bass_loop = bass_loop
+                if np.any(guitar_loop != -1):
+                    self.guitar_loop = guitar_loop
+                if np.any(piano_loop != -1):
+                    self.piano_loop = piano_loop
+                if np.any(bass_loop != -1):
+                    self.bass_loop = bass_loop
 
                 drum_steps, _ = np.nonzero(drum_loop)
                 if len(drum_steps) < 10:
@@ -337,7 +340,7 @@ class AccompanimentSystem:
                     self.prev_drum_loop = drum_loop
 
             # HARMONY EVERY BEAT
-            if chord:
+            if chord and chord != "N":
                 self.harmony.play_harmony_nn(chord, self.guitar_loop, beat_in_bar, "guitar", tempo)
                 self.harmony.play_harmony_nn(chord, self.piano_loop, beat_in_bar, "piano", tempo)
                 self.harmony.play_harmony_nn(chord, self.bass_loop, beat_in_bar, "bass", tempo)

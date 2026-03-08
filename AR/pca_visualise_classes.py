@@ -10,9 +10,11 @@ matplotlib.use("QtAgg")
 from matplotlib.widgets import RangeSlider, Button
 
 from sklearn.decomposition import PCA
+from sklearn.metrics import pairwise_distances
+from matplotlib.widgets import CheckButtons
 import os
 from AR.ar_transformer import TransformerModel
-from utils.constants import INPUT_DIM, NUM_CLASSES_ALL, DEVICE, CHORD_CLASSES_ALL
+from utils.constants import INPUT_DIM, QUALITIES_ALL, NUM_CLASSES_ALL, NUM_QUALITIES_ALL, DEVICE, CHORD_CLASSES_ALL
 
 # ----------------------------
 # Load Model
@@ -29,36 +31,102 @@ def load_model(model_path, input_dim, output_dim):
 # ----------------------------
 
 def visualize_class_weights_3d(model):
-    # Extract final classification layer weights
-    # Shape: [num_classes, d_model]
-    weights = model.fc_out.weight.detach().cpu().numpy()
 
+    weights = model.fc_out.weight.detach().cpu().numpy()
     print("Weight matrix shape:", weights.shape)
 
-    # Apply PCA to reduce to 3 components
+    # PCA
     pca = PCA(n_components=6)
     reduced = pca.fit_transform(weights)
-
     print("Explained variance ratio:", pca.explained_variance_ratio_)
-
-    # Plot 3D
-    fig = plt.figure(figsize=(10, 8))
-    ax = fig.add_subplot(111, projection='3d')
 
     xs = reduced[:, 0]
     ys = reduced[:, 1]
     zs = reduced[:, 2]
 
-    ax.scatter(xs, ys, zs, c=np.arange(len(xs))%14, cmap=plt.cm.get_cmap("tab20", 12), s=60)
+    qualities = np.arange(len(xs)) % NUM_QUALITIES_ALL
 
-    # Annotate class indices
-    for i in range(NUM_CLASSES_ALL):
-        ax.text(xs[i], ys[i], zs[i], CHORD_CLASSES_ALL[i], size=8)
+    fig = plt.figure(figsize=(12, 8))
+    ax = fig.add_subplot(111, projection="3d")
 
+    cmap = plt.cm.get_cmap("tab20", NUM_QUALITIES_ALL)
+
+    group_artists = []
+
+    for q in range(NUM_QUALITIES_ALL):
+
+        idxs = np.where(qualities == q)[0]
+
+        xg = xs[idxs]
+        yg = ys[idxs]
+        zg = zs[idxs]
+
+        color = cmap(q)
+
+        scatter = ax.scatter(xg, yg, zg, color=color, s=60)
+
+        # labels
+        texts = []
+        for i in idxs:
+            t = ax.text(xs[i], ys[i], zs[i], CHORD_CLASSES_ALL[i], size=8)
+            texts.append(t)
+
+        # nearest neighbour lines (within group)
+        pts = np.stack([xg, yg, zg], axis=1)
+        dists = pairwise_distances(pts)
+
+        lines = []
+
+        for i in range(len(idxs)):
+
+            order = np.argsort(dists[i])[1:3]  # 2 closest (skip self)
+
+            for j in order:
+                xline = [xg[i], xg[j]]
+                yline = [yg[i], yg[j]]
+                zline = [zg[i], zg[j]]
+
+                line, = ax.plot(xline, yline, zline, color=color, alpha=0.5, linewidth=1)
+                lines.append(line)
+
+        group_artists.append((scatter, texts, lines))
+
+    # axes labels
     ax.set_title("Chord Similarity")
     ax.set_xlabel("PC1")
     ax.set_ylabel("PC2")
     ax.set_zlabel("PC3")
+
+    # checkbox UI
+    rax = plt.axes([0.02, 0.4, 0.15, 0.4])
+
+    labels = [QUALITIES_ALL[i] for i in range(NUM_QUALITIES_ALL)]
+    visibility = [True] * NUM_QUALITIES_ALL
+
+    check = CheckButtons(rax, labels, visibility)
+
+    # colour checkbox labels and boxes
+    for i, text in enumerate(check.labels):
+        text.set_color(cmap(i % NUM_QUALITIES_ALL))
+
+    def toggle(label):
+        idx = labels.index(label)
+        scatter, texts, lines = group_artists[idx]
+
+        visible = not scatter.get_visible()
+
+        scatter.set_visible(visible)
+
+        for t in texts:
+            t.set_visible(visible)
+
+        for l in lines:
+            l.set_visible(visible)
+
+        plt.draw()
+
+    check.on_clicked(toggle)
+
     plt.show()
 
 # ----------------------------
@@ -149,8 +217,8 @@ def progressive_pca(model, n_steps=5):
 
     # Stable color assignment (ONLY ONCE)
     num_points = weights.shape[0]
-    base_colors = np.arange(num_points) % 14
-    cmap = plt.cm.get_cmap("tab20", 14)
+    base_colors = np.arange(num_points) % NUM_QUALITIES_ALL
+    cmap = plt.cm.get_cmap("tab20", NUM_QUALITIES_ALL)
 
     # Working copies
     current_weights = weights.copy()
