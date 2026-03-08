@@ -4,7 +4,7 @@ import time
 from transcribe.transcriber import Transcriber
 from engines.factory import create_engine
 from utils.constants import CLICK_SOUND, CLICK_SOUND_STRONG, BEATS_PER_BAR, FONT_BIG, FONT_MED, FONT_SMALL, BLACK, WHITE, GRAY, BLUE, RED, GREEN, SAMPLE_RATE
-from accompaniment.accompaniment import play_harmony, get_fs
+from accompaniment.accompaniment import AccompanimentSystem
 
 # =====================================================
 # PYGAME INIT
@@ -40,14 +40,7 @@ last_sixteenth_time = time.time()
 # =====================================================
 
 engine = create_engine("transformer", tempo)
-
-
-# --------------------------------------------------
-# FLUIDSYNTH
-# --------------------------------------------------
-FS = get_fs(
-    guitar_sf="soundfonts/Guitar.sf2",
-)
+accompaniment_system = AccompanimentSystem()
 
 # =====================================================
 # AUDIO OUTPUT
@@ -122,9 +115,10 @@ while running:
             CLICK_SOUND.play()
 
         # Play harmony
+        melody = engine.last_bar
+        accompaniment_system.play_beat(melody, chord, tempo, current_beat)
         if chord:
             predicted_chord = chord
-            play_harmony(chord, duration, FS)
 
         current_beat += 1
         if current_beat > BEATS_PER_BAR:

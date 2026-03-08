@@ -139,13 +139,17 @@ if __name__ == "__main__":
                 drum_loop.append(drum_step)
 
             drum_loop = np.array(drum_loop, dtype=np.uint8)
-            if np.all(feature == 0):
-                drum_loop[:] = 0
 
             # --- encode other instruments (BAR t) ---
             piano_loop = encode_polyphonic_fast(piano16, target_start, bar_steps, MAX_POLY)
             guitar_loop = encode_polyphonic_fast(guitar16, target_start, bar_steps, MAX_POLY)
             bass_loop = encode_bass_fast(bass16, target_start, bar_steps)
+
+            if np.all(feature == 0):
+                drum_loop[:] = 0
+                piano_loop[:] = -1
+                guitar_loop[:] = -1
+                bass_loop[:] = -1
 
             features.append(feature)
             drum_loops.append(drum_loop)

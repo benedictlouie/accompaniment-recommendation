@@ -4,8 +4,7 @@ import time
 
 from engines.factory import create_engine
 from utils.constants import NOTE_FREQS, NOTE_TO_KEYBOARD, KEYBOARD_MAP, CLICK_SOUND, CLICK_SOUND_STRONG, BEATS_PER_BAR, SAMPLE_RATE, FONT_BIG, FONT_MED, FONT_SMALL, BLACK, DARK_GRAY, WHITE, BLACK, GRAY, BLUE, RED, GREEN
-from accompaniment.accompaniment import play_harmony, play_harmony_nn, play_drum_loop, get_fs, NOTE_SOUNDS
-from accompaniment.nn import get_all_loops
+from accompaniment.accompaniment import AccompanimentSystem, SoundGenerator
 
 pygame.init()
 pygame.mixer.init(frequency=SAMPLE_RATE, size=-16, channels=2)
@@ -38,6 +37,8 @@ HARMONY_CHANNELS = [
     for i in range(4)
 ]
 
+NOTE_SOUNDS = SoundGenerator().note_sounds
+
 # --------------------------------------------------
 # TEMPO
 # --------------------------------------------------
@@ -56,16 +57,7 @@ BTN_PLUS  = pygame.Rect(CENTER_X + 120, 35, 40, 40)
 
 ENGINE_TYPE = "transformer"  # "crf" or "transformer"
 engine = create_engine(ENGINE_TYPE, tempo)
-
-# --------------------------------------------------
-# FLUIDSYNTH
-# --------------------------------------------------
-FS = get_fs(
-    drum_sf="soundfonts/The_Definitive_Perfect_Drums_Soundfount_V1___1-12_.sf2",
-    guitar_sf="soundfonts/Guitar.sf2",
-    piano_sf="soundfonts/UprightPianoKW-small-bright-20190703.sf2",
-    bass_sf="soundfonts/Remix_10_Bass_Soundfont.sf2"
-)
+accompaniment_system = AccompanimentSystem()
 
 # --------------------------------------------------
 # METRONOME
@@ -101,10 +93,6 @@ predicted_chord_display = "-"
 # --------------------------------------------------
 
 running = True
-prev_drum_loop = None
-piano_loop = None
-guitar_loop = None
-bass_loop = None
 
 while running:
 
@@ -130,24 +118,9 @@ while running:
         else:
             CLICK_SOUND.play()
 
-        if current_beat % BEATS_PER_BAR == 0:
-            melody = engine.last_bar
-            drum_loop, piano_loop, guitar_loop, bass_loop = get_all_loops(melody)
-
-            # Drums (every bar)
-            steps, pitches = np.nonzero(drum_loop)
-            if len(steps) < 10:
-                drum_loop = prev_drum_loop
-            if chord != "N" and drum_loop is not None:
-                play_drum_loop(drum_loop, FS, tempo)
-                prev_drum_loop = drum_loop
-
-        # Harmony (every beat)
+        melody = engine.last_bar
+        accompaniment_system.play_beat(melody, chord, tempo, current_beat)
         if chord:
-            # play_harmony(chord, duration, FS)
-            play_harmony_nn(chord, guitar_loop, current_beat % BEATS_PER_BAR, FS, "guitar", tempo)
-            play_harmony_nn(chord, piano_loop, current_beat % BEATS_PER_BAR, FS, "piano", tempo)
-            play_harmony_nn(chord, bass_loop, current_beat % BEATS_PER_BAR, FS, "bass", tempo)
             predicted_chord_display = chord
 
         notes_played.clear()
