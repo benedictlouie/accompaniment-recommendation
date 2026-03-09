@@ -3,7 +3,7 @@ import pygame.midi
 import numpy as np
 import time
 from engines.factory import create_engine
-from utils.constants import NOTE_FREQS, KEYBOARD_MAP, KEYBOARD_LABELS, CLICK_SOUND, CLICK_SOUND_STRONG, BEATS_PER_BAR, SAMPLE_RATE, FONT_BIG, FONT_MED, FONT_SMALL, BLACK, DARK_GRAY, WHITE, BLACK, GRAY, BLUE, RED, GREEN, WHITE_KEYS, BLACK_KEYS
+from utils.constants import ROOTS, NOTE_FREQS, KEYBOARD_MAP, KEYBOARD_LABELS, CLICK_SOUND, CLICK_SOUND_STRONG, BEATS_PER_BAR, SAMPLE_RATE, FONT_BIG, FONT_MED, FONT_SMALL, BLACK, DARK_GRAY, WHITE, BLACK, GRAY, BLUE, RED, GREEN, WHITE_KEYS, BLACK_KEYS
 from accompaniment.accompaniment_system import AccompanimentSystem, SoundGenerator
 
 pygame.init()
@@ -51,10 +51,7 @@ for i in range(pygame.midi.get_count()):
         break
 
 
-MIDI_NOTE_NAMES = [
-    'C','C#','D','D#','E','F',
-    'F#','G','G#','A','A#','B'
-]
+MIDI_NOTE_NAMES = ROOTS.tolist()
 
 def midi_to_note(midi_num):
 
@@ -202,11 +199,11 @@ while running:
             beat_start_time,
             current_beat
         )
-
-        if current_beat % BEATS_PER_BAR == 0:
-            CLICK_SOUND_STRONG.play()
-        else:
-            CLICK_SOUND.play()
+        if not chord or chord == 'N':
+            if current_beat % BEATS_PER_BAR == 0:
+                CLICK_SOUND_STRONG.play()
+            else:
+                CLICK_SOUND.play()
 
         melody = engine.last_bar
         accompaniment_system.play_beat(melody, chord, tempo, current_beat)
