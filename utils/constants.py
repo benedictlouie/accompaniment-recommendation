@@ -123,6 +123,10 @@ KEYBOARD_MAP = {
     'p': 'D#5', ';': 'E5', "'": 'F5'
 }
 NOTE_TO_KEYBOARD = {v: k for k, v in KEYBOARD_MAP.items()}
+KEYBOARD_LABELS = {"C": "a", "C#": "w", "D": "s", "D#": "e", "E": "d",
+                   "F": "f", "F#": "t", "G": "g", "G#": "y", "A": "h", "A#": "u", "B": "j",
+                   "C2": "k", "C#2": "o", "D2": "l", "D#2": "p", "E2": ";", "F2": "'",
+}
 FONT = pygame.font.SysFont(None, 24)
 FONT_BIG = pygame.font.SysFont("Arial", 42)
 FONT_MED = pygame.font.SysFont("Arial", 28)
@@ -163,6 +167,12 @@ NOTE_TO_MIDI = {
     'C#6': 85, 'D6': 86, 'D#6': 87, 'E6': 88, 'F6': 89, 'F#6': 90, 'G6': 91,
     'G#6': 92, 'A6': 93, 'A#6': 94, 'B6': 95
 }
+
+WHITE_KEYS = ['C', 'D', 'E', 'F', 'G', 'A', 'B'] * 2
+BLACK_KEYS = ['C#', 'D#', '', 'F#', 'G#', 'A#', '',
+              'C#', 'D#', '', 'F#', 'G#', 'A#', '']
+pygame.mixer.set_num_channels(len(NOTE_FREQS) + 8)
+NOTE_CHANNELS = {note: pygame.mixer.Channel(i) for i, note in enumerate(NOTE_FREQS)}
 
 NN, DRUMS = joblib.load("data/lpd/drum_nn.joblib")
 _, BASSES = joblib.load("data/lpd/bass_nn.joblib")

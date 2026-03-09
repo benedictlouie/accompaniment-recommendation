@@ -4,7 +4,7 @@ import torch
 import time
 from AR.ar_transformer import TransformerModel
 from AR.inference import generate_chords
-from utils.constants import STEPS_PER_BEAT, NOTE_FREQS, MEMORY, INPUT_DIM, DEVICE, CHORD_TO_TETRAD, NOTE_TO_MIDI, NUM_CLASSES, CHORD_CLASSES, BEATS_PER_BAR, FONT, NOTE_TO_KEYBOARD, CLICK_SOUND, CLICK_SOUND_STRONG, KEYBOARD_MAP, SAMPLE_RATE
+from utils.constants import STEPS_PER_BEAT, NOTE_FREQS, MEMORY, INPUT_DIM, DEVICE, CHORD_TO_TETRAD, NOTE_TO_MIDI, NUM_CLASSES, CHORD_CLASSES, BEATS_PER_BAR, FONT, NOTE_TO_KEYBOARD, CLICK_SOUND, CLICK_SOUND_STRONG, KEYBOARD_MAP, WHITE_KEYS, BLACK_KEYS, SAMPLE_RATE
 
 BPM = 80
 BEAT_DURATION = 60 / BPM
@@ -38,13 +38,10 @@ BLACK = (0, 0, 0)
 GRAY = (50, 50, 50)
 BLUE = (0, 0, 255)
 
-WHITE_KEYS = ['C', 'D', 'E', 'F', 'G', 'A', 'B'] * 2
 WHITE_KEY_WIDTH = WIDTH // len(WHITE_KEYS)
 WHITE_KEY_HEIGHT = HEIGHT
 BLACK_KEY_WIDTH = WHITE_KEY_WIDTH // 2
 BLACK_KEY_HEIGHT = HEIGHT * 0.6
-BLACK_KEYS = ['C#', 'D#', '', 'F#', 'G#', 'A#', '',
-              'C#', 'D#', '', 'F#', 'G#', 'A#', '']
 
 # -----------------------------
 # Note tracking

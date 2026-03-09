@@ -3,7 +3,7 @@ import numpy as np
 import torch
 import time
 from CRF.chord_melody_relation import predict_chords
-from utils.constants import BEATS_PER_BAR, NOTE_FREQS, FIFTHS_CHORD_INDICES, FIFTHS_CHORD_LIST, CHORD_CLASSES, NUM_CLASSES, CHORD_TO_TETRAD, CLICK_SOUND, CLICK_SOUND_STRONG, REVERSE_ROOT_MAP, NOTE_TO_KEYBOARD, FONT, KEYBOARD_MAP, SAMPLE_RATE
+from utils.constants import BEATS_PER_BAR, NOTE_FREQS, FIFTHS_CHORD_INDICES, FIFTHS_CHORD_LIST, CHORD_CLASSES, NUM_CLASSES, CHORD_TO_TETRAD, CLICK_SOUND, CLICK_SOUND_STRONG, REVERSE_ROOT_MAP, NOTE_TO_KEYBOARD, FONT, KEYBOARD_MAP, WHITE_KEYS, BLACK_KEYS,SAMPLE_RATE
 from CRF.crf import key_probs
 
 BPM = 80
@@ -40,12 +40,10 @@ GRAY = (50, 50, 50)
 BLUE = (0, 0, 255)
 
 # Key dimensions
-WHITE_KEYS = ['C', 'D', 'E', 'F', 'G', 'A', 'B'] * 2
 WHITE_KEY_WIDTH = WIDTH // len(WHITE_KEYS)
 WHITE_KEY_HEIGHT = HEIGHT
 BLACK_KEY_WIDTH = WHITE_KEY_WIDTH // 2
 BLACK_KEY_HEIGHT = HEIGHT * 0.6
-BLACK_KEYS = ['C#', 'D#', '', 'F#', 'G#', 'A#', '', 'C#', 'D#', '', 'F#', 'G#', 'A#', '']
 
 # Track notes and times
 notes_pressed = {}  # note -> press_time
