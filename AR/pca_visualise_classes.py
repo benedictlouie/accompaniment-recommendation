@@ -215,8 +215,9 @@ def progressive_pca(model, n_steps=5):
     # ----------------------------
     weights = model.fc_out.weight.detach().cpu().numpy()
 
-    # Stable color assignment (ONLY ONCE)
     num_points = weights.shape[0]
+
+    # Stable colour assignment
     base_colors = np.arange(num_points) % NUM_QUALITIES_ALL
     cmap = plt.cm.get_cmap("tab20", NUM_QUALITIES_ALL)
 
@@ -226,13 +227,16 @@ def progressive_pca(model, n_steps=5):
     current_colors = base_colors.copy()
 
     for step in range(n_steps):
+
         if len(current_weights) < 2:
             print("Too few classes remaining. Stopping.")
             break
 
         print(f"\n--- PCA Step {step + 1} ---")
 
-        # Recompute PCA
+        # ----------------------------
+        # PCA
+        # ----------------------------
         pca = PCA(n_components=2)
         reduced = pca.fit_transform(current_weights)
 
@@ -240,10 +244,13 @@ def progressive_pca(model, n_steps=5):
         y = reduced[:, 1]
 
         # ----------------------------
-        # Plot
+        # Figure + checkbox layout
         # ----------------------------
-        plt.figure(figsize=(8, 7))
-        plt.scatter(
+        fig = plt.figure(figsize=(10, 7))
+        ax = fig.add_axes([0.25, 0.1, 0.7, 0.8])
+        rax = fig.add_axes([0.02, 0.2, 0.18, 0.6])
+
+        scatter = ax.scatter(
             x,
             y,
             c=current_colors,
@@ -253,13 +260,85 @@ def progressive_pca(model, n_steps=5):
             linewidth=0.5,
         )
 
+        # Labels
+        texts = []
         for i, label in enumerate(current_labels):
-            plt.text(x[i], y[i], label, fontsize=8, alpha=0.75)
+            t = ax.text(x[i], y[i], label, fontsize=8, alpha=0.75)
+            texts.append(t)
 
-        plt.title(f"Progressive PCA Step {step + 1}")
-        plt.xlabel("PC1")
-        plt.ylabel("PC2")
-        plt.gca().set_aspect('equal', adjustable='box')
+        ax.set_title(f"Progressive PCA Step {step + 1}")
+        ax.set_xlabel("PC1")
+        ax.set_ylabel("PC2")
+        ax.set_aspect("equal", adjustable="box")
+
+        # ----------------------------
+        # Draw nearest neighbour lines (same colour)
+        # ----------------------------
+        coords = np.stack([x, y], axis=1)
+        lines = []
+
+        for colour in np.unique(current_colors):
+
+            idx = np.where(current_colors == colour)[0]
+
+            if len(idx) < 2:
+                continue
+
+            pts = coords[idx]
+
+            dists = pairwise_distances(pts)
+            np.fill_diagonal(dists, np.inf)
+
+            nearest = np.argsort(dists, axis=1)[:, :2]
+
+            for i, neighbours in enumerate(nearest):
+                for n in neighbours:
+                    p1 = pts[i]
+                    p2 = pts[n]
+
+                    line = ax.plot(
+                        [p1[0], p2[0]],
+                        [p1[1], p2[1]],
+                        color=scatter.cmap(scatter.norm(colour)),
+                        alpha=0.3,
+                        linewidth=1,
+                    )[0]
+
+                    lines.append((line, colour))
+
+        # ----------------------------
+        # Checkboxes
+        # ----------------------------
+        labels = QUALITIES_ALL
+        visibility = [True] * len(labels)
+
+        check = CheckButtons(rax, labels, visibility)
+        for i, text in enumerate(check.labels):
+            text.set_color(cmap(i))
+
+
+        def toggle(label):
+
+            idx = labels.index(label)
+
+            mask = current_colors == idx
+
+            offsets = scatter.get_offsets()
+
+            for i in range(len(offsets)):
+                if current_colors[i] == idx:
+                    visible = not texts[i].get_visible()
+                    texts[i].set_visible(visible)
+
+            # toggle lines
+            for line, colour in lines:
+                if colour == idx:
+                    line.set_visible(not line.get_visible())
+
+            fig.canvas.draw_idle()
+
+        check.on_clicked(toggle)
+
         plt.show()
 
         # ----------------------------
@@ -277,13 +356,11 @@ def progressive_pca(model, n_steps=5):
 
         mask = (x >= xmin) & (x <= xmax)
 
-        # Filter EVERYTHING consistently
         current_weights = current_weights[mask]
         current_labels = current_labels[mask]
         current_colors = current_colors[mask]
 
-        print(f"Remaining classes: {len(current_labels)}")        
-
+        print(f"Remaining classes: {len(current_labels)}")
 # ----------------------------
 # Main
 # ----------------------------

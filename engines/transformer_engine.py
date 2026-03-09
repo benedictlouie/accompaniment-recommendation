@@ -8,7 +8,7 @@ from utils.constants import INPUT_DIM, DEVICE, NUM_CLASSES_ALL, CHORD_CLASSES_AL
 
 class ARTransformerEngine(BaseChordEngine):
 
-    def __init__(self, tempo, checkpoint_path="checkpoints/transformer_model_feb25.pth"):
+    def __init__(self, tempo, checkpoint_path="checkpoints/transformer_model.pth"):
 
         super().__init__(tempo)
 

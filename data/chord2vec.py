@@ -17,7 +17,7 @@ from AR.ar_transformer import MusicDataset
 ########################################
 
 EMBED_DIM = 32
-OUTPUT_DIR = "AR"
+OUTPUT_DIR = "data"
 EMBED_PATH = f"token_embeddings_{EMBED_DIM}d.json"
 TRANSITION_PATH = f"transition_graph.json"
 
@@ -469,7 +469,7 @@ if __name__ == "__main__":
 
     tokens, labels, mod, embeddings = load_embeddings(os.path.join(OUTPUT_DIR, EMBED_PATH))
     coords = compute_pca_3d(embeddings)
-    # plot_embeddings_3d(coords, labels, mod)
+    plot_embeddings_3d(coords, labels, mod)
 
     transitions = load_transitions(os.path.join(OUTPUT_DIR, TRANSITION_PATH))
     plot_transition_graph(transitions, coords, labels)

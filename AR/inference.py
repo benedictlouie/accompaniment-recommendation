@@ -47,7 +47,11 @@ def generate_chords(model, melody, target=None):
         loss = criterion(outputs[:, -1, :], target[:, -1].squeeze(-1))
         print("Final-step Average Cross Entropy:", loss.item())
     
-    print("AR chord sequence:", [str(CHORD_CLASSES_ALL[chord_idx.item()]) for chord_idx in preds[-1, :]])
+    for i in range(len(preds)):
+        if target is not None:
+            print("Actual sequence:\t", [str(CHORD_CLASSES_ALL[chord_idx.item()]) for chord_idx in target[i, -10:].squeeze(-1)])
+        print("Predicted sequence:\t", [str(CHORD_CLASSES_ALL[chord_idx.item()]) for chord_idx in preds[i, -10:]])
+
     print(preds[:, -1].cpu().numpy())
     return preds.cpu().numpy()
 
@@ -57,7 +61,7 @@ if __name__ == "__main__":
     model.load_state_dict(checkpoint)
 
     # example melody
-    song_num = 777
+    song_num = 707
     npz_path = f"data/pop/melody_chords/{song_num:03d}.npz"
     melody, target_chords = break_down_one_song_into_sequences(npz_path, test=True)
     predicted_chords = generate_chords(model, melody, target_chords)
