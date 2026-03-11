@@ -36,6 +36,25 @@ NOTE_CHANNELS = {
 
 NOTE_SOUNDS = SoundGenerator().note_sounds
 
+def play_top_note():
+
+    # stop all notes first
+    for ch in NOTE_CHANNELS.values():
+        ch.stop()
+
+    if not notes_pressed:
+        return
+
+    # choose highest note by frequency
+    highest_note = max(
+        notes_pressed.keys(),
+        key=lambda n: NOTE_FREQS[n]
+    )
+
+    NOTE_CHANNELS[highest_note].play(
+        NOTE_SOUNDS[highest_note],
+        loops=-1
+    )
 
 # --------------------------------------------------
 # MIDI SETUP
@@ -175,7 +194,7 @@ while running:
 
                     notes_pressed[note] = current_time
 
-                    NOTE_CHANNELS[note].play(NOTE_SOUNDS[note],loops=-1)
+                    play_top_note()
 
             elif status == 128 or velocity == 0:
 
@@ -186,6 +205,7 @@ while running:
                     notes_played.append((note, start, current_time))
 
                     NOTE_CHANNELS[note].stop()
+                    play_top_note()
 
     # ---------------- BEAT CLOCK ----------------
 
@@ -338,6 +358,8 @@ while running:
                 # stop all active notes
                 for note in list(notes_pressed):
                     NOTE_CHANNELS[note].stop()
+                    play_top_note()
+
                 notes_pressed.clear()
                 notes_played.clear()
 
@@ -348,6 +370,7 @@ while running:
                 # stop all active notes
                 for note in list(notes_pressed):
                     NOTE_CHANNELS[note].stop()
+                    play_top_note()
                 notes_pressed.clear()
                 notes_played.clear()
 
@@ -362,7 +385,7 @@ while running:
 
                 if note and note not in notes_pressed:
                     notes_pressed[note] = current_time
-                    NOTE_CHANNELS[note].play(NOTE_SOUNDS[note], loops=-1)
+                    play_top_note()
 
         elif event.type == pygame.KEYUP:
             key_name = pygame.key.name(event.key)
@@ -385,6 +408,7 @@ while running:
                     )
 
                     NOTE_CHANNELS[note].stop()
+                    play_top_note()
 
 
 pygame.quit()
