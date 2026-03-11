@@ -1,20 +1,11 @@
+# transcriber_visualiser.py
+
 import time
 import pygame
 import numpy as np
 from transcribe.transcriber import Transcriber
-from utils.constants import STEPS_PER_BEAT, FONT_BIG, FONT_MED, FONT_SMALL, CLICK_SOUND, BLACK, DARK_GRAY, WHITE, GRAY, GREEN, RED
-
-# =============================
-# METRONOME SETTINGS
-# =============================
-
-BPM = 100
-def update_timing():
-    global SECONDS_PER_BEAT, SUBDIV_DURATION
-    SECONDS_PER_BEAT = 60 / BPM
-    SUBDIV_DURATION = SECONDS_PER_BEAT / STEPS_PER_BEAT
-
-update_timing()
+from utils.metronome import Metronome
+from utils.constants import STEPS_PER_BEAT, FONT_BIG, FONT_MED, FONT_SMALL, BLACK, DARK_GRAY, WHITE, GRAY, GREEN, RED
 
 # =============================
 # PYGAME INIT
@@ -23,12 +14,17 @@ pygame.init()
 WIDTH, HEIGHT = 1200, 720
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("16th Note Quantised Pitch Visualiser")
-
 clock = pygame.time.Clock()
 pygame.mixer.init()
 
 # =============================
-# BUTTON CLASS
+# METRONOME
+# =============================
+BPM = 100
+metronome = Metronome(BPM, WIDTH)
+
+# =============================
+# BUTTON CLASS (for UI adjustments)
 # =============================
 class Button:
     def __init__(self, x, y, w, h, text):
@@ -48,7 +44,7 @@ class Button:
         return self.rect.collidepoint(pos)
 
 # =============================
-# CREATE BUTTONS
+# CREATE BUTTONS (OPTIONAL)
 # =============================
 btn_minus = Button(40, 110, 60, 40, "-")
 btn_plus  = Button(110, 110, 60, 40, "+")
@@ -74,9 +70,7 @@ MIDI_RANGE = MIDI_MAX - MIDI_MIN
 # =============================
 # MAIN LOOP
 # =============================
-start_time = time.time()
 subdiv_index = 0
-beat_count = 0
 beat_results = []
 running = True
 
@@ -89,40 +83,41 @@ while running:
         if event.type == pygame.QUIT:
             running = False
 
+        # Handle tempo buttons in the visualiser
         if event.type == pygame.MOUSEBUTTONDOWN:
             if btn_plus.clicked(event.pos):
-                BPM += 5
-                update_timing()
+                metronome.set_tempo(metronome.tempo + 5)
             if btn_minus.clicked(event.pos):
-                BPM = max(20, BPM - 5)
-                update_timing()
+                metronome.set_tempo(max(20, metronome.tempo - 5))
 
-    # ================= METRONOME =================
-    next_tick = start_time + subdiv_index * SUBDIV_DURATION
+            # Also check metronome button clicks
+            metronome.handle_event(event)
 
-    if now >= next_tick:
-        if subdiv_index % STEPS_PER_BEAT == 0:
-            CLICK_SOUND.play()
+    # ================= METRONOME UPDATE =================
+    beat_happened, beat_start_time = metronome.update()
 
-        result = transcriber.capture_16th()
-        beat_results.append(result)
+    if beat_happened:
+        # Play the click sound
+        metronome.click()
+        metronome.advance()
 
-        subdiv_index += 1
+        # Capture 16th note subdivisions
+        for _ in range(STEPS_PER_BEAT):
+            result = transcriber.capture_16th()
+            beat_results.append(result)
 
-        if len(beat_results) == STEPS_PER_BEAT:
-            accurate_results = transcriber.capture_beat_4_16ths()
-            print(f"Beat {beat_count + 1}: {accurate_results}")
-            beat_results = []
-            beat_count += 1
+        # After one beat (4 16ths), print results
+        accurate_results = transcriber.capture_beat_4_16ths()
+        print(f"Beat {metronome.current_beat}: {accurate_results}")
+        beat_results = []
 
-    # ================= PANELS =================
+    # ================= DRAW PANELS =================
     pygame.draw.rect(screen, DARK_GRAY, (20, 20, WIDTH - 40, 170), border_radius=12)
     pygame.draw.rect(screen, DARK_GRAY, (20, 210, WIDTH - 40, 180), border_radius=12)
     pygame.draw.rect(screen, DARK_GRAY, (20, 410, WIDTH - 40, 280), border_radius=12)
 
     # ================= CURRENT NOTE =================
     current_midi = None
-
     if (transcriber.current_pitch and
         transcriber.current_amplitude > transcriber.VOLUME_THRESHOLD):
 
@@ -132,14 +127,11 @@ while running:
         text = FONT_BIG.render(note_name, True, WHITE)
         screen.blit(text, (
             WIDTH // 2 - text.get_width() // 2,
-            60
+            130
         ))
 
-    # ================= BPM =================
-    bpm_text = FONT_MED.render(f"BPM: {BPM}", True, GRAY)
-    screen.blit(bpm_text, (40, 60))
-    btn_minus.draw(screen)
-    btn_plus.draw(screen)
+    # ================= METRONOME DRAW =================
+    metronome.draw(screen, 80)
 
     # ================= WAVEFORM =================
     if len(transcriber.waveform_buffer) > 1:
@@ -165,10 +157,8 @@ while running:
 
     for x in range(transcriber.SPEC_WIDTH):
         for y in range(transcriber.SPEC_HEIGHT):
-
             intensity = transcriber.spectrogram[y, x] / max_val
             if intensity > 0.03:
-
                 color = (
                     int(255 * intensity),
                     int(150 * intensity),
@@ -188,7 +178,6 @@ while running:
 
     # ================= MIDI GRID =================
     for midi in range(MIDI_MIN, MIDI_MAX + 1):
-
         relative = (midi - MIDI_MIN) / MIDI_RANGE
         y_pos = SPEC_Y + SPEC_H - (relative * SPEC_H)
 
@@ -199,8 +188,7 @@ while running:
 
             label = FONT_SMALL.render(
                 transcriber.midi_to_note_name(midi),
-                True,
-                (210,210,210)
+                True, (210,210,210)
             )
             screen.blit(label, (SPEC_X-60, y_pos - 8))
         else:
@@ -210,7 +198,6 @@ while running:
 
     # ================= CURRENT NOTE HIGHLIGHT =================
     if current_midi and MIDI_MIN <= current_midi <= MIDI_MAX:
-
         relative = (current_midi - MIDI_MIN) / MIDI_RANGE
         y_pos = SPEC_Y + SPEC_H - (relative * SPEC_H)
 
