@@ -107,11 +107,8 @@ class Transcriber:
     def capture_16th(self):
         """
         Called by main clock every 16th note.
-        Updates spectrogram + returns captured value.
+        Only returns note info — does NOT update spectrogram.
         """
-
-        self.spectrogram = np.roll(self.spectrogram, -1, axis=1)
-        self.spectrogram[:, -1] = 0
 
         if self.current_amplitude < self.VOLUME_THRESHOLD:
             return "quiet"
@@ -121,31 +118,35 @@ class Transcriber:
 
         midi = self.hz_to_midi(self.current_pitch)
 
-        if self.MIDI_MIN <= midi <= self.MIDI_MAX:
-            row = self.MIDI_MAX - midi
-            self.spectrogram[row, -1] = 1
-
         return self.midi_to_note_name(midi)
 
+
     # =============================
-    # NEW OFFLINE WHOLE-BEAT METHOD
+    # OFFLINE WHOLE-BEAT METHOD
     # =============================
     def capture_beat_4_16ths(self):
         """
         Called once per beat.
         Processes entire beat audio using librosa.pyin
         and returns 4 MIDI values (one per 16th).
+        Always updates spectrogram for each 16th slice,
+        even if quiet or no pitch.
         """
 
         if len(self.beat_audio_buffer) == 0:
+            # Still roll spectrogram for 4 empty slices
+            for _ in range(4):
+                self.spectrogram = np.roll(self.spectrogram, -1, axis=1)
+                self.spectrogram[:, -1] = 0
             return ["quiet"] * 4
 
         audio = np.array(self.beat_audio_buffer)
-
-        # Clear immediately for next beat
-        self.beat_audio_buffer = []
+        self.beat_audio_buffer = []  # Clear immediately for next beat
 
         if np.sqrt(np.mean(audio ** 2)) < self.VOLUME_THRESHOLD:
+            for _ in range(4):
+                self.spectrogram = np.roll(self.spectrogram, -1, axis=1)
+                self.spectrogram[:, -1] = 0
             return ["quiet"] * 4
 
         # Run full pyin on whole beat
@@ -159,6 +160,9 @@ class Transcriber:
         )
 
         if f0 is None:
+            for _ in range(4):
+                self.spectrogram = np.roll(self.spectrogram, -1, axis=1)
+                self.spectrogram[:, -1] = 0
             return ["no pitch"] * 4
 
         midi_track = []
@@ -169,15 +173,13 @@ class Transcriber:
                 midi_track.append(None)
 
         midi_track = np.array(midi_track, dtype=object)
-
         slices = np.array_split(midi_track, 4)
 
         results = []
 
         for slice_midis in slices:
-
             self.spectrogram = np.roll(self.spectrogram, -1, axis=1)
-            self.spectrogram[:, -1] = 0
+            self.spectrogram[:, -1] = 0  # always zero out last column first
 
             valid = [m for m in slice_midis if m is not None]
 
@@ -194,7 +196,6 @@ class Transcriber:
             results.append(self.midi_to_note_name(midi))
 
         return results
-
     # =============================
     # STREAM CONTROL
     # =============================

@@ -1,213 +1,351 @@
-# transcriber_visualiser.py
-
 import time
 import pygame
 import numpy as np
 from transcribe.transcriber import Transcriber
 from utils.metronome import Metronome
-from utils.constants import STEPS_PER_BEAT, FONT_BIG, FONT_MED, FONT_SMALL, BLACK, DARK_GRAY, WHITE, GRAY, GREEN, RED
+from utils.constants import STEPS_PER_BEAT, BEATS_PER_BAR, FONT_BIG, FONT_SMALL, BLACK, DARK_GRAY, WHITE, GRAY, GREEN, RED
 
-# =============================
-# PYGAME INIT
-# =============================
-pygame.init()
-WIDTH, HEIGHT = 1200, 720
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("16th Note Quantised Pitch Visualiser")
-clock = pygame.time.Clock()
-pygame.mixer.init()
 
-# =============================
-# METRONOME
-# =============================
-BPM = 100
-metronome = Metronome(BPM, WIDTH)
+class TranscriberVisualiser:
 
-# =============================
-# BUTTON CLASS (for UI adjustments)
-# =============================
-class Button:
-    def __init__(self, x, y, w, h, text):
-        self.rect = pygame.Rect(x, y, w, h)
-        self.text = text
+    def __init__(self, transcriber, width, height):
 
-    def draw(self, surface):
-        pygame.draw.rect(surface, DARK_GRAY, self.rect, border_radius=8)
-        pygame.draw.rect(surface, RED, self.rect, 2, border_radius=8)
-        label = FONT_MED.render(self.text, True, WHITE)
-        surface.blit(label, (
-            self.rect.centerx - label.get_width() // 2,
-            self.rect.centery - label.get_height() // 2
-        ))
+        self.transcriber = transcriber
+        self.WIDTH = width
+        self.HEIGHT = height
 
-    def clicked(self, pos):
-        return self.rect.collidepoint(pos)
+        # =============================
+        # SPECTROGRAM SETTINGS
+        # =============================
 
-# =============================
-# CREATE BUTTONS (OPTIONAL)
-# =============================
-btn_minus = Button(40, 110, 60, 40, "-")
-btn_plus  = Button(110, 110, 60, 40, "+")
+        self.SPEC_X = 120
+        self.SPEC_Y = 430
+        self.SPEC_W = width - 180
+        self.SPEC_H = 250
 
-# =============================
-# CREATE TRANSCRIBER
-# =============================
-transcriber = Transcriber()
-transcriber.start()
+        # =============================
+        # MIDI GRID
+        # =============================
 
-# =============================
-# SPECTROGRAM SETTINGS
-# =============================
-SPEC_X = 120
-SPEC_Y = 430
-SPEC_W = WIDTH - 180
-SPEC_H = 250
+        self.MIDI_MIN = 36
+        self.MIDI_MAX = 96
+        self.MIDI_RANGE = self.MIDI_MAX - self.MIDI_MIN
 
-MIDI_MIN = 36
-MIDI_MAX = 96
-MIDI_RANGE = MIDI_MAX - MIDI_MIN
+        # =============================
+        # BEAT LINES
+        # =============================
 
-# =============================
-# MAIN LOOP
-# =============================
-subdiv_index = 0
-beat_results = []
-running = True
+        self.beat_line_positions = []
 
-while running:
-    screen.fill(BLACK)
-    now = time.time()
+    # ==========================================================
+    # UPDATE
+    # ==========================================================
 
-    # ================= EVENTS =================
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
+    def update(self, beat_happened, current_beat):
 
-        # Handle tempo buttons in the visualiser
-        if event.type == pygame.MOUSEBUTTONDOWN:
-            if btn_plus.clicked(event.pos):
-                metronome.set_tempo(metronome.tempo + 5)
-            if btn_minus.clicked(event.pos):
-                metronome.set_tempo(max(20, metronome.tempo - 5))
+        col_width = self.SPEC_W / self.transcriber.SPEC_WIDTH
+        shift_amount = col_width * STEPS_PER_BEAT
 
-            # Also check metronome button clicks
-            metronome.handle_event(event)
+        if beat_happened:
 
-    # ================= METRONOME UPDATE =================
-    beat_happened, beat_start_time = metronome.update()
+            self.beat_line_positions = [
+                x - shift_amount
+                for x in self.beat_line_positions
+                if x >= self.SPEC_X
+            ]
 
-    if beat_happened:
-        # Play the click sound
-        metronome.click()
-        metronome.advance()
+            if current_beat % BEATS_PER_BAR == 1:
+                self.beat_line_positions.append(
+                    self.SPEC_X + self.SPEC_W
+                )
 
-        # Capture 16th note subdivisions
-        for _ in range(STEPS_PER_BEAT):
-            result = transcriber.capture_16th()
-            beat_results.append(result)
+    # ==========================================================
+    # DRAW
+    # ==========================================================
 
-        # After one beat (4 16ths), print results
-        accurate_results = transcriber.capture_beat_4_16ths()
-        print(f"Beat {metronome.current_beat}: {accurate_results}")
-        beat_results = []
+    def draw(self, screen):
 
-    # ================= DRAW PANELS =================
-    pygame.draw.rect(screen, DARK_GRAY, (20, 20, WIDTH - 40, 170), border_radius=12)
-    pygame.draw.rect(screen, DARK_GRAY, (20, 210, WIDTH - 40, 180), border_radius=12)
-    pygame.draw.rect(screen, DARK_GRAY, (20, 410, WIDTH - 40, 280), border_radius=12)
+        self.draw_current_note(screen)
+        self.draw_waveform(screen)
+        self.draw_spectrogram(screen)
+        self.draw_midi_grid(screen)
+        self.draw_current_pitch(screen)
+        self.draw_beat_lines(screen)
 
-    # ================= CURRENT NOTE =================
-    current_midi = None
-    if (transcriber.current_pitch and
-        transcriber.current_amplitude > transcriber.VOLUME_THRESHOLD):
+    # ==========================================================
+    # CURRENT NOTE
+    # ==========================================================
 
-        current_midi = int(transcriber.hz_to_midi(transcriber.current_pitch))
-        note_name = transcriber.midi_to_note_name(current_midi)
+    def draw_current_note(self, screen):
 
-        text = FONT_BIG.render(note_name, True, WHITE)
-        screen.blit(text, (
-            WIDTH // 2 - text.get_width() // 2,
-            130
-        ))
+        if (
+            self.transcriber.current_pitch
+            and self.transcriber.current_amplitude
+            > self.transcriber.VOLUME_THRESHOLD
+        ):
 
-    # ================= METRONOME DRAW =================
-    metronome.draw(screen, 80)
+            midi = int(
+                self.transcriber.hz_to_midi(
+                    self.transcriber.current_pitch
+                )
+            )
 
-    # ================= WAVEFORM =================
-    if len(transcriber.waveform_buffer) > 1:
-        data = np.array(transcriber.waveform_buffer)
+            note_name = self.transcriber.midi_to_note_name(midi)
+
+            text = FONT_BIG.render(note_name, True, WHITE)
+
+            screen.blit(
+                text,
+                (
+                    self.WIDTH // 2 - text.get_width() // 2,
+                    130,
+                ),
+            )
+
+    # ==========================================================
+    # WAVEFORM
+    # ==========================================================
+
+    def draw_waveform(self, screen):
+
+        if len(self.transcriber.waveform_buffer) <= 1:
+            return
+
+        data = np.array(self.transcriber.waveform_buffer)
         data = data / (np.max(np.abs(data)) + 1e-6)
 
         mid = 300
-        scale_x = (WIDTH - 60) / len(data)
+        scale_x = (self.WIDTH - 60) / len(data)
         scale_y = 70
 
-        points = [(30 + i * scale_x, mid - sample * scale_y)
-                  for i, sample in enumerate(data)]
+        points = [
+            (30 + i * scale_x, mid - sample * scale_y)
+            for i, sample in enumerate(data)
+        ]
 
         pygame.draw.lines(screen, GREEN, False, points, 2)
 
-    # ================= SPECTROGRAM =================
-    pygame.draw.rect(screen, (22,22,22), (SPEC_X-70, SPEC_Y, 70, SPEC_H))
-    pygame.draw.rect(screen, (40,40,40), (SPEC_X, SPEC_Y, SPEC_W, SPEC_H))
+    # ==========================================================
+    # SPECTROGRAM
+    # ==========================================================
 
-    col_width = SPEC_W / transcriber.SPEC_WIDTH
-    row_height = SPEC_H / transcriber.SPEC_HEIGHT
-    max_val = np.max(transcriber.spectrogram) + 1e-6
+    def draw_spectrogram(self, screen):
 
-    for x in range(transcriber.SPEC_WIDTH):
-        for y in range(transcriber.SPEC_HEIGHT):
-            intensity = transcriber.spectrogram[y, x] / max_val
-            if intensity > 0.03:
-                color = (
-                    int(255 * intensity),
-                    int(150 * intensity),
-                    int(40 * intensity)
+        pygame.draw.rect(
+            screen,
+            DARK_GRAY,
+            (self.SPEC_X, self.SPEC_Y, self.SPEC_W, self.SPEC_H),
+        )
+
+        col_width = self.SPEC_W / self.transcriber.SPEC_WIDTH
+        row_height = self.SPEC_H / self.transcriber.SPEC_HEIGHT
+
+        max_val = np.max(self.transcriber.spectrogram) + 1e-6
+
+        for x in range(self.transcriber.SPEC_WIDTH):
+
+            for y in range(self.transcriber.SPEC_HEIGHT):
+
+                intensity = (
+                    self.transcriber.spectrogram[y, x] / max_val
                 )
-                relative = y / transcriber.SPEC_HEIGHT
-                draw_y = SPEC_Y + (relative + (1/transcriber.SPEC_HEIGHT)) * SPEC_H
+
+                if intensity < 0.03:
+                    continue
+
+                color = [i * intensity for i in RED]
+
+                relative = y / self.transcriber.SPEC_HEIGHT
+
+                draw_y = self.SPEC_Y + (
+                    relative + (1 / self.transcriber.SPEC_HEIGHT)
+                ) * self.SPEC_H
 
                 rect = pygame.Rect(
-                    SPEC_X + x * col_width,
+                    self.SPEC_X + x * col_width,
                     draw_y,
                     col_width,
-                    row_height
+                    row_height,
                 )
 
                 pygame.draw.rect(screen, color, rect)
 
-    # ================= MIDI GRID =================
-    for midi in range(MIDI_MIN, MIDI_MAX + 1):
-        relative = (midi - MIDI_MIN) / MIDI_RANGE
-        y_pos = SPEC_Y + SPEC_H - (relative * SPEC_H)
+    # ==========================================================
+    # MIDI GRID
+    # ==========================================================
 
-        if midi % 12 == 0:
-            pygame.draw.line(screen, GRAY,
-                             (SPEC_X-5, y_pos),
-                             (SPEC_X + SPEC_W, y_pos), 2)
+    def draw_midi_grid(self, screen):
 
-            label = FONT_SMALL.render(
-                transcriber.midi_to_note_name(midi),
-                True, (210,210,210)
+        for midi in range(self.MIDI_MIN, self.MIDI_MAX + 1):
+
+            relative = (midi - self.MIDI_MIN) / self.MIDI_RANGE
+
+            y_pos = self.SPEC_Y + self.SPEC_H - (relative * self.SPEC_H)
+
+            if midi % 12 == 0:
+
+                pygame.draw.line(
+                    screen,
+                    GRAY,
+                    (self.SPEC_X - 5, y_pos),
+                    (self.SPEC_X + self.SPEC_W, y_pos),
+                    2,
+                )
+
+                label = FONT_SMALL.render(
+                    self.transcriber.midi_to_note_name(midi),
+                    True,
+                    WHITE,
+                )
+
+                screen.blit(label, (self.SPEC_X - 60, y_pos - 8))
+
+            else:
+
+                pygame.draw.line(
+                    screen,
+                    DARK_GRAY,
+                    (self.SPEC_X, y_pos),
+                    (self.SPEC_X + self.SPEC_W, y_pos),
+                    1,
+                )
+
+    # ==========================================================
+    # CURRENT PITCH LINE
+    # ==========================================================
+
+    def draw_current_pitch(self, screen):
+
+        if (
+            not self.transcriber.current_pitch
+            or self.transcriber.current_amplitude
+            < self.transcriber.VOLUME_THRESHOLD
+        ):
+            return
+
+        midi = int(
+            self.transcriber.hz_to_midi(
+                self.transcriber.current_pitch
             )
-            screen.blit(label, (SPEC_X-60, y_pos - 8))
-        else:
-            pygame.draw.line(screen, DARK_GRAY,
-                             (SPEC_X, y_pos),
-                             (SPEC_X + SPEC_W, y_pos), 1)
+        )
 
-    # ================= CURRENT NOTE HIGHLIGHT =================
-    if current_midi and MIDI_MIN <= current_midi <= MIDI_MAX:
-        relative = (current_midi - MIDI_MIN) / MIDI_RANGE
-        y_pos = SPEC_Y + SPEC_H - (relative * SPEC_H)
+        if not (self.MIDI_MIN <= midi <= self.MIDI_MAX):
+            return
 
-        pygame.draw.line(screen, (0,255,180),
-                         (SPEC_X, y_pos),
-                         (SPEC_X + SPEC_W, y_pos), 3)
+        relative = (midi - self.MIDI_MIN) / self.MIDI_RANGE
 
-    pygame.display.flip()
-    clock.tick(60)
+        y_pos = self.SPEC_Y + self.SPEC_H - (relative * self.SPEC_H)
 
-# ================= CLEANUP =================
-transcriber.stop()
-pygame.quit()
+        pygame.draw.line(
+            screen,
+            GREEN,
+            (self.SPEC_X, y_pos),
+            (self.SPEC_X + self.SPEC_W, y_pos),
+            3,
+        )
+
+    # ==========================================================
+    # BEAT LINES
+    # ==========================================================
+
+    def draw_beat_lines(self, screen):
+
+        for x in self.beat_line_positions:
+
+            pygame.draw.rect(
+                screen,
+                GRAY,
+                (x, self.SPEC_Y, 1, self.SPEC_H),
+            )
+
+
+# ==============================================================
+# STANDALONE TEST LOOP (your original visualiser)
+# ==============================================================
+
+if __name__ == "__main__":
+
+    pygame.init()
+
+    WIDTH, HEIGHT = 1200, 720
+    screen = pygame.display.set_mode((WIDTH, HEIGHT))
+
+    pygame.display.set_caption("16th Note Quantised Pitch Visualiser")
+
+    clock = pygame.time.Clock()
+
+    BPM = 100
+
+    transcriber = Transcriber()
+    transcriber.start()
+
+    metronome = Metronome(BPM, WIDTH)
+
+    visualiser = TranscriberVisualiser(
+        transcriber,
+        WIDTH,
+        HEIGHT
+    )
+
+    running = True
+
+    while running:
+
+        screen.fill(BLACK)
+
+        beat_happened, beat_start_time = metronome.update()
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+
+        if beat_happened:
+
+            metronome.click()
+            metronome.advance()
+
+            for _ in range(STEPS_PER_BEAT):
+                transcriber.capture_16th()
+
+            accurate_results = transcriber.capture_beat_4_16ths()
+
+            print(
+                f"Beat {metronome.current_beat}:",
+                accurate_results
+            )
+
+        visualiser.update(
+            beat_happened,
+            metronome.current_beat
+        )
+
+        pygame.draw.rect(
+            screen,
+            DARK_GRAY,
+            (20, 20, WIDTH - 40, 170),
+            border_radius=12,
+        )
+
+        pygame.draw.rect(
+            screen,
+            DARK_GRAY,
+            (20, 210, WIDTH - 40, 180),
+            border_radius=12,
+        )
+
+        pygame.draw.rect(
+            screen,
+            DARK_GRAY,
+            (20, 410, WIDTH - 40, 280),
+            border_radius=12,
+        )
+
+        metronome.draw(screen, 80)
+
+        visualiser.draw(screen)
+
+        pygame.display.flip()
+        clock.tick(60)
+
+    transcriber.stop()
+    pygame.quit()
