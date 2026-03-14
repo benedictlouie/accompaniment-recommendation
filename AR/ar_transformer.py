@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import random
 import numpy as np
 import os
 from torch.utils.tensorboard import SummaryWriter
@@ -47,7 +48,7 @@ class TransformerModel(nn.Module):
         # Weight tying
         self.fc_out.weight = self.embedding_output.weight
 
-    def forward(self, input_seq, target_seq=None):
+    def forward(self, input_seq, target_seq=None, use_teacher=False):
         B = input_seq.size(0)
         device = input_seq.device
 
@@ -57,6 +58,19 @@ class TransformerModel(nn.Module):
                 torch.where(input_seq > 10, input_seq % 12, input_seq)
             ) + self.pos_encoder
         )
+        
+        if target_seq is not None and use_teacher:
+            target_seq = target_seq.squeeze(-1)
+            # Shift target_seq for decoder input
+            # decoder_input = first MAX_LEN tokens except last
+            tgt_input = target_seq[:, :-1]                      # [B, MAX_LEN-1]
+            tgt_emb = self.embedding_output(tgt_input)          # [B, MAX_LEN-1, d_model]
+            dummy_start = torch.zeros(B, 1, self.d_model, device=device)
+            tgt_emb = torch.cat([dummy_start, tgt_emb], dim=1)  # [B, MAX_LEN, d_model]
+            out = self.decoder(tgt=tgt_emb, memory=memory)      # [B, MAX_LEN, d_model]
+            logits = self.fc_out(out)                           # [B, MAX_LEN, OUTPUT_DIM]
+            return logits
+    
 
         # We need ONE starting state. We can use'dummy' zeros to get the first logit.
         output_logits = torch.zeros(B, MAX_LEN, OUTPUT_DIM, device=device)
@@ -109,7 +123,10 @@ def train(model, train_loader, val_loader, optimizer, num_epochs=10):
             input_seq, target_seq = input_seq.to(DEVICE), target_seq.to(DEVICE)
             optimizer.zero_grad()
 
-            output = model(input_seq, target_seq)  # [B, MAX_LEN, OUTPUT_DIM]
+            step = epoch * len(train_loader) + i
+            teacher_forcing_ratio = max(0.1, 1 - step / 500000)
+            use_teacher = random.random() < teacher_forcing_ratio
+            output = model(input_seq, target_seq, use_teacher)     # [B, MAX_LEN, OUTPUT_DIM]
 
             # Flatten for loss
             logits = output.view(-1, OUTPUT_DIM)         # [B*MAX_LEN, OUTPUT_DIM]
