@@ -11,3 +11,4 @@ python-rtmidi
 sounddevice
 liveaudio
 pypianoroll
+pyfluidsynth

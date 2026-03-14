@@ -1,8 +1,8 @@
 import numpy as np
 import torch
 import pygame
+import os
 import joblib
-import fluidsynth
 
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -196,7 +196,15 @@ BLACK_KEYS = ['C#', 'D#', '', 'F#', 'G#', 'A#', '',
 pygame.mixer.set_num_channels(len(NOTE_FREQS) + 8)
 NOTE_CHANNELS = {note: pygame.mixer.Channel(i) for i, note in enumerate(NOTE_FREQS)}
 
-NN, DRUMS = joblib.load("data/lpd/drum_nn.joblib")
-_, BASSES = joblib.load("data/lpd/bass_nn.joblib")
-_, GUITARS = joblib.load("data/lpd/guitar_nn.joblib")
-_, PIANOS = joblib.load("data/lpd/piano_nn.joblib")
+def safe_load(path):
+    if os.path.exists(path):
+        return joblib.load(path)
+    else:
+        print(f"Warning: {path} not found.")
+        return (None, None)
+
+NN, DRUMS = safe_load("data/lpd/drum_nn.joblib")
+_, BASSES = safe_load("data/lpd/bass_nn.joblib")
+_, GUITARS = safe_load("data/lpd/guitar_nn.joblib")
+_, PIANOS = safe_load("data/lpd/piano_nn.joblib")
+
