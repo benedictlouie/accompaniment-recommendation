@@ -260,6 +260,9 @@ while running:
 
         if event.type == pygame.QUIT:
             running = False
+        if metronome.handle_event(event):
+            tempo = metronome.tempo
+            engine.set_tempo(tempo)
 
     pygame.display.flip()
 
