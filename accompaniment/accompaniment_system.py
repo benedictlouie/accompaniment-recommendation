@@ -4,7 +4,7 @@ import pygame
 import time
 import fluidsynth
 import threading
-from utils.constants import CHORD_TO_TETRAD, NOTE_FREQS, STEPS_PER_BAR, STEPS_PER_BEAT, SAMPLE_RATE, BEATS_PER_BAR
+from utils.constants import CHORD_TO_TETRAD, NOTE_FREQS, STEPS_PER_BAR, STEPS_PER_BEAT, SAMPLE_RATE, BEATS_PER_BAR, QUALITY_SIMPLIFIER_REVERSE, EXTENSION_INTERVALS, TEMPERATURE
 from accompaniment.nn import get_all_loops
 
 # --------------------------------------------------
@@ -132,6 +132,21 @@ class HarmonyPlayer:
             "bass": set(),
         }
 
+    def extend_chord(self, chord_name):
+        chord = CHORD_TO_TETRAD[chord_name].copy()
+        if chord_name == "N":
+            return chord
+        _, quality = chord_name.split(":")
+        probs = QUALITY_SIMPLIFIER_REVERSE.get(quality)
+        if not probs:
+            return chord
+        ext = random.choices(list(probs.keys()), weights=list(probs.values()), k=1)[0]
+        root = chord[0]
+        if ext != 'none':
+            print(f"{chord_name.split(':')[0]}:{ext}")
+        chord += [root + i for i in EXTENSION_INTERVALS.get(ext, [])]
+        return chord
+
     # --------------------------------------------------
     # SIMPLE GUITAR HARMONY
     # --------------------------------------------------
@@ -174,8 +189,15 @@ class HarmonyPlayer:
         best_dist = 1e9
 
         for octave in (-12, 0, 12):
+            
+            if octave == 12 and len(chord) > 4:
+                continue
 
-            for n in chord:
+            chord_notes = chord
+            if octave == -12:
+                chord_notes = chord[:4]
+
+            for n in chord_notes:
 
                 candidate = n + octave
                 d = abs(candidate - target)
@@ -204,6 +226,7 @@ class HarmonyPlayer:
         velocity = {"guitar":85, "piano":100, "bass":127}[instrument]
 
         if instrument == "piano":
+            chord = self.extend_chord(chord_name)
             chord = [n+12 for n in chord]
 
         seconds_per_beat = 60.0 / bpm
