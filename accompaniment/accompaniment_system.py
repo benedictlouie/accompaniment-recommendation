@@ -51,7 +51,7 @@ class SoundGenerator:
         pygame.init()
 
         self.note_sounds = {
-            note: self.generate_note_sound(freq * 2)
+            note: self.generate_note_sound(freq * 2, 60)
             for note, freq in NOTE_FREQS.items()
         }
 

@@ -27,7 +27,7 @@ def load_model(model_path, input_dim, output_dim):
     return model
 
 # ----------------------------
-# PCA + 3D Plot
+# PCA + Plots
 # ----------------------------
 
 def visualize_class_weights_3d(model):
@@ -129,10 +129,6 @@ def visualize_class_weights_3d(model):
 
     plt.show()
 
-# ----------------------------
-# PCA + 2D Plot (PC2 vs PC3, color = PC1)
-# ----------------------------
-
 def visualize_class_weights_2d(model):
     weights = model.fc_out.weight.detach().cpu().numpy()
 
@@ -143,36 +139,96 @@ def visualize_class_weights_2d(model):
     pc2 = reduced[:, 1]
     pc3 = reduced[:, 2]
 
-    # Convert (PC2, PC3) → phase angle
-    phase = np.arctan2(pc3, pc2)   # range: [-pi, pi]
-
-    # Optional: radius (strength of harmonic structure)
+    phase = np.arctan2(pc3, pc2)
     radius = np.sqrt(pc2**2 + pc3**2)
 
-    plt.figure(figsize=(10, 8))
+    qualities = np.arange(len(pc1)) % NUM_QUALITIES_ALL
 
-    scatter = plt.scatter(pc1, phase, c=radius, cmap="viridis", s=80)
+    fig, ax = plt.subplots(figsize=(10, 8))
 
-    cbar = plt.colorbar(scatter)
+    cmap = plt.cm.get_cmap("tab20", NUM_QUALITIES_ALL)
+
+    group_artists = []
+
+    for q in range(NUM_QUALITIES_ALL):
+        idxs = np.where(qualities == q)[0]
+
+        xg = pc1[idxs]
+        yg = phase[idxs]
+        rg = radius[idxs]
+
+        # scatter (color = radius)
+        scatter = ax.scatter(xg, yg, c=rg, cmap="viridis", s=80)
+
+        # labels
+        texts = []
+        for i in idxs:
+            t = ax.text(pc1[i], phase[i], CHORD_CLASSES_ALL[i], fontsize=8)
+            texts.append(t)
+
+        # nearest neighbour lines
+        pts = np.stack([xg, yg], axis=1)
+        dists = pairwise_distances(pts)
+
+        lines = []
+        for i in range(len(idxs)):
+            order = np.argsort(dists[i])[1:3]
+
+            for j in order:
+                line, = ax.plot(
+                    [xg[i], xg[j]],
+                    [yg[i], yg[j]],
+                    color=cmap(q),
+                    alpha=0.5,
+                    linewidth=1
+                )
+                lines.append(line)
+
+        group_artists.append((scatter, texts, lines))
+
+    # colorbar (global)
+    cbar = plt.colorbar(group_artists[0][0], ax=ax)
     cbar.set_label("Radius (sqrt(PC2² + PC3²))")
 
-    for i in range(NUM_CLASSES_ALL):
-        plt.text(pc1[i], phase[i], CHORD_CLASSES_ALL[i], fontsize=8)
+    ax.set_title("PC1 vs Phase(PC2, PC3)")
+    ax.set_xlabel("PC1")
+    ax.set_ylabel("Phase (radians)")
+    ax.grid(True)
 
-    plt.title("PC1 vs Phase(PC2, PC3)")
-    plt.xlabel("PC1")
-    plt.ylabel("Phase (radians)")
-    plt.grid(True)
+    # checkbox UI
+    rax = plt.axes([0.02, 0.4, 0.15, 0.4])
+
+    labels = [QUALITIES_ALL[i] for i in range(NUM_QUALITIES_ALL)]
+    visibility = [True] * NUM_QUALITIES_ALL
+
+    check = CheckButtons(rax, labels, visibility)
+
+    for i, text in enumerate(check.labels):
+        text.set_color(cmap(i))
+
+    def toggle(label):
+        idx = labels.index(label)
+        scatter, texts, lines = group_artists[idx]
+
+        visible = not scatter.get_visible()
+
+        scatter.set_visible(visible)
+        for t in texts:
+            t.set_visible(visible)
+        for l in lines:
+            l.set_visible(visible)
+
+        plt.draw()
+
+    check.on_clicked(toggle)
+
     plt.tight_layout()
     plt.show()
 
 def visualize_class_weights_4d(model):
-    
-    # Extract weights
     weights = model.fc_out.weight.detach().cpu().numpy()
     print("Weight matrix shape:", weights.shape)
 
-    # PCA → 6D
     pca = PCA(n_components=6)
     reduced = pca.fit_transform(weights)
     print("Explained variance ratio:", pca.explained_variance_ratio_)
@@ -182,30 +238,92 @@ def visualize_class_weights_4d(model):
     pc3 = reduced[:, 2]
     pc4 = reduced[:, 3]
 
-    # Cylindrical transform
     r = np.sqrt(pc3**2 + pc4**2)
-    theta = np.arctan2(pc4, pc3)   # phase in [-π, π]
+    theta = np.arctan2(pc4, pc3)
     percentiles = np.argsort(np.argsort(r)) / (len(r) - 1)
 
-    # 3D Plot
+    qualities = np.arange(len(pc1)) % NUM_QUALITIES_ALL
+
     fig = plt.figure(figsize=(18, 16), dpi=150)
     ax = fig.add_subplot(111, projection='3d')
 
-    sc = ax.scatter(pc1, pc2, theta, c=percentiles, cmap="viridis", s=20, alpha=0.9)
-    ax.set_box_aspect([1,1,0.8])
-    fig.subplots_adjust(left=0.05, right=0.85, top=0.95, bottom=0.05)
+    cmap = plt.cm.get_cmap("tab20", NUM_QUALITIES_ALL)
 
-    cbar = plt.colorbar(sc, shrink=0.7, pad=0.1)
+    group_artists = []
+
+    for q in range(NUM_QUALITIES_ALL):
+        idxs = np.where(qualities == q)[0]
+
+        xg = pc1[idxs]
+        yg = pc2[idxs]
+        zg = theta[idxs]
+        rg = percentiles[idxs]
+
+        scatter = ax.scatter(xg, yg, zg, c=rg, cmap="viridis", s=20, alpha=0.9)
+
+        # labels
+        texts = []
+        for i in idxs:
+            t = ax.text(pc1[i], pc2[i], theta[i], CHORD_CLASSES_ALL[i], size=4)
+            texts.append(t)
+
+        # nearest neighbour lines
+        pts = np.stack([xg, yg, zg], axis=1)
+        dists = pairwise_distances(pts)
+
+        lines = []
+        for i in range(len(idxs)):
+            order = np.argsort(dists[i])[1:3]
+
+            for j in order:
+                line, = ax.plot(
+                    [xg[i], xg[j]],
+                    [yg[i], yg[j]],
+                    [zg[i], zg[j]],
+                    color=cmap(q),
+                    alpha=0.5,
+                    linewidth=1
+                )
+                lines.append(line)
+
+        group_artists.append((scatter, texts, lines))
+
+    # colorbar
+    cbar = plt.colorbar(group_artists[0][0], ax=ax, shrink=0.7, pad=0.1)
     cbar.set_label("Percentile of Radius √(PC3² + PC4²)")
-
-    # Labels (optional — remove if cluttered)
-    for i in range(NUM_CLASSES_ALL):
-        ax.text(pc1[i], pc2[i], theta[i], CHORD_CLASSES_ALL[i], size=4)
 
     ax.set_title("Chord Embedding", fontsize=14)
     ax.set_xlabel("PC1")
     ax.set_ylabel("PC2")
     ax.set_zlabel("Phase θ (PC3/PC4)")
+
+    # checkbox UI
+    rax = plt.axes([0.02, 0.4, 0.15, 0.4])
+
+    labels = [QUALITIES_ALL[i] for i in range(NUM_QUALITIES_ALL)]
+    visibility = [True] * NUM_QUALITIES_ALL
+
+    check = CheckButtons(rax, labels, visibility)
+
+    for i, text in enumerate(check.labels):
+        text.set_color(cmap(i))
+
+    def toggle(label):
+        idx = labels.index(label)
+        scatter, texts, lines = group_artists[idx]
+
+        visible = not scatter.get_visible()
+
+        scatter.set_visible(visible)
+        for t in texts:
+            t.set_visible(visible)
+        for l in lines:
+            l.set_visible(visible)
+
+        plt.draw()
+
+    check.on_clicked(toggle)
+
     plt.tight_layout()
     plt.show()
 
@@ -250,6 +368,8 @@ def progressive_pca(model, n_steps=5):
         ax = fig.add_axes([0.25, 0.1, 0.7, 0.8])
         rax = fig.add_axes([0.02, 0.2, 0.18, 0.6])
 
+        alphas = np.ones(len(x))
+
         scatter = ax.scatter(
             x,
             y,
@@ -258,6 +378,7 @@ def progressive_pca(model, n_steps=5):
             s=80,
             edgecolor="k",
             linewidth=0.5,
+            alpha=None
         )
 
         # Labels
@@ -323,17 +444,22 @@ def progressive_pca(model, n_steps=5):
 
             mask = current_colors == idx
 
-            offsets = scatter.get_offsets()
+            visible = alphas[mask][0] > 0
 
-            for i in range(len(offsets)):
-                if current_colors[i] == idx:
-                    visible = not texts[i].get_visible()
-                    texts[i].set_visible(visible)
+            new_alpha = 0 if visible else 1
+            alphas[mask] = new_alpha
+
+            scatter.set_alpha(alphas)
+
+            # toggle labels
+            for i in range(len(texts)):
+                if mask[i]:
+                    texts[i].set_visible(not visible)
 
             # toggle lines
             for line, colour in lines:
                 if colour == idx:
-                    line.set_visible(not line.get_visible())
+                    line.set_visible(not visible)
 
             fig.canvas.draw_idle()
 

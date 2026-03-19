@@ -123,7 +123,14 @@ while running:
     beat_trigger, beat_start_time = metronome.update()
     if beat_trigger:
         current_beat = metronome.current_beat
-        chord, duration = engine.process_beat(notes_played, beat_start_time, current_beat)
+
+        active_notes = [
+            (note, start_time, current_time)
+            for note, start_time in notes_pressed.items()
+            if start_time <= beat_start_time
+        ]
+        chord, duration = engine.process_beat(notes_played + active_notes, beat_start_time, current_beat)
+        
         # mute if chord == "N"
         metronome.mute(chord != "N")
         metronome.click()
