@@ -1,8 +1,9 @@
 from pathlib import Path
 import numpy as np
 import pypianoroll
-import joblib
 from sklearn.neighbors import NearestNeighbors
+
+from data.lpd import storage as lpd_storage
 
 MAX_POLY = 8
 
@@ -180,9 +181,11 @@ if __name__ == "__main__":
 
     nn.fit(features)
 
-    joblib.dump((nn, drum_loops), "data/lpd/drum_nn.joblib")
-    joblib.dump((nn, piano_loops), "data/lpd/piano_nn.joblib")
-    joblib.dump((nn, guitar_loops), "data/lpd/guitar_nn.joblib")
-    joblib.dump((nn, bass_loops), "data/lpd/bass_nn.joblib")
+    lpd_storage.dump_all(nn, {
+        "drums":  drum_loops,
+        "piano":  piano_loops,
+        "guitar": guitar_loops,
+        "bass":   bass_loops,
+    })
 
     print("Saved NN maps.")

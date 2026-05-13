@@ -38,7 +38,8 @@ Our chord estimation models are trained on a diverse corpus of lead sheets and l
 
 ### Rhythm/Symphony Maps
 The rhythm/symphony engine is powered by a pre-processed mapping of the **LPD-17 / LPD-5 (Lakh Pianoroll Dataset)**.
-- **Extraction**: `data/lpd/extract.py` processes thousands of MIDI files to create a searchable "groove" index in a `.joblib` file.
+- **Extraction**: `data/lpd/extract.py` processes thousands of MIDI files to build a searchable "groove" index.
+- **Storage**: The index lives in two files: `data/lpd/nn.joblib` (the shared k-NN model) and `data/lpd/loops.npz` (zlib-compressed `drums`/`piano`/`guitar`/`bass` arrays, row-aligned to the k-NN's fit data). All reads and writes go through `data/lpd/storage.py`, which exposes a small `load`/`dump` API keyed by instrument name.
 - **Mapping**: Each melody bar is mapped to its corresponding multi-track accompaniment (Drum, Piano, Guitar, Bass).
 
 ---
@@ -56,7 +57,7 @@ pip install -r requirements.txt
 ```
 
 ### Include supporting files
-Ensure that you have placed your soundfonts in the `soundfonts/` directory and that the `.joblib` index files are present in `data/lpd/` by running `data/lpd/extract.py`.
+Place your soundfonts in the `soundfonts/` directory and generate the LPD index files (`data/lpd/nn.joblib` + `data/lpd/loops.npz`) by running `data/lpd/extract.py`.
 
 ### Running the Demo
 To start the live transcription and accompaniment system:

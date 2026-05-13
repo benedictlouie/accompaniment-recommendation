@@ -2,7 +2,7 @@ import numpy as np
 import torch
 import pygame
 import os
-import joblib
+from data.lpd import storage as lpd_storage
 
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -196,15 +196,15 @@ BLACK_KEYS = ['C#', 'D#', '', 'F#', 'G#', 'A#', '',
 pygame.mixer.set_num_channels(len(NOTE_FREQS) + 8)
 NOTE_CHANNELS = {note: pygame.mixer.Channel(i) for i, note in enumerate(NOTE_FREQS)}
 
-def safe_load(path):
-    if os.path.exists(path):
-        return joblib.load(path)
+def safe_load(instrument):
+    if lpd_storage.exists(instrument):
+        return lpd_storage.load(instrument)
     else:
-        print(f"Warning: {path} not found.")
+        print(f"Warning: LPD loops for {instrument!r} not found.")
         return (None, None)
 
-NN, DRUMS = safe_load("data/lpd/drum_nn.joblib")
-_, BASSES = safe_load("data/lpd/bass_nn.joblib")
-_, GUITARS = safe_load("data/lpd/guitar_nn.joblib")
-_, PIANOS = safe_load("data/lpd/piano_nn.joblib")
+NN, DRUMS = safe_load("drums")
+_, BASSES = safe_load("bass")
+_, GUITARS = safe_load("guitar")
+_, PIANOS = safe_load("piano")
 

@@ -1,18 +1,18 @@
-import joblib
 import numpy as np
 from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
 import mplcursors
 
+from data.lpd import storage as lpd_storage
 
-JOBLIB_PATH = "data/lpd/drum_nn.joblib"
+
 SAMPLE_SIZE = 200000
 
 
 if __name__ == "__main__":
 
     # --- load NN model ---
-    nn, loops = joblib.load(JOBLIB_PATH)
+    nn, loops = lpd_storage.load("drums")
 
     # sklearn stores the fitted dataset here
     X = nn._fit_X

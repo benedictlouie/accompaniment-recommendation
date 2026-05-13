@@ -3,7 +3,7 @@ import numpy as np
 from AR.ar_transformer import OUTPUT_DIM, TransformerModel,load_model_checkpoint
 from CRF.crf import compute_fifths_circle_loss
 from data.prepare_training_data import break_down_one_song_into_sequences
-from utils.constants import DEVICE, CHORD_CLASSES_ALL, REVERSE_CHORD_MAP, MEMORY, NUM_CLASSES_ALL, DEVICE, CHORD_TO_TETRAD, INPUT_DIM, CHORD_EMBEDDING_LENGTH, TEMPERATURE
+from utils.constants import DEVICE, CHORD_CLASSES_ALL, REVERSE_CHORD_MAP, MEMORY, STEPS_PER_BEAT, NUM_CLASSES_ALL, DEVICE, CHORD_TO_TETRAD, INPUT_DIM, CHORD_EMBEDDING_LENGTH, TEMPERATURE
 from utils.FifthsCircleLoss import FifthsCircleLoss
 from utils.plot_chords import plot_chords_over_time
 from utils.play import npz_to_midi
@@ -21,6 +21,8 @@ def generate_chords(model, melody, target=None):
 
     np.set_printoptions(threshold=np.inf)
     print(melody[:, -1].cpu().numpy())
+
+    # melody[(melody[:, :, -STEPS_PER_BEAT:] == -1).all(dim=2).all(dim=1)] = -1
 
     with torch.no_grad():
         outputs = model(melody)  # fully autoregressive
