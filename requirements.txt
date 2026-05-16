@@ -12,3 +12,4 @@ sounddevice
 liveaudio
 pypianoroll
 pyfluidsynth
+gensim

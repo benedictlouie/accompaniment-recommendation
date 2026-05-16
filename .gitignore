@@ -20,10 +20,9 @@ data/lpd/midis
 data/lpd/*.mid
 data/lpd/*.joblib
 *.db
-chord_transition_matrix.npy
 output.mid
 .venv
 .python-version
 soundfonts
-report*
+*.tex
 .claude
