@@ -18,15 +18,16 @@ from data.chord2vec import load_embeddings, compute_pca_3d
 
 TRANSITIONS_PATH = "data/transition_graph.json"
 EMBED_PATH       = "data/token_embeddings_32d.json"
-OUT_PATH         = "report_final/figures/transition_graph.png"
+OUT_PATH         = "report/figures/transition_graph.png"
 
-KEEP_QUALITIES = {"maj", "min", "7"}
-MIN_WEIGHT = 50000
+KEEP_QUALITIES = {"maj", "min", "7", "min7"}
+MIN_WEIGHT = 20000
 
 QUALITY_COLORS = {
-    "maj": "firebrick",
-    "min": "steelblue",
-    "7":   "darkorange",
+    "maj":  "firebrick",
+    "min":  "steelblue",
+    "7":    "darkorange",
+    "min7": "mediumseagreen",
 }
 
 # PCA positions from Chord2Vec embeddings
@@ -75,7 +76,7 @@ for q, color in QUALITY_COLORS.items():
     nx.draw_networkx_nodes(G, pos, nodelist=nodes, node_color=color,
                            node_size=260, ax=ax, alpha=0.9)
 
-nx.draw_networkx_labels(G, pos, font_size=6, ax=ax, font_color="white", font_weight="bold")
+nx.draw_networkx_labels(G, pos, font_size=6, ax=ax, font_color="black", font_weight="bold")
 
 weights = np.array([G[u][v]["weight"] for u, v in G.edges()])
 widths  = 0.4 + 4.0 * (weights / weights.max())
@@ -93,7 +94,7 @@ nx.draw_networkx_edges(
 )
 
 ax.set_title(
-    f"Chord Transition Graph — maj, min, dom-7 only\n"
+    f"Chord Transition Graph — maj, min, dom-7, min7\n"
     f"(edges ≥ {MIN_WEIGHT:,} occurrences; width ∝ frequency)",
     fontsize=12,
 )
