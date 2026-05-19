@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Real-Time Harmoniser</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #141414;
+    color: #f0f0f0;
+    font-family: Arial, sans-serif;
+    user-select: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+    min-height: 100vh;
+  }
+
+  #app {
+    width: 1200px;
+    max-width: 100%;
+  }
+
+  /* ---- TOP BAR ---- */
+  #top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    margin-bottom: 20px;
+    position: relative;
+  }
+
+  .tempo-btn {
+    background: #5AAEFF;
+    border: none;
+    color: #f0f0f0;
+    font-size: 22px;
+    font-weight: bold;
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+  .tempo-btn:hover { background: #78bbff; }
+
+  #bpm-display {
+    font-size: 32px;
+    font-weight: bold;
+    color: #f0f0f0;
+    min-width: 130px;
+    text-align: center;
+  }
+
+  #beat-dots {
+    display: flex;
+    gap: 16px;
+    position: absolute;
+    bottom: -28px;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+  .beat-dot {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #787878;
+    transition: background 0.05s;
+  }
+  .beat-dot.active { background: #ff5a5a; }
+
+  /* ---- INFO ROW ---- */
+  #info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-top: 40px;
+    margin-bottom: 16px;
+    padding: 0 20px;
+  }
+
+  .info-block { display: flex; flex-direction: column; gap: 4px; }
+  .info-label { font-size: 14px; color: #787878; }
+  .info-value { font-size: 26px; font-weight: bold; }
+  .note-value  { color: #50DC8C; }
+  .chord-value { color: #5AAEFF; }
+
+  /* ---- LEVEL METER ---- */
+  #level-area {
+    padding: 0 20px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  #level-label { font-size: 13px; color: #787878; min-width: 80px; }
+  #level-bar-outer {
+    width: 200px;
+    height: 18px;
+    border: 2px solid #f0f0f0;
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  #level-bar-inner {
+    height: 100%;
+    background: #50DC8C;
+    width: 0%;
+    transition: width 0.05s;
+  }
+
+  /* ---- CANVAS ---- */
+  #viz-canvas {
+    width: 100%;
+    background: #0e0e0e;
+    border-radius: 8px;
+    display: block;
+  }
+
+  /* ---- START BUTTON ---- */
+  #start-btn {
+    margin: 20px auto;
+    display: block;
+    background: #50DC8C;
+    color: #141414;
+    font-size: 16px;
+    font-weight: bold;
+    padding: 12px 40px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+  #start-btn:hover { background: #6feaa5; }
+  #start-btn:disabled { background: #444; color: #888; cursor: default; }
+
+  /* ---- STATUS ---- */
+  #status-bar {
+    margin-top: 10px;
+    font-size: 13px;
+    color: #787878;
+    text-align: center;
+  }
+  .status-ok  { color: #50DC8C; }
+  .status-err { color: #ff5a5a; }
+
+  #stop-btn {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: #ff5a5a;
+    border: none;
+    color: #f0f0f0;
+    font-size: 14px;
+    font-weight: bold;
+    padding: 10px 24px;
+    border-radius: 8px;
+    cursor: pointer;
+    z-index: 100;
+  }
+  #stop-btn:hover:not(:disabled) { background: #ff7a7a; }
+  #stop-btn:disabled { background: #444; color: #666; cursor: default; }
+
+  #engine-selector {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+    justify-content: center;
+    align-items: center;
+  }
+  #engine-selector span { font-size: 13px; color: #787878; }
+  .engine-btn {
+    background: #282C34;
+    border: 2px solid #444;
+    color: #aaa;
+    font-size: 13px;
+    padding: 5px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  .engine-btn.active { border-color: #5AAEFF; color: #5AAEFF; background: #1a2535; }
+  .engine-btn:hover  { border-color: #5AAEFF; }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div id="top-bar">
+    <button class="tempo-btn" id="btn-minus">−</button>
+    <span id="bpm-display">100 BPM</span>
+    <button class="tempo-btn" id="btn-plus">+</button>
+    <div id="beat-dots">
+      <div class="beat-dot" data-beat="1"></div>
+      <div class="beat-dot" data-beat="2"></div>
+      <div class="beat-dot" data-beat="3"></div>
+      <div class="beat-dot" data-beat="4"></div>
+    </div>
+  </div>
+
+  <div id="info-row">
+    <div class="info-block">
+      <span class="info-label">Detected Note</span>
+      <span class="info-value note-value" id="note-display">–</span>
+    </div>
+    <div class="info-block" style="text-align:right">
+      <span class="info-label">Predicted Harmony</span>
+      <span class="info-value chord-value" id="chord-display">–</span>
+    </div>
+  </div>
+
+  <div id="level-area">
+    <span id="level-label">Input Level</span>
+    <div id="level-bar-outer">
+      <div id="level-bar-inner"></div>
+    </div>
+  </div>
+
+  <canvas id="viz-canvas" width="1200" height="420"></canvas>
+
+  <button id="start-btn">Start Microphone</button>
+
+  <div id="engine-selector">
+    <span>Engine:</span>
+    <button class="engine-btn active" data-engine="transformer">AR Transformer</button>
+    <button class="engine-btn"        data-engine="crf">CRF</button>
+  </div>
+
+  <div id="status-bar">
+    API: <span id="api-status" class="status-err">not connected</span>
+  </div>
+</div>
+
+<button id="stop-btn" disabled>Stop</button>
+
+<script>
+// =============================================================
+// CONSTANTS  (mirrors Python)
+// =============================================================
+
+const ROOTS = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+const SAMPLE_RATE_TARGET = 44100;
+const API_BASE = 'http://localhost:5001/api';
+
+// =============================================================
+// STATE
+// =============================================================
+
+let audioContext  = null;
+let analyser      = null;
+let mediaStream   = null;
+let running       = false;
+let tempo         = 100;
+let engineType    = 'transformer';
+let currentBeat   = 1;
+let lastBeatTime  = 0;   // AudioContext seconds
+let predictedChord = '–';
+let lastNote       = '–';
+
+// Collect notes during each beat (mirrors Python Transcriber.capture_beat_4_16ths)
+let beatNoteBuffer = []; // array of 4 x note-per-16th
+
+// Pitch history for visualiser (note name vs time)
+const HISTORY_SLOTS = 120;
+let pitchHistory = new Array(HISTORY_SLOTS).fill(null); // null | note name
+let historyHead  = 0;
+
+// =============================================================
+// AUDIO SETUP
+// =============================================================
+
+async function startMic() {
+  try {
+    mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+  } catch (e) {
+    alert('Microphone access denied: ' + e.message);
+    return;
+  }
+
+  audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: SAMPLE_RATE_TARGET });
+
+  analyser = audioContext.createAnalyser();
+  analyser.fftSize = 2048;
+
+  const source = audioContext.createMediaStreamSource(mediaStream);
+  source.connect(analyser);
+
+  running = true;
+  lastBeatTime = audioContext.currentTime;
+
+  document.getElementById('start-btn').textContent = 'Listening…';
+  document.getElementById('start-btn').disabled = true;
+  document.getElementById('stop-btn').disabled = false;
+
+  resetEngineHistory();
+  loop();
+}
+
+// =============================================================
+// PITCH DETECTION  (autocorrelation — mirrors Python Transcriber)
+// =============================================================
+
+const timeDomainBuf = new Float32Array(2048);
+
+function detectPitch() {
+  analyser.getFloatTimeDomainData(timeDomainBuf);
+
+  // RMS amplitude
+  let rms = 0;
+  for (let i = 0; i < timeDomainBuf.length; i++) rms += timeDomainBuf[i] ** 2;
+  rms = Math.sqrt(rms / timeDomainBuf.length);
+
+  updateLevelMeter(rms);
+
+  if (rms < 0.008) return 'quiet';
+
+  // Autocorrelation
+  const SIZE = timeDomainBuf.length;
+  let d = 0;
+  while (d < SIZE - 1 && timeDomainBuf[d] * timeDomainBuf[d + 1] >= 0) d++;
+
+  let maxVal = -Infinity, maxLag = -1;
+  for (let lag = d; lag < SIZE / 2; lag++) {
+    let sum = 0;
+    for (let i = 0; i < SIZE - lag; i++) sum += timeDomainBuf[i] * timeDomainBuf[i + lag];
+    if (sum > maxVal) { maxVal = sum; maxLag = lag; }
+  }
+
+  if (maxLag < 1) return 'no pitch';
+
+  const freq = audioContext.sampleRate / maxLag;
+  if (freq < 60 || freq > 2000) return 'no pitch';
+
+  return freqToNoteName(freq);
+}
+
+function freqToNoteName(freq) {
+  const midi = Math.round(69 + 12 * Math.log2(freq / 440));
+  if (midi < 24 || midi > 96) return 'no pitch';
+  const octave = Math.floor(midi / 12) - 1;
+  const name   = ROOTS[midi % 12];
+  return `${name}${octave}`;
+}
+
+function noteNameToMidi(name) {
+  const root   = name.slice(0, -1);
+  const octave = parseInt(name.slice(-1));
+  const idx    = ROOTS.indexOf(root);
+  return idx >= 0 ? (octave + 1) * 12 + idx : -1;
+}
+
+// =============================================================
+// LEVEL METER
+// =============================================================
+
+function updateLevelMeter(rms) {
+  const pct = Math.min(100, rms * 600);
+  document.getElementById('level-bar-inner').style.width = pct + '%';
+}
+
+// =============================================================
+// BEAT TIMING  (same logic as Python harmoniser)
+// =============================================================
+
+let stepBuffer = []; // 4 notes per beat, collected as 16th-note slices
+
+function loop() {
+  if (!running) return;
+  requestAnimationFrame(loop);
+
+  const now = audioContext.currentTime;
+  const beatDuration = 60 / tempo;
+  const stepDuration = beatDuration / 4;
+
+  // Capture a 16th-note snapshot
+  const note = detectPitch();
+  stepBuffer.push(note);
+
+  // Visual history
+  if (note !== 'quiet' && note !== 'no pitch') {
+    lastNote = note;
+    document.getElementById('note-display').textContent = note;
+  }
+  pitchHistory[historyHead] = (note === 'quiet' || note === 'no pitch') ? null : note;
+  historyHead = (historyHead + 1) % HISTORY_SLOTS;
+
+  // Beat trigger
+  if (now - lastBeatTime >= beatDuration) {
+    const beatStart = lastBeatTime;
+    lastBeatTime += beatDuration;
+
+    // Quantise the last 4 steps into notes_played
+    const steps = stepBuffer.slice(-4);
+    stepBuffer = [];
+
+    const processedNotes = [];
+    steps.forEach((n, i) => {
+      if (n !== 'quiet' && n !== 'no pitch') {
+        const sliceStart = beatStart + i * stepDuration;
+        const sliceEnd   = sliceStart + stepDuration;
+        processedNotes.push({ note: n, start: sliceStart, end: sliceEnd });
+      }
+    });
+
+    predictChordFromAPI(processedNotes, beatStart, currentBeat, beatDuration);
+    if (predictedChord === '–' || predictedChord === 'N') {
+      playMetronomeClick(now, currentBeat === 1);
+    }
+    updateBeatDots(currentBeat);
+    currentBeat = currentBeat % 4 + 1;
+  }
+
+  drawVisualiser();
+}
+
+// =============================================================
+// CHORD PREDICTION
+// =============================================================
+
+async function predictChordFromAPI(notes, beatStart, beatIndex, beatDur) {
+  try {
+    const res = await fetch(`${API_BASE}/predict-chord`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        app: 'harmoniser',
+        engine_type: engineType,
+        notes,
+        beat_start: beatStart,
+        beat_index: beatIndex,
+        tempo
+      })
+    });
+    const data = await res.json();
+    if (data.chord) {
+      predictedChord = data.chord;
+      document.getElementById('chord-display').textContent = data.chord;
+    }
+  } catch (e) {}
+}
+
+// =============================================================
+// SIMPLE CHORD ACCOMPANIMENT
+// =============================================================
+
+const CHORD_INTERVALS = { maj:[0,4,7,12], min:[0,3,7,12] };
+
+function playAccompanimentChord(chordName, t, beatDur) {
+  if (!audioContext) return;
+  const parts = chordName.split(':');
+  if (parts.length < 2) return;
+  const rootIdx = ROOTS.indexOf(parts[0]);
+  if (rootIdx < 0) return;
+  const intervals = CHORD_INTERVALS[parts[1] === 'min' ? 'min' : 'maj'];
+  const rootMidi  = 36 + rootIdx;
+
+  // intervals.forEach((interval, i) => {
+  //   const freq  = 440 * Math.pow(2, (rootMidi + interval - 69) / 12);
+  //   const start = t + i * 0.025;
+  //   const osc   = audioContext.createOscillator();
+  //   const gain  = audioContext.createGain();
+  //   const filt  = audioContext.createBiquadFilter();
+  //   filt.type = 'lowpass';
+  //   filt.frequency.value = 2000;
+  //   osc.type = 'sine';
+  //   osc.frequency.value = freq;
+  //   osc.connect(filt); filt.connect(gain); gain.connect(audioContext.destination);
+  //   gain.gain.setValueAtTime(0, start);
+  //   gain.gain.linearRampToValueAtTime(0.30, start + 0.015);
+  //   gain.gain.setValueAtTime(0.30, start + beatDur * 0.65);
+  //   gain.gain.linearRampToValueAtTime(0, start + beatDur);
+  //   osc.start(start);
+  //   osc.stop(start + beatDur + 0.05);
+  // });
+}
+
+// =============================================================
+// METRONOME CLICK (synthesised)
+// =============================================================
+
+function playMetronomeClick(t, strong) {
+  if (!audioContext) return;
+  const osc  = audioContext.createOscillator();
+  const gain = audioContext.createGain();
+  osc.connect(gain); gain.connect(audioContext.destination);
+  osc.frequency.value = strong ? 1200 : 800;
+  gain.gain.setValueAtTime(0.2, t);
+  gain.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
+  osc.start(t); osc.stop(t + 0.05);
+}
+
+// =============================================================
+// VISUALISER  (scrolling pitch display, mirrors TranscriberVisualiser)
+// =============================================================
+
+const canvas = document.getElementById('viz-canvas');
+const ctx2d  = canvas.getContext('2d');
+
+// Map note name -> y pixel (MIDI 48–84 → canvas height)
+const VIZ_MIDI_LOW  = 48;  // C3
+const VIZ_MIDI_HIGH = 84;  // C6
+
+function noteToY(note) {
+  const midi = noteNameToMidi(note);
+  if (midi < 0) return -1;
+  const t = (midi - VIZ_MIDI_LOW) / (VIZ_MIDI_HIGH - VIZ_MIDI_LOW);
+  return canvas.height * (1 - t);
+}
+
+function drawVisualiser() {
+  const W = canvas.width, H = canvas.height;
+  ctx2d.fillStyle = '#0e0e0e';
+  ctx2d.fillRect(0, 0, W, H);
+
+  // Horizontal grid lines (C notes)
+  ctx2d.strokeStyle = '#1e1e1e';
+  ctx2d.lineWidth = 1;
+  for (let midi = VIZ_MIDI_LOW; midi <= VIZ_MIDI_HIGH; midi++) {
+    if (midi % 12 === 0) { // C notes
+      const y = noteToY(freqToNoteName(440 * Math.pow(2, (midi - 69) / 12)));
+      ctx2d.beginPath(); ctx2d.moveTo(0, y); ctx2d.lineTo(W, y); ctx2d.stroke();
+      const name = ROOTS[midi % 12] + (Math.floor(midi / 12) - 1);
+      ctx2d.fillStyle = '#333';
+      ctx2d.font = '11px Arial';
+      ctx2d.fillText(name, 4, y - 3);
+    }
+  }
+
+  // Draw pitch history as dots
+  const slotW = W / HISTORY_SLOTS;
+  for (let i = 0; i < HISTORY_SLOTS; i++) {
+    const idx  = (historyHead + i) % HISTORY_SLOTS;
+    const note = pitchHistory[idx];
+    if (!note) continue;
+    const x = i * slotW + slotW / 2;
+    const y = noteToY(note);
+    if (y < 0) continue;
+    // Age-based opacity
+    const age = 1 - i / HISTORY_SLOTS;
+    ctx2d.fillStyle = `rgba(80, 220, 140, ${0.3 + age * 0.7})`;
+    ctx2d.beginPath();
+    ctx2d.arc(x, y, 4, 0, Math.PI * 2);
+    ctx2d.fill();
+  }
+
+  // Vertical beat line (current position = right edge)
+  const beatPct = Math.min(1, (audioContext ? (audioContext.currentTime - lastBeatTime) / (60 / tempo) : 0));
+  const beatX   = W * (1 - (1 - beatPct) * (HISTORY_SLOTS / 4) / HISTORY_SLOTS);
+  ctx2d.strokeStyle = '#5AAEFF';
+  ctx2d.lineWidth = 2;
+  ctx2d.setLineDash([4, 4]);
+  ctx2d.beginPath();
+  ctx2d.moveTo(W - (1 - beatPct) * slotW * 4, 0);
+  ctx2d.lineTo(W - (1 - beatPct) * slotW * 4, H);
+  ctx2d.stroke();
+  ctx2d.setLineDash([]);
+
+  // Chord label overlay
+  if (predictedChord !== '–') {
+    ctx2d.font = 'bold 18px Arial';
+    ctx2d.fillStyle = '#5AAEFF';
+    ctx2d.fillText(predictedChord, W - 100, 24);
+  }
+}
+
+// =============================================================
+// BEAT DOTS
+// =============================================================
+
+function updateBeatDots(beat) {
+  document.querySelectorAll('.beat-dot').forEach(dot => {
+    dot.classList.toggle('active', parseInt(dot.dataset.beat) === beat);
+  });
+}
+
+// =============================================================
+// TEMPO CONTROLS
+// =============================================================
+
+function setTempo(bpm) {
+  tempo = Math.max(20, Math.min(300, bpm));
+  document.getElementById('bpm-display').textContent = `${tempo} BPM`;
+}
+
+document.getElementById('btn-plus' ).addEventListener('click', () => setTempo(tempo + 5));
+document.getElementById('btn-minus').addEventListener('click', () => setTempo(tempo - 5));
+document.getElementById('start-btn').addEventListener('click', startMic);
+document.getElementById('stop-btn' ).addEventListener('click', () => location.reload());
+
+// =============================================================
+// API HEALTH CHECK
+// =============================================================
+
+async function checkAPI() {
+  try {
+    const res = await fetch(`${API_BASE}/health`);
+    const d   = await res.json();
+    const ok  = d.status === 'ok';
+    const el  = document.getElementById('api-status');
+    el.textContent = ok ? 'connected' : 'not connected (chord prediction unavailable)';
+    el.className   = ok ? 'status-ok' : 'status-err';
+  } catch (e) {
+    const el = document.getElementById('api-status');
+    el.textContent = 'not connected (chord prediction unavailable)';
+    el.className   = 'status-err';
+  }
+}
+
+async function resetEngineHistory() {
+  try {
+    await fetch(`${API_BASE}/reset`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ app: 'harmoniser', engine_type: engineType })
+    });
+  } catch (e) {}
+}
+
+// =============================================================
+// ENGINE SELECTOR
+// =============================================================
+
+document.querySelectorAll('.engine-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    engineType = btn.dataset.engine;
+    document.querySelectorAll('.engine-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    resetEngineHistory();
+    predictedChord = '–';
+    lastNote = '–';
+    document.getElementById('chord-display').textContent = '–';
+    document.getElementById('note-display').textContent  = '–';
+  });
+});
+
+checkAPI();
+setInterval(checkAPI, 5000);
+</script>
+</body>
+</html>

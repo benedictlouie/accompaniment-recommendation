@@ -1,4 +1,6 @@
 torch
+flask
+flask-cors
 numpy
 seaborn
 scikit-learn

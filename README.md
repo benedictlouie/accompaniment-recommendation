@@ -67,6 +67,26 @@ python3 accompaniment/piano_app.py
 
 ---
 
+## 🌐 Running the Web UI
+
+The web interface provides browser-based versions of the piano app and harmoniser.
+
+### 1. Start the Flask API backend
+Run from the project root:
+```bash
+python web/api.py
+```
+The API server will start at [http://localhost:5000](http://localhost:5000). Verify it's running by visiting [http://localhost:5000/api/health](http://localhost:5000/api/health).
+
+### 2. Open a frontend
+Open either HTML file directly in your browser (no build step required):
+- **Piano App** — `web/piano_app.html`
+- **Harmoniser** — `web/harmoniser.html`
+
+> The frontends communicate with the Flask API over `localhost:5000`. Both require the backend to be running first.
+
+---
+
 ## 📈 Model Monitoring
 To monitor training progress and visualize loss:
 ```bash
