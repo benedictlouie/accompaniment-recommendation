@@ -31,6 +31,7 @@ class TransformerModel(nn.Module):
 
         # Positional encoding
         self.pos_encoder = nn.Parameter(torch.randn(1, MEMORY, d_model))
+        self.pos_decoder = nn.Parameter(torch.randn(1, MAX_LEN, d_model))
 
         # Encoder & Decoder
         self.encoder = nn.TransformerEncoder(
@@ -67,7 +68,9 @@ class TransformerModel(nn.Module):
             tgt_emb = self.embedding_output(tgt_input)          # [B, MAX_LEN-1, d_model]
             dummy_start = torch.zeros(B, 1, self.d_model, device=device)
             tgt_emb = torch.cat([dummy_start, tgt_emb], dim=1)  # [B, MAX_LEN, d_model]
-            out = self.decoder(tgt=tgt_emb, memory=memory)      # [B, MAX_LEN, d_model]
+            tgt_emb = tgt_emb + self.pos_decoder
+            causal_mask = nn.Transformer.generate_square_subsequent_mask(MAX_LEN, device=device)
+            out = self.decoder(tgt=tgt_emb, memory=memory, tgt_mask=causal_mask)  # [B, MAX_LEN, d_model]
             logits = self.fc_out(out)                           # [B, MAX_LEN, OUTPUT_DIM]
             return logits
     
@@ -79,7 +82,8 @@ class TransformerModel(nn.Module):
         tgt_emb = torch.zeros(B, 1, self.d_model, device=device)  # initial start token embedding
 
         for t in range(MAX_LEN):
-            out = self.decoder(tgt=tgt_emb, memory=memory)
+            tgt_with_pos = tgt_emb + self.pos_decoder[:, :tgt_emb.size(1), :]
+            out = self.decoder(tgt=tgt_with_pos, memory=memory)
             logits = self.fc_out(out[:, -1, :])  # shape [B, OUTPUT_DIM]
             output_logits[:, t, :] = logits
 
