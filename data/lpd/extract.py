@@ -9,9 +9,7 @@ MAX_POLY = 8
 
 
 def get_groove(melody):
-    onsets = (melody != -1).astype(np.int8)
-    density = np.array([onsets.mean()], dtype=np.float32)
-    return np.concatenate([onsets, density])
+    return (melody != -1).astype(np.float32)
 
 
 def encode_polyphonic_fast(pr16, start, bar_steps, max_notes=8):

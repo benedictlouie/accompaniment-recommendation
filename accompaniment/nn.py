@@ -8,7 +8,7 @@ def find_similar_loops(melody, top_k=10):
     Returns nearest neighbour indices + distances for the melody groove.
     """
     query = get_groove(melody)
-    assert len(query) == STEPS_PER_BAR + 1
+    assert len(query) == STEPS_PER_BAR
     dist, idx = NN.kneighbors(query.reshape(1, -1), n_neighbors=top_k)
     return idx[0], dist[0]
 

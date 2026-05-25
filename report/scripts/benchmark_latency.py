@@ -212,7 +212,7 @@ if __name__ == "__main__":
     print_stats("pYIN transcription  @ 100 BPM (one beat = 600 ms audio)", s_pyin)
     print_stats("AR Transformer inference (32-beat context)",               s_ar)
     print_stats("CRF Viterbi inference (one bar)",                          s_crf)
-    print_stats("k-NN groove query (k=10, 17-dim)",                        s_knn)
+    print_stats("k-NN groove query (k=10, 16-dim)",                        s_knn)
     print_stats("Loop sampling (temperature softmax)",                      s_loop)
 
     e2e_ar  = compute_e2e(s_pyin, s_ar,  s_knn, s_loop)

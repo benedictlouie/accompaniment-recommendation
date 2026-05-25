@@ -18,7 +18,7 @@ Predicts the most likely chord sequence based on the temporal relationship betwe
 
 ### 3. Rhythm/Symphony Generation
 Instead of simple block chords, the system generates dynamic, multi-instrument arrangements.
-- **Groove Retrieval**: Uses a **K-Nearest Neighbors (k-NN)** approach to match the current melody's rhythm (onset density and pattern) with a massive database of human-composed loops.
+- **Groove Retrieval**: Uses a **K-Nearest Neighbors (k-NN)** approach to match the current melody's 16-dimensional onset pattern with a massive database of human-composed loops.
 - **Tone & Harmony**: The retrieved patterns from the **LPD-5 (Lakh Pianoroll Dataset)** are "snapped" to the predicted chords in real-time.
 - **Synthesis**: High-quality audio rendering via **FluidSynth** using curated soundfonts for Drums, Bass, Piano, and Guitar.
 
@@ -39,7 +39,7 @@ Our chord estimation models are trained on a diverse corpus of lead sheets and l
 ### Rhythm/Symphony Maps
 The rhythm/symphony engine is powered by a pre-processed mapping of the **LPD-17 / LPD-5 (Lakh Pianoroll Dataset)**.
 - **Extraction**: `data/lpd/extract.py` processes thousands of MIDI files to build a searchable "groove" index.
-- **Storage**: The index lives in two files: `data/lpd/nn.joblib` (the shared k-NN model) and `data/lpd/loops.npz` (zlib-compressed `drums`/`piano`/`guitar`/`bass` arrays, row-aligned to the k-NN's fit data). All reads and writes go through `data/lpd/storage.py`, which exposes a small `load`/`dump` API keyed by instrument name.
+- **Storage**: The index lives in two files: `data/lpd/nn.joblib` (the shared k-NN model fitted on 16-dim onset features) and `data/lpd/loops.npz` (zlib-compressed `drums`/`piano`/`guitar`/`bass` arrays, row-aligned to the k-NN's fit data). All reads and writes go through `data/lpd/storage.py`, which exposes a small `load`/`dump` API keyed by instrument name.
 - **Mapping**: Each melody bar is mapped to its corresponding multi-track accompaniment (Drum, Piano, Guitar, Bass).
 
 ---
