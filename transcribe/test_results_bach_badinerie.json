@@ -1,0 +1,131 @@
+{
+  "description": "Transcription test — Bach Badinerie in B minor (BWV 1067), first 20 beats (bars 1–5), live instrument, quiet room",
+  "piece": "Bach Badinerie in B minor (BWV 1067, final movement)",
+  "beat_structure": "4/4 time, each beat represented as 4 sixteenth-note pitches",
+  "ground_truth": [
+    ["B5", "B5", "D6", "B5"],
+    ["F#5", "F#5", "B5", "F#5"],
+    ["D5", "D5", "F#5", "D5"],
+    ["B4", "B4", "B4", "B4"],
+    ["F#4", "B4", "D5", "B4"],
+    ["C#5", "B4", "C#5", "B4"],
+    ["A#4", "C#5", "E5", "C#5"],
+    ["D5", "D5", "B4", "B4"],
+    ["B5", "B5", "D6", "B5"],
+    ["F#5", "F#5", "B5", "F#5"],
+    ["D5", "D5", "F#5", "D5"],
+    ["B4", "B4", "B4", "B4"],
+    ["D5", "D5", "D5", "D5"],
+    ["D5", "D5", "D5", "D5"],
+    ["B5", "B5", "D5", "D5"],
+    ["D5", "D5", "C#5", "C#5"],
+    ["F#5", "F#5", "F#5", "F#5"],
+    ["F#5", "F#5", "F#5", "F#5"],
+    ["D6", "D6", "F#5", "F#5"],
+    ["F#5", "F#5", "F5", "F5"]
+  ],
+  "trials": {
+    "trial_1": [
+      ["C6", "B5", "B5", "D6"],
+      ["C6", "B5", "no pitch", "B5"],
+      ["D5", "D5", "F#5", "F#5"],
+      ["D5", "B4", "B4", "B4"],
+      ["B4", "B4", "C5", "D5"],
+      ["B4", "B4", "C#5", "C#5"],
+      ["B4", "C#5", "E5", "E5"],
+      ["C#5", "D5", "B4", "B4"],
+      ["B4", "B5", "D6", "D6"],
+      ["B5", "C#6", "B5", "no pitch"],
+      ["C#6", "F#5", "F#5", "D5"],
+      ["D5", "B4", "B4", "no pitch"],
+      ["no pitch", "D5", "D5", "D5"],
+      ["D5", "D5", "D5", "D5"],
+      ["D5", "B5", "D5", "D5"],
+      ["D5", "D5", "D5", "C#5"],
+      ["D5", "F#5", "F#5", "F#5"],
+      ["F#5", "F#5", "F#5", "F#5"],
+      ["C#6", "D6", "F#5", "F#5"],
+      ["F#5", "F#5", "F#5", "F5"]
+    ],
+    "trial_2": [
+      ["no pitch", "B5", "B5", "D6"],
+      ["D6", "B5", "B5", "B5"],
+      ["no pitch", "D5", "F#5", "F#5"],
+      ["D5", "B4", "B4", "B4"],
+      ["B4", "B4", "B4", "D5"],
+      ["B4", "B4", "C5", "C#5"],
+      ["B4", "C#5", "E5", "E5"],
+      ["C#5", "D5", "D5", "B4"],
+      ["B4", "B5", "B5", "D6"],
+      ["B5", "C#6", "B5", "B5"],
+      ["F#4", "F#5", "F#5", "D5"],
+      ["D5", "B4", "B4", "C5"],
+      ["G5", "D5", "D5", "D5"],
+      ["D5", "D5", "D5", "D5"],
+      ["D5", "B4", "B4", "D5"],
+      ["D5", "D5", "D5", "D5"],
+      ["C#5", "F#5", "F#5", "F#5"],
+      ["F#5", "F#5", "F#5", "F#5"],
+      ["F#5", "D6", "D6", "F#5"],
+      ["F#5", "F#5", "F#5", "F5"]
+    ],
+    "trial_3": [
+      ["no pitch", "B5", "B5", "D6"],
+      ["D6", "B5", "B5", "B5"],
+      ["no pitch", "D5", "F#5", "F#5"],
+      ["D5", "D5", "B4", "B4"],
+      ["B4", "F#4", "B4", "D5"],
+      ["B4", "B4", "C#5", "C#5"],
+      ["B4", "C#5", "C#5", "E5"],
+      ["C#5", "D5", "B4", "B4"],
+      ["B4", "B4", "D6", "D6"],
+      ["B5", "C#6", "B5", "B5"],
+      ["F#5", "no pitch", "F#5", "F#5"],
+      ["D5", "B4", "B4", "B4"],
+      ["D#5", "D5", "D5", "D5"],
+      ["D5", "D5", "D5", "D5"],
+      ["D5", "B4", "D5", "D5"],
+      ["D5", "D5", "D5", "D5"],
+      ["D5", "F#4", "F#4", "F#4"],
+      ["F#5", "F#5", "no pitch", "F#5"],
+      ["F#5", "D5", "G4", "F#4"],
+      ["F#5", "F#5", "F#5", "F5"]
+    ]
+  },
+  "metrics_note": "All metrics computed over 80 sixteenth-note positions (20 beats x 4) or 20 beats. All GT frames are voiced. GPE = fraction of GT frames where system output matches neither GT pitch nor any octave transposition of it (wrong pitch class or unvoiced).",
+  "metrics": {
+    "trial_1": {
+      "rpa": 0.600, "rca": 0.613, "voicing_f_measure": 0.974,
+      "octave_error_rate": 0.013, "gpe": 0.388,
+      "beat_level_rpa": 0.550, "beat_level_rca": 0.550,
+      "pc_histogram_cosine_mean": 0.970,
+      "pc_histogram_cosine_per_bar": [0.956, 0.959, 0.949, 0.992, 0.993]
+    },
+    "trial_2": {
+      "rpa": 0.512, "rca": 0.537, "voicing_f_measure": 0.987,
+      "octave_error_rate": 0.025, "gpe": 0.463,
+      "beat_level_rpa": 0.600, "beat_level_rca": 0.600,
+      "pc_histogram_cosine_mean": 0.979,
+      "pc_histogram_cosine_per_bar": [0.980, 0.958, 0.980, 0.984, 0.993]
+    },
+    "trial_3": {
+      "rpa": 0.438, "rca": 0.537, "voicing_f_measure": 0.974,
+      "octave_error_rate": 0.100, "gpe": 0.463,
+      "beat_level_rpa": 0.450, "beat_level_rca": 0.550,
+      "pc_histogram_cosine_mean": 0.982,
+      "pc_histogram_cosine_per_bar": [0.971, 0.978, 0.986, 0.980, 0.993]
+    },
+    "mean": {
+      "rpa": 0.517, "rca": 0.562, "voicing_f_measure": 0.978,
+      "octave_error_rate": 0.046, "gpe": 0.438,
+      "beat_level_rpa": 0.533, "beat_level_rca": 0.567,
+      "pc_histogram_cosine_mean": 0.977
+    },
+    "std": {
+      "rpa": 0.066, "rca": 0.036, "voicing_f_measure": 0.006,
+      "octave_error_rate": 0.038, "gpe": 0.035,
+      "beat_level_rpa": 0.062, "beat_level_rca": 0.024,
+      "pc_histogram_cosine_mean": 0.005
+    }
+  }
+}

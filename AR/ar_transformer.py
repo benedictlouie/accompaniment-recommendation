@@ -111,7 +111,7 @@ class MusicDataset(Dataset):
 # -------------------------
 # Training function
 # -------------------------
-def train(model, train_loader, val_loader, optimizer, num_epochs=10):
+def train(model, train_loader, val_loader, optimizer, num_epochs=10, start_epoch=0):
     criterion = nn.CrossEntropyLoss()
 
     os.makedirs("checkpoints", exist_ok=True)
@@ -119,7 +119,7 @@ def train(model, train_loader, val_loader, optimizer, num_epochs=10):
 
     model.to(DEVICE)
 
-    for epoch in range(num_epochs):
+    for epoch in range(start_epoch, num_epochs):
         model.train()
         running_loss = 0.0
 
@@ -187,6 +187,11 @@ def load_model_checkpoint(model, checkpoint_path):
 # Main
 # -------------------------
 if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--start-epoch", type=int, default=0, help="Epoch to start/resume training from")
+    args = parser.parse_args()
+
     d_model = 128
     nhead = 8
     num_encoder_layers = 6
@@ -211,4 +216,4 @@ if __name__ == "__main__":
     val_data = MusicDataset("data/data_val.npz")
     val_loader = DataLoader(val_data, batch_size=batch_size, shuffle=False)
 
-    train(model, train_loader, val_loader, optimizer, num_epochs=num_epochs)
+    train(model, train_loader, val_loader, optimizer, num_epochs=num_epochs, start_epoch=args.start_epoch)
