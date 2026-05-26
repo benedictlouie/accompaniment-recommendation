@@ -6,7 +6,7 @@ from transcribe.transcriber import Transcriber
 from transcribe.transcriber_visualiser import TranscriberVisualiser
 from engines.factory import create_engine
 from accompaniment.accompaniment_system import AccompanimentSystem
-from utils.constants import FONT_BIG, FONT_MED, FONT_SMALL, BLACK, WHITE, GRAY, BLUE, GREEN, SAMPLE_RATE
+from utils.constants import FONT_BIG, FONT_MED, FONT_SMALL, BLACK, WHITE, GRAY, BLUE, GREEN, SAMPLE_RATE, BEATS_PER_BAR
 from utils.metronome import Metronome
 
 # ==========================================================
@@ -68,12 +68,12 @@ def beat_worker():
         if item is None:
             break
 
-        processed_notes, beat_start, beat_number = item
+        processed_notes, prev_beat_start, prev_beat, current_beat = item
 
         chord, duration = engine.process_beat(
             processed_notes,
-            beat_start,
-            beat_number,
+            prev_beat_start,
+            prev_beat,
         )
 
         melody = engine.last_bar
@@ -82,7 +82,7 @@ def beat_worker():
             melody,
             chord,
             tempo,
-            beat_number,
+            current_beat,
         )
 
         if chord:
@@ -139,13 +139,19 @@ while running:
 
         accurate_notes = transcriber.capture_beat_4_16ths()
 
+        # The buffer always contains audio from the PREVIOUS beat's window.
+        # Use that beat's start time and beat index so the engine's strong_flag
+        # and history labelling are correct.
+        prev_beat_start = beat_start - engine.beat_duration
+        prev_beat = (current_beat - 2) % BEATS_PER_BAR + 1
+
         processed_notes = []
 
         for i, note in enumerate(accurate_notes):
 
             if note not in ["quiet", "no pitch"]:
 
-                slice_start = beat_start + i * engine.step_duration
+                slice_start = prev_beat_start + i * engine.step_duration
                 slice_end = slice_start + engine.step_duration
 
                 processed_notes.append(
@@ -153,8 +159,10 @@ while running:
                 )
 
         # send heavy work to background thread
+        # prev_beat_start / prev_beat: tell the engine which beat's audio this is
+        # current_beat: tells play_beat which loop step to play right now
         beat_queue.put(
-            (processed_notes, beat_start, current_beat)
+            (processed_notes, prev_beat_start, prev_beat, current_beat)
         )
 
         metronome.mute(predicted_chord not in ['-', 'N'])

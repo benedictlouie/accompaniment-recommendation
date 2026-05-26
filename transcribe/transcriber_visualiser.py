@@ -303,6 +303,7 @@ if __name__ == "__main__":
 
         if beat_happened:
 
+            beat_label = metronome.current_beat  # save before advance so label matches captured audio
             metronome.click()
             metronome.advance()
 
@@ -312,7 +313,7 @@ if __name__ == "__main__":
             accurate_results = transcriber.capture_beat_4_16ths()
 
             print(
-                f"Beat {metronome.current_beat}:",
+                f"Beat {beat_label}:",
                 accurate_results
             )
 

@@ -29,7 +29,7 @@ class Transcriber:
 
         # Pitch limits
         self.fmin = librosa.note_to_hz('C2')
-        self.fmax = librosa.note_to_hz('C6')
+        self.fmax = librosa.note_to_hz('C7')
 
         # Live pyin (original system)
         self.lpyin = LivePyin(
