@@ -346,7 +346,7 @@ def plot_single_layer_detail(enc_self, dec_self, dec_cross, pred_chords,
     # Top row: log scale
     enc_avg       = np.log(enc_raw  + 1e-9)
     dec_cross_avg = np.log(cross_raw + 1e-9)
-    dec_self_avg  = np.where(~lower, np.log(ds_raw + 1e-9), np.nan)
+    dec_self_avg  = np.log(ds_raw + 1e-9)
 
     # Bottom row: dominant removed + renormalised
     enc_res, cross_res, ds_res = _remove_dominant(enc_raw, cross_raw, ds_raw, lower)
@@ -516,7 +516,6 @@ def plot_aggregate(model, song_ids, n_seqs_per_song=3, out_dir="AR"):
     cross_head = [None] * n_dec_layers  # (H, MAX_LEN, MEMORY)
     dec_head  = [None] * n_dec_layers   # (H, MAX_LEN, MAX_LEN)
     count = 0
-    upper = None
 
     for song_id in song_ids:
         npz_path = f"data/pop/melody_chords/{song_id:03d}.npz"
@@ -539,10 +538,6 @@ def plot_aggregate(model, song_ids, n_seqs_per_song=3, out_dir="AR"):
                 print(f"  Skipping song {song_id} seq {seq_idx}: {e}")
                 continue
 
-            if upper is None:
-                T = dec_self[0].shape[1]
-                upper = np.triu(np.ones((T, T), dtype=bool), k=0)  # key >= query = masked (includes diagonal)
-
             for li in range(n_enc_layers):
                 e = enc_self[li]   # (H, MEMORY, MEMORY)
                 enc_head[li] = e.copy() if enc_head[li] is None else enc_head[li] + e
@@ -561,10 +556,6 @@ def plot_aggregate(model, song_ids, n_seqs_per_song=3, out_dir="AR"):
     enc_head   = [x / count for x in enc_head]
     cross_head = [x / count for x in cross_head]
     dec_head   = [x / count for x in dec_head]
-
-    # Apply nan mask to decoder self-attn upper triangle (causal mask region)
-    for li in range(n_dec_layers):
-        dec_head[li][:, upper] = np.nan
 
     n_s = len(song_ids)
     beat_lbl  = [str(i+1) for i in range(MEMORY)]

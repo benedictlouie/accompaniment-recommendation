@@ -133,9 +133,6 @@ def aggregate_attention(model: TransformerModel,
     dec_acc   = [None] * n_dec
     count = 0
 
-    T_dec = None
-    upper = None
-
     for song_id in song_ids:
         npz_path = f"data/pop/melody_chords/{song_id:03d}.npz"
         melody, target = break_down_one_song_into_sequences(npz_path, test=True)
@@ -159,10 +156,6 @@ def aggregate_attention(model: TransformerModel,
                 print(f"  Skipping song {song_id} seq {seq_idx}: {e}")
                 continue
 
-            if upper is None:
-                T_dec = dec_self[0].shape[1]
-                upper = np.triu(np.ones((T_dec, T_dec), dtype=bool), k=0)
-
             for li in range(n_enc):
                 e = enc_self[li]
                 enc_acc[li] = e.copy() if enc_acc[li] is None else enc_acc[li] + e
@@ -183,10 +176,6 @@ def aggregate_attention(model: TransformerModel,
     enc_head   = [x / count for x in enc_acc]
     cross_head = [x / count for x in cross_acc]
     dec_head   = [x / count for x in dec_acc]
-
-    # Mask causal region with NaN so FFT treats it as zero
-    for li in range(n_dec):
-        dec_head[li][:, upper] = np.nan
 
     return enc_head, cross_head, dec_head
 
