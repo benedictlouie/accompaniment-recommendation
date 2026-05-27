@@ -363,9 +363,9 @@ function updateLevelMeter(rms) {
 function loadSoundfonts() {
   if (typeof Soundfont === 'undefined') return;
   const instruments = {
-    piano:  'bright_acoustic_piano',
-    guitar: 'acoustic_guitar_nylon',
-    bass:   'acoustic_bass',
+    piano:  'acoustic_grand_piano',
+    guitar: 'acoustic_guitar_steel',
+    bass:   'electric_bass_finger',
   };
   Object.entries(instruments).forEach(([key, name]) => {
     Soundfont.instrument(audioContext, name, { soundfont: 'MusyngKite' })
@@ -566,16 +566,21 @@ async function predictChordFromAPI(notes, beatStart, beatIndex) {
 
 // Snap a target MIDI note to the closest note in `chord` (±1 octave)
 // mirrors Python HarmonyPlayer.snap_to_chord
-function snapToChord(target, chord) {
+// pitchRange = [lo, hi] keeps each instrument in its own register (Python behaviour).
+// Falls back to unrestricted search if nothing lands in range.
+function snapToChord(target, chord, pitchRange) {
+  const [lo, hi] = pitchRange ?? [0, 127];
   let best = null, bestDist = Infinity;
   for (const octave of [-12, 0, 12]) {
     const pool = (octave === -12) ? chord.slice(0, 4) : chord;
     for (const n of pool) {
       const candidate = n + octave;
+      if (candidate < lo || candidate > hi) continue;
       const d = Math.abs(candidate - target);
       if (d < bestDist) { bestDist = d; best = candidate; }
     }
   }
+  if (best === null) return snapToChord(target, chord);
   return best;
 }
 
@@ -592,8 +597,11 @@ function buildVoicedChord(chordName, instrument) {
   if (!base) return null;
   let chord = base.slice();
 
-  // Piano plays an octave higher (mirrors Python play_harmony_nn piano branch)
+  // Piano plays an octave higher; bass plays an octave lower.
+  // CHORD_TETRAD is rooted at C2 (MIDI 36) — without the bass shift, bass and
+  // guitar land in the same C2–C3 register and share 3 out of 4 chord tones.
   if (instrument === 'piano') chord = chord.map(n => n + 12);
+  if (instrument === 'bass')  chord = chord.map(n => n - 12);
 
   const [lo, hi] = VOICE_RANGES[instrument];
   const prev     = prevVoicing[instrument];
@@ -647,7 +655,7 @@ function playInstrumentBeat(chordName, loop, beatInBar, instrument, startTime) {
     for (const interval of loop[step]) {
       if (interval < 0) continue;                        // -1 = silence
       const target = chord[0] + interval;
-      const midi   = snapToChord(target, chord);
+      const midi   = snapToChord(target, chord, VOICE_RANGES[instrument]);
       if (midi !== null) notesNow.add(midi);
     }
 
