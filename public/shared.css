@@ -1,0 +1,166 @@
+/*
+ * shared.css — styles used by both piano.html and harmoniser.html
+ *
+ * Each page sets its accent colour via CSS custom properties:
+ *   --accent          primary colour (buttons, highlights)
+ *   --accent-hover    slightly lighter
+ *   --accent-glow     rgba for box-shadow
+ *   --play-text       play-button icon colour
+ *
+ * Defaults below are the piano-page blue palette; harmoniser.html
+ * overrides them in its own <style> block.
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap');
+
+:root {
+  --accent:       #74b8f0;
+  --accent-hover: #93ccff;
+  --accent-glow:  rgba(116, 184, 240, 0.3);
+  --play-text:    #0d0b09;
+
+  /* shared neutrals */
+  --bg:      #0d0b09;
+  --surface: #131109;
+  --card:    #1c1813;
+  --border:  #2e2820;
+  --text:    #ede8df;
+  --muted:   #8a7e70;
+  --faint:   #3d352a;
+}
+
+/* ── reset ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ── page shell ── */
+body {
+  background: var(--bg); color: var(--text);
+  font-family: 'DM Sans', system-ui, sans-serif;
+  user-select: none;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 24px; min-height: 100vh;
+}
+
+/* ── back link ── */
+#back-btn {
+  position: fixed; top: 18px; left: 22px; z-index: 200;
+  color: var(--muted); text-decoration: none; font-size: 13px; font-weight: 500;
+  display: flex; align-items: center; gap: 6px;
+  background: var(--card); border: 1px solid var(--border);
+  padding: 6px 14px; border-radius: 100px;
+  transition: color .2s, border-color .2s, background .2s;
+}
+#back-btn:hover { color: var(--text); border-color: var(--faint); background: #241f1a; }
+
+/* ── tempo buttons ── */
+.tempo-btn {
+  background: var(--card); border: 1px solid var(--border);
+  color: var(--text); font-size: 20px; font-weight: 600;
+  width: 40px; height: 40px;
+  border-radius: 10px; cursor: pointer; line-height: 1;
+  transition: background .15s, border-color .15s;
+}
+.tempo-btn:hover { background: #241f1a; border-color: var(--faint); }
+
+/* ── beat dots ── */
+.beat-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--faint); transition: background 0.06s, transform 0.06s;
+}
+.beat-dot.active { background: #e86060; transform: scale(1.3); }
+
+/* ── status bar ── */
+#status-bar { margin-top: 14px; font-size: 12px; color: var(--muted); text-align: center; }
+#api-status  { display: inline-block; margin-left: 6px; }
+.status-ok   { color: #5dcf90; }
+.status-err  { color: #e86060; }
+
+/* ── engine selector ── */
+#engine-selector {
+  display: flex; gap: 8px; margin-top: 12px;
+  justify-content: center; align-items: center;
+}
+#engine-selector span { font-size: 13px; color: var(--muted); }
+.engine-btn {
+  background: var(--card); border: 1px solid var(--border); color: var(--muted);
+  font-size: 13px; font-weight: 500; padding: 6px 16px; border-radius: 100px; cursor: pointer;
+  transition: border-color .15s, color .15s, background .15s;
+}
+.engine-btn.active {
+  border-color: var(--accent); color: var(--accent);
+  background: rgba(116, 184, 240, 0.08);
+}
+.engine-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ── instrument toggles ── */
+#instrument-toggles {
+  display: flex; gap: 8px; margin-top: 12px;
+  justify-content: center; align-items: center; flex-wrap: wrap;
+}
+#instrument-toggles span { font-size: 13px; color: var(--muted); }
+.toggle-btn {
+  background: var(--card); border: 1px solid var(--border); color: var(--muted);
+  font-size: 13px; font-weight: 500; padding: 6px 14px; border-radius: 100px; cursor: pointer;
+  display: flex; align-items: center; gap: 6px;
+  transition: border-color .15s, color .15s, background .15s;
+}
+.toggle-btn.on  {
+  border-color: rgba(93, 207, 144, 0.5); color: #5dcf90;
+  background: rgba(93, 207, 144, 0.07);
+}
+.toggle-btn.off {
+  border-color: var(--border); color: var(--faint); background: var(--card);
+}
+.toggle-btn:hover { border-color: var(--muted); color: var(--text); }
+.toggle-btn[data-inst="metronome"].on {
+  border-color: rgba(232, 169, 74, 0.5); color: #e8a94a;
+  background: rgba(232, 169, 74, 0.07);
+}
+.toggle-btn[data-inst="metronome"]:hover { border-color: #e8a94a; color: #e8a94a; }
+
+/* ── circular play / stop button ── */
+#play-btn-wrap {
+  display: flex; justify-content: center; align-items: center;
+  padding: 20px 0 8px;
+}
+#play-btn {
+  width: 80px; height: 80px; border-radius: 50%;
+  background: var(--accent); border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 28px; color: var(--play-text);
+  box-shadow: 0 0 0 0 var(--accent-glow), 0 4px 24px var(--accent-glow);
+  transition: background .2s, box-shadow .2s, transform .15s;
+  flex-shrink: 0;
+}
+#play-btn:hover {
+  background: var(--accent-hover);
+  transform: scale(1.06);
+  box-shadow: 0 0 0 6px var(--accent-glow), 0 6px 28px var(--accent-glow);
+}
+#play-btn.playing {
+  background: #e86060; color: #fff;
+  box-shadow: 0 0 0 0 rgba(232, 96, 96, 0.3), 0 4px 20px rgba(232, 96, 96, 0.35);
+  font-size: 22px;
+}
+#play-btn.playing:hover {
+  background: #f07070;
+  box-shadow: 0 0 0 6px rgba(232, 96, 96, 0.2), 0 6px 28px rgba(232, 96, 96, 0.35);
+}
+
+/* ── mobile ── */
+@media (max-width: 680px) {
+  body { padding: 12px; }
+
+  #back-btn { top: 12px; left: 14px; font-size: 12px; padding: 5px 12px; }
+
+  .tempo-btn  { width: 36px; height: 36px; font-size: 18px; }
+  .beat-dot   { width: 9px; height: 9px; }
+
+  #play-btn   { width: 68px; height: 68px; font-size: 24px; }
+
+  #instrument-toggles { gap: 6px; }
+  .toggle-btn  { font-size: 12px; padding: 5px 10px; }
+
+  #engine-selector { flex-wrap: wrap; }
+  .engine-btn  { font-size: 12px; padding: 5px 12px; }
+}

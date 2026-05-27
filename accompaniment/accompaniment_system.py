@@ -453,6 +453,14 @@ class AccompanimentSystem:
                 drum_steps, _ = np.nonzero(drum_loop)
                 if len(drum_steps) < 10:
                     drum_loop = self.prev_drum_loop
+                elif self.prev_drum_loop is not None:
+                    a = (self.prev_drum_loop > 0).flatten()
+                    b = (drum_loop > 0).flatten()
+                    intersection = np.logical_and(a, b).sum()
+                    union = np.logical_or(a, b).sum()
+                    distance = 1.0 - (intersection / union) if union > 0 else 0.0
+                    if distance > 0.75:
+                        drum_loop = self.prev_drum_loop
 
                 if chord != "N" and drum_loop is not None:
                     self.drums.play_loop(drum_loop, tempo)

@@ -6,184 +6,111 @@
 <title>Real-time Piano Accompaniment</title>
 <!-- soundfont-player — correct dist path (browser/soundfont-player.min.js was 404) -->
 <script src="https://unpkg.com/soundfont-player@0.12.0/dist/soundfont-player.min.js"></script>
+<link rel="stylesheet" href="/shared.css">
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-  body {
-    background: #141414; color: #f0f0f0;
-    font-family: Arial, sans-serif;
-    user-select: none;
-    display: flex; flex-direction: column; align-items: center;
-    padding: 20px; min-height: 100vh;
-  }
+  /* piano-page accent colour is the default blue defined in shared.css */
 
   #app { width: 1100px; max-width: 100%; }
 
-  /* ── back link ── */
-  #back-btn {
-    position: fixed; top: 16px; left: 20px; z-index: 200;
-    color: #787878; text-decoration: none; font-size: 13px;
-    display: flex; align-items: center; gap: 6px;
-    transition: color .15s;
-  }
-  #back-btn:hover { color: #5AAEFF; }
-
   /* ── top bar ── */
   #top-bar {
-    background: #282C34; height: 100px;
+    background: var(--card); height: 100px;
     display: flex; align-items: center; justify-content: space-between;
-    padding: 0 20px; border-radius: 8px 8px 0 0; position: relative;
+    padding: 0 24px;
+    border-radius: 18px 18px 0 0;
+    border: 1px solid var(--border); border-bottom: none;
+    position: relative;
   }
 
   #metronome-area {
     display: flex; flex-direction: column; align-items: center; gap: 6px; flex: 1;
   }
 
-  #tempo-row { display: flex; align-items: center; gap: 12px; }
-
-  .tempo-btn {
-    background: #5AAEFF; border: none; color: #f0f0f0;
-    font-size: 22px; font-weight: bold; width: 40px; height: 40px;
-    border-radius: 8px; cursor: pointer; line-height: 1;
-  }
-  .tempo-btn:hover { background: #78bbff; }
+  #tempo-row { display: flex; align-items: center; gap: 14px; }
 
   #bpm-display {
-    font-size: 28px; font-weight: bold; color: #f0f0f0;
-    min-width: 120px; text-align: center;
+    font-size: 28px; font-weight: 700; color: var(--text);
+    min-width: 120px; text-align: center; font-variant-numeric: tabular-nums;
   }
 
   #beat-dots { display: flex; gap: 16px; }
-  .beat-dot {
-    width: 20px; height: 20px; border-radius: 50%;
-    background: #787878; transition: background 0.05s;
-  }
-  .beat-dot.active { background: #ff5a5a; }
 
-  #range-label { display: block; text-align: center; font-size: 12px; color: #aaa; margin-top: 6px; }
+  #range-label {
+    display: block; text-align: center;
+    font-size: 11px; color: var(--muted); margin-top: 4px; font-weight: 500;
+  }
 
   #chord-area { min-width: 180px; text-align: right; }
-  #chord-label { font-size: 13px; color: #787878; }
-  #chord-display { font-size: 24px; font-weight: bold; color: #5AAEFF; margin-top: 4px; }
+  #chord-label { font-size: 12px; color: var(--muted); font-weight: 500; }
+  #chord-display {
+    font-size: 26px; font-weight: 700; color: var(--accent); margin-top: 4px;
+    font-variant-numeric: tabular-nums;
+  }
 
-  /* ── piano ── */
+  /* ── piano container ── */
   #piano-container {
     position: relative; width: 100%; height: 280px;
-    background: #141414; border-radius: 0 0 8px 8px; overflow: hidden;
+    background: #0a0806;
+    border-radius: 0 0 18px 18px;
+    border: 1px solid var(--border); border-top: none;
+    overflow: hidden;
   }
   #piano { position: relative; width: 100%; height: 100%; display: flex; }
 
+  /* ── white keys ── */
   .white-key {
-    flex: 1; background: #f0f0f0; border: 2px solid #141414;
-    border-top: none; border-radius: 0 0 6px 6px; cursor: pointer;
+    flex: 1;
+    background: linear-gradient(180deg, #f0ebe4 0%, #faf7f3 100%);
+    border: 1px solid #c8bfb0; border-top: none;
+    border-radius: 0 0 10px 10px; cursor: pointer;
     position: relative; display: flex; align-items: flex-end;
-    justify-content: center; padding-bottom: 8px; transition: background 0.04s;
+    justify-content: center; padding-bottom: 10px;
+    transition: background 0.06s;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.5) inset;
   }
-  .white-key:hover { background: #d8eeff; }
-  .white-key.active { background: #5AAEFF !important; }
-  .white-key .key-label { font-size: 12px; color: #333; pointer-events: none; }
-  .white-key.active .key-label { color: #141414; }
+  .white-key:hover { background: linear-gradient(180deg, #e0eeff 0%, #eef6ff 100%); }
+  .white-key.active {
+    background: linear-gradient(180deg, var(--accent) 0%, #a8d8ff 100%) !important;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.4) inset, 0 0 12px rgba(116,184,240,0.4);
+  }
+  .white-key .key-label { font-size: 11px; color: #8a7e6a; font-weight: 600; pointer-events: none; }
+  .white-key.active .key-label { color: #1a2535; }
 
+  /* ── black keys ── */
   .black-key {
     position: absolute; top: 0; height: 60%;
-    width: calc(100% / 14 * 0.58); background: #141414;
-    border-radius: 0 0 5px 5px; cursor: pointer; z-index: 2;
+    width: calc(100% / 14 * 0.58);
+    background: linear-gradient(180deg, #1a1612 0%, #0d0b09 60%, #1c1813 100%);
+    border-radius: 0 0 8px 8px; cursor: pointer; z-index: 2;
     display: flex; align-items: flex-end; justify-content: center;
-    padding-bottom: 6px; transition: background 0.04s;
+    padding-bottom: 7px; transition: background 0.06s;
+    box-shadow: 2px 4px 8px rgba(0,0,0,0.7), inset 0 -2px 4px rgba(255,255,255,0.06);
   }
-  .black-key:hover { background: #2a2a2a; }
-  .black-key.active { background: #5AAEFF !important; }
-  .black-key .key-label { font-size: 10px; color: #aaa; pointer-events: none; }
+  .black-key:hover { background: linear-gradient(180deg, #252018 0%, #181410 60%, #231f1a 100%); }
+  .black-key.active {
+    background: linear-gradient(180deg, var(--accent) 0%, #5a9fd4 100%) !important;
+    box-shadow: 2px 4px 8px rgba(0,0,0,0.6), 0 0 10px rgba(116,184,240,0.5);
+  }
+  .black-key .key-label { font-size: 9px; color: #5a5045; font-weight: 600; pointer-events: none; }
   .black-key.active .key-label { color: #fff; }
-
-  /* ── status bar ── */
-  #status-bar { margin-top: 12px; font-size: 13px; color: #787878; text-align: center; }
-  #api-status { display: inline-block; margin-left: 8px; }
-  .status-ok  { color: #50DC8C; }
-  .status-err { color: #ff5a5a; }
-
-  /* ── circular play / stop button — lives below the piano, never overlaps ── */
-  #play-btn-wrap {
-    display: flex; justify-content: center; align-items: center;
-    padding: 18px 0 6px;
-  }
-  #play-btn {
-    width: 76px; height: 76px; border-radius: 50%;
-    background: #5AAEFF; border: none; cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 28px; color: #fff;
-    box-shadow: 0 0 32px rgba(90,174,255,.4);
-    transition: background .15s, box-shadow .15s, font-size .2s;
-    flex-shrink: 0;
-  }
-  #play-btn:hover { background: #78bbff; }
-  #play-btn.playing {
-    background: #ff5a5a;
-    box-shadow: 0 0 20px rgba(255,90,90,.35);
-    font-size: 22px;
-  }
-  #play-btn.playing:hover { background: #ff7a7a; }
-
-  #engine-selector {
-    display: flex; gap: 8px; margin-top: 10px;
-    justify-content: center; align-items: center;
-  }
-  #engine-selector span { font-size: 13px; color: #787878; }
-  .engine-btn {
-    background: #282C34; border: 2px solid #444; color: #aaa;
-    font-size: 13px; padding: 5px 14px; border-radius: 6px; cursor: pointer;
-  }
-  .engine-btn.active { border-color: #5AAEFF; color: #5AAEFF; background: #1a2535; }
-  .engine-btn:hover  { border-color: #5AAEFF; }
-
-  /* ---- INSTRUMENT TOGGLES ---- */
-  #instrument-toggles {
-    display: flex; gap: 8px; margin-top: 12px;
-    justify-content: center; align-items: center; flex-wrap: wrap;
-  }
-  #instrument-toggles span { font-size: 13px; color: #787878; }
-  .toggle-btn {
-    background: #282C34; border: 2px solid #444; color: #aaa;
-    font-size: 13px; padding: 5px 14px; border-radius: 6px; cursor: pointer;
-    display: flex; align-items: center; gap: 6px;
-    transition: border-color .15s, color .15s, background .15s;
-  }
-  .toggle-btn.on  { border-color: #50DC8C; color: #50DC8C; background: #112518; }
-  .toggle-btn.off { border-color: #444;    color: #555;    background: #1e1e1e; }
-  .toggle-btn:hover { border-color: #6feaa5; }
-  .toggle-btn[data-inst="metronome"].on  { border-color: #f0c040; color: #f0c040; background: #1f1a00; }
-  .toggle-btn[data-inst="metronome"]:hover { border-color: #f5d060; }
-
-  @media (max-width: 680px) {
-    #instrument-toggles { gap: 6px; }
-    .toggle-btn { font-size: 12px; padding: 4px 10px; }
-  }
 
   /* ── MOBILE ── */
   @media (max-width: 680px) {
-    body { padding: 10px; }
     #app { width: 100%; }
 
     #top-bar {
       flex-direction: column; height: auto;
-      padding: 12px 12px 10px; gap: 8px;
-      border-radius: 8px;
+      padding: 14px 14px 12px; gap: 8px;
+      border-radius: 14px 14px 0 0;
     }
     #metronome-area { width: 100%; }
     #chord-area { text-align: center; min-width: unset; width: 100%; }
     #chord-display { font-size: 20px; }
     #bpm-display { font-size: 22px; min-width: unset; }
-    .tempo-btn { width: 36px; height: 36px; font-size: 18px; }
     #beat-dots { gap: 12px; }
-    .beat-dot  { width: 16px; height: 16px; }
-    #range-label { font-size: 11px; }
+    #range-label { font-size: 10px; }
 
-    #piano-container { height: 160px; }
-
-    #play-btn { width: 64px; height: 64px; font-size: 24px; }
-
-    #engine-selector { flex-wrap: wrap; }
-    .engine-btn { font-size: 12px; padding: 4px 10px; }
+    #piano-container { height: 160px; border-radius: 0 0 14px 14px; }
   }
 </style>
 </head>
@@ -223,6 +150,7 @@
     <button id="play-btn" title="Start">▶</button>
   </div>
 
+
   <div id="engine-selector">
     <span>Engine:</span>
     <button class="engine-btn active" data-engine="transformer">AR Transformer</button>
@@ -242,9 +170,10 @@
   </div>
 </div>
 
+<script src="/shared.js"></script>
 <script>
 // =============================================================
-// CONSTANTS  (mirrors utils/constants.py)
+// CONSTANTS  (piano-specific; shared ones live in shared.js)
 // =============================================================
 
 const NOTE_FREQS = {
@@ -269,7 +198,7 @@ const KEYBOARD_MAP = {
 const OCT1_LABELS = {C:'a','C#':'w',D:'s','D#':'e',E:'d',F:'f','F#':'t',G:'g','G#':'y',A:'h','A#':'u',B:'j'};
 const OCT2_LABELS = {C:'k','C#':'o',D:'l','D#':'p',E:';',F:"'"};
 
-const ROOTS       = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+// ROOTS, BASE_OCTAVE, API_BASE, BEATS_PER_BAR, STEPS_PER_BEAT → shared.js
 const WHITE_NAMES = ['C','D','E','F','G','A','B'];
 
 const CHORD_INTERVALS = {
@@ -279,18 +208,16 @@ const CHORD_INTERVALS = {
   m7b5:[0,3,6,10], mM7:[0,3,7,11],
 };
 
-const BASE_OCTAVE = 36;
-const API_BASE    = '/api';
-const STEPS_PER_BEAT = 4;
-const BEATS_PER_BAR  = 4;
+// BASE_OCTAVE, API_BASE, STEPS_PER_BEAT, BEATS_PER_BAR → shared.js
 
 // =============================================================
 // STATE
 // =============================================================
 
+// tempo, instrumentOn → shared.js
 let audioContext    = null;
 let started         = false;
-let tempo           = 100;
+// tempo declared in shared.js
 let octaveOffset    = 0;
 const OCTAVE_MIN = -2, OCTAVE_MAX = 1;
 
@@ -304,8 +231,7 @@ let currentLoops  = {};
 let pendingLoops  = {};
 const accEnabled  = true;
 
-// ---- INSTRUMENT TOGGLES ----
-const instrumentOn = { piano: true, guitar: true, bass: true, drums: true, metronome: true };
+// instrumentOn → shared.js
 
 let nextBeatTime    = 0;
 let schedulerTimer  = null;
@@ -779,11 +705,7 @@ function updateRangeLabel() {
     `Range C${oct1}–B${oct1+1}   (z / x to shift octave)`;
 }
 
-function updateBeatDots(beat) {
-  document.querySelectorAll('.beat-dot').forEach(dot => {
-    dot.classList.toggle('active', parseInt(dot.dataset.beat) === beat);
-  });
-}
+// updateBeatDots() → shared.js
 
 // =============================================================
 // NOTE PRESS / RELEASE  — monophonic top voice
@@ -898,19 +820,62 @@ document.addEventListener('keyup', e => {
 // TEMPO + PLAY/STOP BUTTON
 // =============================================================
 
-function setTempo(bpm) {
-  tempo = Math.max(20, Math.min(300, bpm));
-  document.getElementById('bpm-display').textContent = `${tempo} BPM`;
-}
+// setTempo(), btn-plus/minus listeners → shared.js
 
-document.getElementById('btn-plus' ).addEventListener('click', () => setTempo(tempo + 5));
-document.getElementById('btn-minus').addEventListener('click', () => setTempo(tempo - 5));
+function stopAudio() {
+  // Stop the lookahead scheduler
+  if (schedulerTimer !== null) {
+    clearTimeout(schedulerTimer);
+    schedulerTimer = null;
+  }
+
+  // Release every held key (stops their oscillators)
+  Object.keys(notesPressed).forEach(releaseNote);
+  soloAudioNote = null;
+
+  // Close the AudioContext so all nodes are garbage-collected
+  if (audioContext) {
+    audioContext.close();
+    audioContext = null;
+  }
+
+  // Unload soundfont players
+  sf.piano  = null;
+  sf.guitar = null;
+  sf.bass   = null;
+  sfReady   = 0;
+
+  // Reset playback state (keep tempo + octave)
+  started        = false;
+  notesPlayed    = [];
+  notesPressed   = {};
+  currentLoops   = {};
+  pendingLoops   = {};
+  currentBeat    = 1;
+  nextBeatTime   = 0;
+  engineHistory  = '';
+  predictedChord = '–';
+
+  document.getElementById('chord-display').textContent = '–';
+  document.querySelectorAll('.beat-dot').forEach(d => d.classList.remove('active'));
+
+  // Reset button
+  const btn = document.getElementById('play-btn');
+  btn.textContent = '▶';
+  btn.title       = 'Start';
+  btn.classList.remove('playing');
+
+  // Tell the server to forget its state too
+  fetch(`${API_BASE}/reset`, { method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({}) }).catch(() => {});
+}
 
 document.getElementById('play-btn').addEventListener('click', () => {
   if (!started) {
     startAudio();
   } else {
-    location.reload();
+    stopAudio();
   }
 });
 
@@ -918,18 +883,7 @@ document.getElementById('play-btn').addEventListener('click', () => {
 // INIT
 // =============================================================
 
-// =============================================================
-// INSTRUMENT TOGGLE BUTTONS
-// =============================================================
-
-document.querySelectorAll('.toggle-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    const inst = btn.dataset.inst;
-    instrumentOn[inst] = !instrumentOn[inst];
-    btn.classList.toggle('on',  instrumentOn[inst]);
-    btn.classList.toggle('off', !instrumentOn[inst]);
-  });
-});
+// instrument toggle buttons → shared.js
 
 buildPiano();
 checkAPI();

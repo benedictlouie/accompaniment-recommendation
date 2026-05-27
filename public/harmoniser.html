@@ -4,19 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Real-Time Harmoniser</title>
+<link rel="stylesheet" href="/shared.css">
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-  body {
-    background: #141414;
-    color: #f0f0f0;
-    font-family: Arial, sans-serif;
-    user-select: none;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 20px;
-    min-height: 100vh;
+  /* ── harmoniser accent: green ── */
+  :root {
+    --accent:       #5dcf90;
+    --accent-hover: #7adfaa;
+    --accent-glow:  rgba(93, 207, 144, 0.3);
+    --play-text:    #0d0b09;
   }
 
   #app {
@@ -32,210 +27,101 @@
     gap: 20px;
     margin-bottom: 20px;
     position: relative;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 18px 24px 48px; /* bottom padding for beat dots */
   }
-
-  .tempo-btn {
-    background: #5AAEFF;
-    border: none;
-    color: #f0f0f0;
-    font-size: 22px;
-    font-weight: bold;
-    width: 40px;
-    height: 40px;
-    border-radius: 8px;
-    cursor: pointer;
-  }
-  .tempo-btn:hover { background: #78bbff; }
 
   #bpm-display {
-    font-size: 32px;
-    font-weight: bold;
-    color: #f0f0f0;
+    font-size: 30px;
+    font-weight: 700;
+    color: var(--text);
     min-width: 130px;
     text-align: center;
+    font-variant-numeric: tabular-nums;
   }
 
   #beat-dots {
     display: flex;
-    gap: 16px;
+    gap: 14px;
     position: absolute;
-    bottom: -28px;
+    bottom: 16px;
     left: 50%;
     transform: translateX(-50%);
   }
-  .beat-dot {
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    background: #787878;
-    transition: background 0.05s;
-  }
-  .beat-dot.active { background: #ff5a5a; }
 
   /* ---- INFO ROW ---- */
   #info-row {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin-top: 40px;
-    margin-bottom: 16px;
-    padding: 0 20px;
+    margin-top: 16px;
+    margin-bottom: 14px;
+    padding: 0 4px;
   }
 
   .info-block { display: flex; flex-direction: column; gap: 4px; }
-  .info-label { font-size: 14px; color: #787878; }
-  .info-value { font-size: 26px; font-weight: bold; }
-  .note-value  { color: #50DC8C; }
-  .chord-value { color: #5AAEFF; }
+  .info-label { font-size: 12px; color: var(--muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.8px; }
+  .info-value { font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .note-value  { color: #5dcf90; }
+  .chord-value { color: #74b8f0; }
 
   /* ---- LEVEL METER ---- */
   #level-area {
-    padding: 0 20px;
-    margin-bottom: 12px;
+    padding: 0 4px;
+    margin-bottom: 14px;
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
   }
-  #level-label { font-size: 13px; color: #787878; min-width: 80px; }
+  #level-label {
+    font-size: 12px; color: var(--muted); font-weight: 500;
+    min-width: 72px; text-transform: uppercase; letter-spacing: 0.8px;
+  }
   #level-bar-outer {
-    width: 200px;
-    height: 18px;
-    border: 2px solid #f0f0f0;
-    border-radius: 3px;
+    flex: 1;
+    height: 6px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
     overflow: hidden;
   }
   #level-bar-inner {
     height: 100%;
-    background: #50DC8C;
+    background: linear-gradient(90deg, #5dcf90, #7adfaa);
     width: 0%;
     transition: width 0.05s;
+    border-radius: 6px;
   }
 
   /* ---- CANVAS ---- */
   #viz-canvas {
     width: 100%;
-    background: #0e0e0e;
-    border-radius: 8px;
+    background: #0a0806;
+    border-radius: 14px;
+    border: 1px solid var(--border);
     display: block;
   }
 
-  /* ---- CIRCULAR PLAY / STOP BUTTON ---- */
-  #play-btn-wrap {
-    display: flex; justify-content: center; align-items: center;
-    padding: 18px 0 6px;
-  }
-  #play-btn {
-    width: 76px; height: 76px; border-radius: 50%;
-    background: #50DC8C; border: none; cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 28px; color: #141414;
-    box-shadow: 0 0 32px rgba(80,220,140,.4);
-    transition: background .15s, box-shadow .15s, font-size .2s;
-  }
-  #play-btn:hover { background: #6feaa5; }
-  #play-btn.playing {
-    background: #ff5a5a; color: #fff;
-    box-shadow: 0 0 20px rgba(255,90,90,.35);
-    font-size: 22px;
-  }
-  #play-btn.playing:hover { background: #ff7a7a; }
-
-  /* ---- STATUS ---- */
-  #status-bar {
-    margin-top: 10px;
-    font-size: 13px;
-    color: #787878;
-    text-align: center;
-  }
-  .status-ok  { color: #50DC8C; }
-  .status-err { color: #ff5a5a; }
-
-  #engine-selector {
-    display: flex;
-    gap: 8px;
-    margin-top: 10px;
-    justify-content: center;
-    align-items: center;
-  }
-  #engine-selector span { font-size: 13px; color: #787878; }
-  .engine-btn {
-    background: #282C34;
-    border: 2px solid #444;
-    color: #aaa;
-    font-size: 13px;
-    padding: 5px 14px;
-    border-radius: 6px;
-    cursor: pointer;
-  }
-  .engine-btn.active { border-color: #5AAEFF; color: #5AAEFF; background: #1a2535; }
-  .engine-btn:hover  { border-color: #5AAEFF; }
-
-  /* ---- INSTRUMENT TOGGLES ---- */
-  #instrument-toggles {
-    display: flex;
-    gap: 8px;
-    margin-top: 12px;
-    justify-content: center;
-    align-items: center;
-    flex-wrap: wrap;
-  }
-  #instrument-toggles span { font-size: 13px; color: #787878; }
-  .toggle-btn {
-    background: #282C34;
-    border: 2px solid #444;
-    color: #aaa;
-    font-size: 13px;
-    padding: 5px 14px;
-    border-radius: 6px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    transition: border-color .15s, color .15s, background .15s;
-  }
-  .toggle-btn .toggle-icon { font-size: 15px; }
-  .toggle-btn.on  { border-color: #50DC8C; color: #50DC8C; background: #112518; }
-  .toggle-btn.off { border-color: #444;    color: #555;    background: #1e1e1e; }
-  .toggle-btn:hover { border-color: #6feaa5; }
-  .toggle-btn[data-inst="metronome"].on  { border-color: #f0c040; color: #f0c040; background: #1f1a00; }
-  .toggle-btn[data-inst="metronome"]:hover { border-color: #f5d060; }
-
+  /* ── MOBILE (harmoniser-specific overrides) ── */
   @media (max-width: 680px) {
-    #instrument-toggles { gap: 6px; }
-    .toggle-btn { font-size: 12px; padding: 4px 10px; }
-  }
-
-  #back-btn {
-    position: fixed; top: 16px; left: 20px; z-index: 200;
-    color: #787878; text-decoration: none; font-size: 13px;
-    display: flex; align-items: center; gap: 6px;
-    transition: color .15s;
-  }
-  #back-btn:hover { color: #5AAEFF; }
-
-  /* ── MOBILE ── */
-  @media (max-width: 680px) {
-    body { padding: 10px; }
     #app  { width: 100%; }
 
     #top-bar {
       flex-wrap: wrap; justify-content: center; gap: 10px;
-      padding-bottom: 44px;   /* room for absolute beat-dots */
+      padding: 14px 14px 46px;
+      border-radius: 14px;
     }
     #bpm-display { font-size: 24px; min-width: unset; }
-    .tempo-btn   { width: 36px; height: 36px; font-size: 18px; }
-    .beat-dot    { width: 16px; height: 16px; }
 
-    #info-row { padding: 0 8px; margin-top: 44px; }
-    .info-value { font-size: 20px; }
+    #info-row { padding: 0; margin-top: 12px; }
+    .info-value { font-size: 22px; }
 
-    #level-area { padding: 0 8px; }
+    #level-area { padding: 0; }
     #level-bar-outer { flex: 1; width: auto; }
 
-    #play-btn { width: 64px; height: 64px; font-size: 24px; }
-
-    #engine-selector { flex-wrap: wrap; }
-    .engine-btn { font-size: 12px; padding: 4px 10px; }
+    #viz-canvas { border-radius: 10px; }
   }
 </style>
 </head>
@@ -299,17 +185,14 @@
   </div>
 </div>
 
+<script src="/shared.js"></script>
 <script>
 // =============================================================
-// CONSTANTS  (mirrors Python utils/constants.py)
+// CONSTANTS  (harmoniser-specific; shared ones live in shared.js)
 // =============================================================
 
-const ROOTS = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+// ROOTS, API_BASE, BEATS_PER_BAR, STEPS_PER_BEAT, BASE_OCTAVE → shared.js
 const SAMPLE_RATE_TARGET = 44100;
-const API_BASE = '/api';
-const BEATS_PER_BAR  = 4;
-const STEPS_PER_BEAT = 4;   // MELODY_NOTES_PER_BEAT
-const BASE_OCTAVE    = 36;  // C2 — matches Python CHORD_TO_TETRAD
 
 // Build CHORD_TETRAD (mirrors Python CHORD_TO_TETRAD for maj/min)
 const CHORD_TETRAD = { N: [-1,-1,-1,-1] };
@@ -323,11 +206,12 @@ ROOTS.forEach((r, i) => {
 // STATE
 // =============================================================
 
+// tempo, instrumentOn → shared.js
 let audioContext   = null;
 let analyser       = null;
 let mediaStream    = null;
 let running        = false;
-let tempo          = 100;
+// tempo declared in shared.js
 let currentBeat    = 1;
 let lastBeatTime   = 0;    // AudioContext seconds
 let predictedChord = '–';
@@ -348,8 +232,7 @@ let stepBuffer = [];   // accumulates notes since last beat fired
 let currentLoops = null;   // { guitar, piano, bass, drums } — arrays from API
 let prevVoicing  = { guitar: null, piano: null, bass: null };
 
-// ---- INSTRUMENT TOGGLES ----
-const instrumentOn = { piano: true, guitar: true, bass: true, drums: true, metronome: true };
+// instrumentOn → shared.js
 
 // Pitch history for visualiser
 const HISTORY_SLOTS = 120;
@@ -995,32 +878,69 @@ function drawVisualiser() {
   }
 }
 
-// =============================================================
-// BEAT DOTS
-// =============================================================
-
-function updateBeatDots(beat) {
-  document.querySelectorAll('.beat-dot').forEach(dot => {
-    dot.classList.toggle('active', parseInt(dot.dataset.beat) === beat);
-  });
-}
+// updateBeatDots() → shared.js
 
 // =============================================================
 // TEMPO CONTROLS
 // =============================================================
 
-function setTempo(bpm) {
-  tempo = Math.max(20, Math.min(300, bpm));
-  document.getElementById('bpm-display').textContent = `${tempo} BPM`;
+// setTempo(), btn-plus/minus listeners → shared.js
+function stopMic() {
+  // Stop the rAF loop
+  running = false;
+
+  // Kill the microphone tracks so the browser mic indicator disappears
+  if (mediaStream) {
+    mediaStream.getTracks().forEach(t => t.stop());
+    mediaStream = null;
+  }
+
+  // Close the AudioContext
+  if (audioContext) {
+    audioContext.close();
+    audioContext = null;
+  }
+  analyser = null;
+
+  // Reset playback state (keep tempo)
+  currentLoops   = null;
+  prevVoicing    = { guitar: null, piano: null, bass: null };
+  stepBuffer     = [];
+  beatHistory    = '';
+  predictedChord = '–';
+  lastNote       = '–';
+  currentBeat    = 1;
+  lastBeatTime   = 0;
+  pitchHistory   = new Array(HISTORY_SLOTS).fill(null);
+  historyHead    = 0;
+
+  document.getElementById('chord-display').textContent = '–';
+  document.getElementById('note-display').textContent  = '–';
+  document.getElementById('level-bar-inner').style.width = '0%';
+  document.querySelectorAll('.beat-dot').forEach(d => d.classList.remove('active'));
+
+  // Clear the visualiser canvas
+  const W = canvas.width, H = canvas.height;
+  ctx2d.fillStyle = '#0e0e0e';
+  ctx2d.fillRect(0, 0, W, H);
+
+  // Reset button
+  const pb = document.getElementById('play-btn');
+  pb.textContent = '▶';
+  pb.title       = 'Start microphone';
+  pb.classList.remove('playing');
+
+  // Tell the server to forget its state too
+  fetch(`${API_BASE}/reset`, { method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ app: 'harmoniser', engine_type: engineType }) }).catch(() => {});
 }
 
-document.getElementById('btn-plus' ).addEventListener('click', () => setTempo(tempo + 5));
-document.getElementById('btn-minus').addEventListener('click', () => setTempo(tempo - 5));
 document.getElementById('play-btn').addEventListener('click', () => {
   if (!document.getElementById('play-btn').classList.contains('playing')) {
     startMic();
   } else {
-    location.reload();
+    stopMic();
   }
 });
 
@@ -1061,18 +981,7 @@ async function resetEngineHistory() {
 }
 
 
-// =============================================================
-// INSTRUMENT TOGGLE BUTTONS
-// =============================================================
-
-document.querySelectorAll('.toggle-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    const inst = btn.dataset.inst;
-    instrumentOn[inst] = !instrumentOn[inst];
-    btn.classList.toggle('on',  instrumentOn[inst]);
-    btn.classList.toggle('off', !instrumentOn[inst]);
-  });
-});
+// instrument toggle buttons → shared.js
 
 checkAPI();
 setInterval(checkAPI, 5000);

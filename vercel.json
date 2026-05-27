@@ -5,9 +5,11 @@
     { "src": "public/**/*",    "use": "@vercel/static"  }
   ],
   "routes": [
-    { "src": "/api/(.*)",      "dest": "/api/index.py"          },
-    { "src": "/piano",         "dest": "/public/piano.html"     },
+    { "src": "/api/(.*)",      "dest": "/api/index.py"           },
+    { "src": "/shared\\.css",  "dest": "/public/shared.css"      },
+    { "src": "/shared\\.js",   "dest": "/public/shared.js"       },
+    { "src": "/piano",         "dest": "/public/piano.html"      },
     { "src": "/harmoniser",    "dest": "/public/harmoniser.html" },
-    { "src": "/",              "dest": "/public/index.html"     }
+    { "src": "/",              "dest": "/public/index.html"      }
   ]
 }
