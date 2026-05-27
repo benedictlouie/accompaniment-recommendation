@@ -201,14 +201,7 @@ const OCT2_LABELS = {C:'k','C#':'o',D:'l','D#':'p',E:';',F:"'"};
 // ROOTS, BASE_OCTAVE, API_BASE, BEATS_PER_BAR, STEPS_PER_BEAT → shared.js
 const WHITE_NAMES = ['C','D','E','F','G','A','B'];
 
-const CHORD_INTERVALS = {
-  maj:[0,4,7,12], min:[0,3,7,12], maj7:[0,4,7,11], min7:[0,3,7,10],
-  aug:[0,4,8,12], dim:[0,3,6,12], dim7:[0,3,6,9],  sus2:[0,2,7,12],
-  sus4:[0,5,7,12], '7':[0,4,7,10], '6':[0,4,7,9],  min6:[0,3,7,9],
-  m7b5:[0,3,6,10], mM7:[0,3,7,11],
-};
-
-// BASE_OCTAVE, API_BASE, STEPS_PER_BEAT, BEATS_PER_BAR → shared.js
+// CHORD_INTERVALS, BASE_OCTAVE, API_BASE, STEPS_PER_BEAT, BEATS_PER_BAR → shared.js
 
 // =============================================================
 // STATE
@@ -479,7 +472,7 @@ function playLoopBeat(chord, beatIndex, beatTime, beatDur) {
         if (iv < 0) continue;
         const midi = snapToChordInRange(rootMidi + iv, midis, 36, 84); // C2–C6
         assertChordTone(midi, chord);
-        sfPlay('guitar', midi, t, stepDur * 1.8, 0.65);
+        sfPlay('guitar', midi, t, stepDur * 1.8, 1.4);
       }
     }
   }
@@ -496,7 +489,7 @@ function playLoopBeat(chord, beatIndex, beatTime, beatDur) {
         if (iv < 0) continue;
         const midi = snapToChordInRange(rootMidi + 12 + iv, pianoMidis, 36, 96); // C2–C7
         assertChordTone(midi, chord);
-        sfPlay('piano', midi, t, stepDur * 1.4, 0.55);
+        sfPlay('piano', midi, t, stepDur * 1.4, 1.2);
       }
     }
   }
@@ -512,7 +505,7 @@ function playLoopBeat(chord, beatIndex, beatTime, beatDur) {
         if (iv < 0) continue;
         const midi = snapToChordInRange(rootMidi + iv, midis, 24, 55); // C1–G3
         assertChordTone(midi, chord);
-        sfPlay('bass', midi, t, stepDur * 2.2, 0.9);
+        sfPlay('bass', midi, t, stepDur * 2.2, 1.8);
       }
     }
   }

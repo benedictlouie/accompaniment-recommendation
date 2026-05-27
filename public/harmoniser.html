@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Real-Time Harmoniser</title>
+<script src="https://unpkg.com/soundfont-player@0.12.0/dist/soundfont-player.min.js"></script>
 <link rel="stylesheet" href="/shared.css">
 <style>
   /* ── harmoniser accent: green ── */
@@ -194,13 +195,7 @@
 // ROOTS, API_BASE, BEATS_PER_BAR, STEPS_PER_BEAT, BASE_OCTAVE → shared.js
 const SAMPLE_RATE_TARGET = 44100;
 
-// Build CHORD_TETRAD (mirrors Python CHORD_TO_TETRAD for maj/min)
-const CHORD_TETRAD = { N: [-1,-1,-1,-1] };
-ROOTS.forEach((r, i) => {
-  const root = BASE_OCTAVE + i;
-  CHORD_TETRAD[`${r}:maj`] = [root, root+4, root+7, root+12];
-  CHORD_TETRAD[`${r}:min`] = [root, root+3, root+7, root+12];
-});
+// CHORD_TETRAD → shared.js
 
 // =============================================================
 // STATE
@@ -221,6 +216,7 @@ let engineType     = 'transformer';  // FIX 1: was undefined, crashed resetEngin
 // FIX 2: history round-trip — API is stateless, history is base64-encoded
 // and must be sent back each call so the engine has context.
 let beatHistory = '';
+let apiCallId   = 0;   // incremented each beat; stale responses are dropped
 
 // Python: beat_audio_buffer fills between beat N-1 and beat N firing, then
 // capture_beat_4_16ths() reads it and CLEARS it.  We mirror this with one buffer:
@@ -232,16 +228,35 @@ let stepBuffer = [];   // accumulates notes since last beat fired
 let currentLoops = null;   // { guitar, piano, bass, drums } — arrays from API
 let prevVoicing  = { guitar: null, piano: null, bass: null };
 
+// Soundfont players (mirrors piano.html) — loaded after AudioContext is created
+const sf     = { piano: null, guitar: null, bass: null };
+let sfReady  = 0;
+
+// Real-time pitch history clock — advances at 16th-note rate so pitch dots
+// appear immediately (no 1-beat lag from the beat_audio_buffer approach).
+let lastStepTime    = 0;   // AudioContext seconds of last history push
+let pendingBeatMark = 0;   // 1=beat, 2=bar — consumed by next step push
+
 // instrumentOn → shared.js
 
-// Pitch history for visualiser
+// Pitch history — updated once per beat (4 slots = 4×16th notes), NOT every frame.
+// 120 slots ÷ 4 slots/beat = 30 beats = 7.5 bars visible at once.
 const HISTORY_SLOTS = 120;
 let pitchHistory = new Array(HISTORY_SLOTS).fill(null);
 let historyHead  = 0;
 
+// Beat/bar markers for vertical grid lines in the visualiser.
+// barMarks[slot] = 1 → beat boundary, 2 → bar boundary (beat 1 of bar).
+let barMarks = new Array(HISTORY_SLOTS).fill(0);
+
 // =============================================================
 // AUDIO SETUP
 // =============================================================
+
+// Single master gain — all synth voices route here.
+// Fixes the "audio cuts out" bug: nodes disconnect via onended, preventing
+// accumulation past the browser's ~6000 AudioNode limit.
+let masterGain = null;
 
 async function startMic() {
   try {
@@ -253,6 +268,12 @@ async function startMic() {
 
   audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: SAMPLE_RATE_TARGET });
 
+  masterGain = audioContext.createGain();
+  masterGain.gain.value = 1.0;
+  masterGain.connect(audioContext.destination);
+
+  loadSoundfonts();
+
   analyser = audioContext.createAnalyser();
   analyser.fftSize = 2048;
 
@@ -260,7 +281,9 @@ async function startMic() {
   source.connect(analyser);
 
   running = true;
-  lastBeatTime = audioContext.currentTime;
+  lastBeatTime  = audioContext.currentTime;
+  lastStepTime  = audioContext.currentTime;
+  pendingBeatMark = 0;
 
   const pb = document.getElementById('play-btn');
   pb.textContent = '■';
@@ -311,7 +334,7 @@ function detectPitch() {
 
 function freqToNoteName(freq) {
   const midi = Math.round(69 + 12 * Math.log2(freq / 440));
-  if (midi < 24 || midi > 96) return 'no pitch';
+  if (midi < 36 || midi > 96) return 'no pitch';  // C2–C7
   const octave = Math.floor(midi / 12) - 1;
   const name   = ROOTS[midi % 12];
   return `${name}${octave}`;
@@ -334,6 +357,44 @@ function updateLevelMeter(rms) {
 }
 
 // =============================================================
+// SOUNDFONT INSTRUMENTS  (mirrors piano.html)
+// =============================================================
+
+function loadSoundfonts() {
+  if (typeof Soundfont === 'undefined') return;
+  const instruments = {
+    piano:  'bright_acoustic_piano',
+    guitar: 'acoustic_guitar_nylon',
+    bass:   'acoustic_bass',
+  };
+  Object.entries(instruments).forEach(([key, name]) => {
+    Soundfont.instrument(audioContext, name, { soundfont: 'MusyngKite' })
+      .then(player => { sf[key] = player; sfReady++; updateSfStatus(); })
+      .catch(err => console.warn('Soundfont load failed:', key, err));
+  });
+}
+
+function updateSfStatus() {
+  const el = document.getElementById('api-status');
+  if (sfReady < 3) {
+    el.textContent = `API connected · loading sounds (${sfReady}/3)…`;
+    el.className   = '';
+  } else {
+    el.textContent = 'API connected · sounds ready';
+    el.className   = 'status-ok';
+  }
+}
+
+// Play one note via soundfont — t is absolute AudioContext time
+// Mirrors piano.html sfPlay(); passes raw MIDI int (not note name).
+function sfPlay(inst, midi, t, dur, gain) {
+  const player = sf[inst];
+  if (!player) return;
+  const playAt = Math.max(audioContext.currentTime + 0.003, t);
+  player.play(midi, playAt, { duration: dur, gain: gain });
+}
+
+// =============================================================
 // BEAT TIMING  (mirrors Python harmoniser main loop)
 // =============================================================
 
@@ -341,9 +402,29 @@ function loop() {
   if (!running) return;
   requestAnimationFrame(loop);
 
+  // Re-wake the AudioContext if the browser suspended it (Chrome power management).
+  // When suspended, currentTime freezes so the beat check never fires and all
+  // audio goes silent while rAF and the visualiser keep running normally.
+  if (audioContext.state === 'suspended') audioContext.resume();
+
   const now          = audioContext.currentTime;
   const beatDuration = 60 / tempo;
   const stepDuration = beatDuration / STEPS_PER_BEAT;
+
+  // ----------------------------------------------------------
+  // DRIFT GUARD — if the audio clock is more than 2 beats ahead of
+  // our beat-scheduler (tab was backgrounded, rAF throttled, etc.),
+  // beatStart would be in the past and Web Audio silently drops every
+  // event scheduled there, killing the metronome and instruments.
+  // Reset both clocks to "now" so the next beat fires cleanly.
+  // ----------------------------------------------------------
+  if (now - lastBeatTime > beatDuration * 2) {
+    lastBeatTime    = now;
+    lastStepTime    = now;
+    stepBuffer      = [];
+    pendingBeatMark = 0;
+    prevVoicing     = { guitar: null, piano: null, bass: null };  // voice leading restarts fresh after gap
+  }
 
   // ----------------------------------------------------------
   // BEAT CHECK FIRST — at this moment stepBuffer holds all the
@@ -382,16 +463,35 @@ function loop() {
 
     predictChordFromAPI(processedNotes, prevBeatStart, prevBeat);
 
+    const beatInBar = (currentBeat - 1) % BEATS_PER_BAR;
+
     if (currentLoops && predictedChord !== '–' && predictedChord !== 'N') {
-      const beatInBar = (currentBeat - 1) % BEATS_PER_BAR;
-      playLoopBeat(predictedChord, currentLoops, beatInBar, now);
+      playLoopBeat(predictedChord, currentLoops, beatInBar, beatStart);  // beatStart not now — matches piano.html
     }
 
+    // Schedule click at the exact beat time (beatStart), not at the rAF time (now).
+    // This matches piano.html which schedules audio events against the audio clock.
     if (instrumentOn.metronome) {
-      playMetronomeClick(now, currentBeat === 1);
+      playMetronomeClick(beatStart, currentBeat === 1);  // strong on beat 1
     }
 
-    updateBeatDots(currentBeat);
+    // ---- VISUALISER: mark beat/bar boundary for the real-time step clock ----
+    // pitchHistory is NOT pushed here any more — the step clock below pushes
+    // one slot per 16th note using the live detected pitch (zero lag).
+    // pendingBeatMark is consumed by the very next step-clock tick.
+    const isBarStart = (beatInBar === 0);
+    pendingBeatMark = isBarStart ? 2 : 1;
+
+    // Dot update fires at the precise beat time via setTimeout — mirrors piano.html's
+    //   setTimeout(() => onBeat(beat, …), msUntil)
+    // which decouples visual timing from rAF jitter (up to 16 ms late at 60 fps).
+    // beatStart is the ideal beat time; msUntil ≤ 0 because rAF fires reactively
+    // (after the beat has passed), so Math.max(0,…) schedules it on the very next
+    // event-loop tick — far sooner than the next rAF frame.
+    const msUntil = (beatStart - audioContext.currentTime) * 1000;
+    const _dotBeat = currentBeat;
+    setTimeout(() => updateBeatDots(_dotBeat), Math.max(0, msUntil));
+
     currentBeat = currentBeat % BEATS_PER_BAR + 1;
   }
 
@@ -407,8 +507,17 @@ function loop() {
     lastNote = note;
     document.getElementById('note-display').textContent = note;
   }
-  pitchHistory[historyHead] = (note === 'quiet' || note === 'no pitch') ? null : note;
-  historyHead = (historyHead + 1) % HISTORY_SLOTS;
+
+  // ---- Real-time pitch history clock (16th-note rate) ----
+  // Advances one slot per stepDuration using live pitch — no beat-buffer lag.
+  // pendingBeatMark from the beat handler marks the first slot of each beat/bar.
+  while (now - lastStepTime >= stepDuration) {
+    lastStepTime += stepDuration;
+    barMarks[historyHead]    = pendingBeatMark;
+    pendingBeatMark          = 0;   // consumed
+    pitchHistory[historyHead] = (note !== 'quiet' && note !== 'no pitch') ? note : null;
+    historyHead = (historyHead + 1) % HISTORY_SLOTS;
+  }
 
   drawVisualiser();
 }
@@ -418,6 +527,7 @@ function loop() {
 // =============================================================
 
 async function predictChordFromAPI(notes, beatStart, beatIndex) {
+  const callId = ++apiCallId;
   try {
     const res = await fetch(`${API_BASE}/predict-chord`, {
       method: 'POST',
@@ -427,22 +537,24 @@ async function predictChordFromAPI(notes, beatStart, beatIndex) {
         beat_start: beatStart,
         beat_index: beatIndex,
         tempo,
-        history: beatHistory,   // FIX 2: round-trip history so API stays stateful
+        history: beatHistory,
       })
     });
     const data = await res.json();
+
+    // Discard if a newer beat has already updated state (slow/out-of-order response)
+    if (callId !== apiCallId) return;
 
     if (data.chord) {
       predictedChord = data.chord;
       document.getElementById('chord-display').textContent = data.chord;
     }
     if (data.history) {
-      beatHistory = data.history;   // FIX 2: store updated history for next call
+      beatHistory = data.history;
     }
-    // FIX 5: API returns loops only on beat_index 1 (bar start)
     if (data.loops && Object.keys(data.loops).length > 0) {
       currentLoops = data.loops;
-      prevVoicing  = { guitar: null, piano: null, bass: null };  // reset voice leading
+      prevVoicing  = { guitar: null, piano: null, bass: null };
     }
   } catch (e) {}
 }
@@ -539,7 +651,13 @@ function playInstrumentBeat(chordName, loop, beatInBar, instrument, startTime) {
       if (midi !== null) notesNow.add(midi);
     }
 
-    notesNow.forEach(midi => playNote(midi, instrument, stepStart, stepDuration));
+    // Use soundfont if loaded; fall back to Web Audio oscillator while loading
+    const sfDur  = stepDuration * { guitar: 1.8, piano: 1.4, bass: 2.2 }[instrument];
+    const sfGain = { guitar: 1.4, piano: 1.2, bass: 1.8 }[instrument];
+    notesNow.forEach(midi => {
+      if (sf[instrument]) sfPlay(instrument, midi, stepStart, sfDur, sfGain);
+      else                playNote(midi, instrument, stepStart, stepDuration);
+    });
   }
 }
 
@@ -556,9 +674,12 @@ function playLoopBeat(chordName, loops, beatInBar, startTime) {
   }
 }
 
-// Synthesise a single MIDI note via Web Audio with instrument-appropriate timbre
+// Synthesise a single MIDI note via Web Audio with instrument-appropriate timbre.
+// Routes through masterGain; onended disconnects nodes to prevent the node-leak
+// that causes audio to cut out after a few minutes.
 function playNote(midi, instrument, startTime, duration) {
-  if (!audioContext) return;
+  if (!audioContext || !masterGain) return;
+  const pt   = Math.max(audioContext.currentTime + 0.003, startTime);
   const freq = 440 * Math.pow(2, (midi - 69) / 12);
 
   const osc  = audioContext.createOscillator();
@@ -568,29 +689,30 @@ function playNote(midi, instrument, startTime, duration) {
   filt.type = 'lowpass';
 
   if (instrument === 'guitar') {
-    osc.type           = 'sawtooth';
+    osc.type             = 'sawtooth';
     filt.frequency.value = 2500;
   } else if (instrument === 'piano') {
-    osc.type           = 'triangle';
+    osc.type             = 'triangle';
     filt.frequency.value = 3500;
   } else {            // bass
-    osc.type           = 'sine';
+    osc.type             = 'sine';
     filt.frequency.value = 500;
   }
 
   osc.frequency.value = freq;
   osc.connect(filt);
   filt.connect(gain);
-  gain.connect(audioContext.destination);
+  gain.connect(masterGain);
 
-  const vel = { guitar: 0.18, piano: 0.10, bass: 0.28 }[instrument];
-  gain.gain.setValueAtTime(0, startTime);
-  gain.gain.linearRampToValueAtTime(vel, startTime + 0.012);
-  gain.gain.setValueAtTime(vel, startTime + duration * 0.65);
-  gain.gain.linearRampToValueAtTime(0, startTime + duration);
+  const vel = { guitar: 0.36, piano: 0.22, bass: 0.55 }[instrument];
+  gain.gain.setValueAtTime(0, pt);
+  gain.gain.linearRampToValueAtTime(vel, pt + 0.012);
+  gain.gain.setValueAtTime(vel, pt + duration * 0.65);
+  gain.gain.linearRampToValueAtTime(0, pt + duration);
 
-  osc.start(startTime);
-  osc.stop(startTime + duration + 0.05);
+  osc.start(pt);
+  osc.stop(pt + duration + 0.05);
+  osc.onended = () => { osc.disconnect(); filt.disconnect(); gain.disconnect(); };
 }
 
 // =============================================================
@@ -618,140 +740,82 @@ function midiToDrumGroup(midi) {
   return null;
 }
 
+// Helper: create noise buffer source routed through masterGain, auto-disconnects on end.
+function _noiseNode(duration, filtType, filtFreq, filtQ, gainVal, t) {
+  const pt   = Math.max(audioContext.currentTime + 0.003, t);
+  const bufLen = Math.floor(audioContext.sampleRate * duration);
+  const buf    = audioContext.createBuffer(1, bufLen, audioContext.sampleRate);
+  const data   = buf.getChannelData(0);
+  for (let i = 0; i < bufLen; i++) data[i] = Math.random() * 2 - 1;
+  const src  = audioContext.createBufferSource();
+  const filt = audioContext.createBiquadFilter();
+  const gain = audioContext.createGain();
+  src.buffer = buf;
+  filt.type  = filtType; filt.frequency.value = filtFreq;
+  if (filtQ !== undefined) filt.Q.value = filtQ;
+  src.connect(filt); filt.connect(gain); gain.connect(masterGain);
+  gain.gain.setValueAtTime(gainVal, pt);
+  gain.gain.exponentialRampToValueAtTime(0.001, pt + duration);
+  src.start(pt); src.stop(pt + duration + 0.01);
+  src.onended = () => { src.disconnect(); filt.disconnect(); gain.disconnect(); };
+  return src;
+}
+
 function playDrumNote(group, velocity, t) {
-  if (!audioContext) return;
+  if (!audioContext || !masterGain) return;
   const vel = (velocity / 127) * 0.9;
+  const pt  = Math.max(audioContext.currentTime + 0.003, t);
 
   if (group === 'kick') {
-    // Sine with fast pitch sweep down
     const osc  = audioContext.createOscillator();
     const gain = audioContext.createGain();
-    osc.connect(gain); gain.connect(audioContext.destination);
-    osc.frequency.setValueAtTime(160, t);
-    osc.frequency.exponentialRampToValueAtTime(40, t + 0.08);
-    gain.gain.setValueAtTime(vel * 1.0, t);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
-    osc.start(t); osc.stop(t + 0.3);
+    osc.connect(gain); gain.connect(masterGain);
+    osc.frequency.setValueAtTime(160, pt);
+    osc.frequency.exponentialRampToValueAtTime(40, pt + 0.08);
+    gain.gain.setValueAtTime(vel * 1.0, pt);
+    gain.gain.exponentialRampToValueAtTime(0.001, pt + 0.25);
+    osc.start(pt); osc.stop(pt + 0.3);
+    osc.onended = () => { osc.disconnect(); gain.disconnect(); };
 
   } else if (group === 'snare') {
-    // Noise burst + pitched tone
-    const bufLen = Math.floor(audioContext.sampleRate * 0.15);
-    const buf    = audioContext.createBuffer(1, bufLen, audioContext.sampleRate);
-    const data   = buf.getChannelData(0);
-    for (let i = 0; i < bufLen; i++) data[i] = Math.random() * 2 - 1;
-
-    const src  = audioContext.createBufferSource();
-    const filt = audioContext.createBiquadFilter();
-    const gain = audioContext.createGain();
-    src.buffer = buf;
-    filt.type  = 'bandpass'; filt.frequency.value = 3000; filt.Q.value = 0.5;
-    src.connect(filt); filt.connect(gain); gain.connect(audioContext.destination);
-    gain.gain.setValueAtTime(vel * 0.6, t);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
-    src.start(t); src.stop(t + 0.2);
-
-    // Tonal body
+    _noiseNode(0.15, 'bandpass', 3000, 0.5, vel * 0.6, pt);
     const osc2 = audioContext.createOscillator();
     const g2   = audioContext.createGain();
-    osc2.connect(g2); g2.connect(audioContext.destination);
+    osc2.connect(g2); g2.connect(masterGain);
     osc2.frequency.value = 200;
-    g2.gain.setValueAtTime(vel * 0.3, t);
-    g2.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
-    osc2.start(t); osc2.stop(t + 0.1);
+    g2.gain.setValueAtTime(vel * 0.3, pt);
+    g2.gain.exponentialRampToValueAtTime(0.001, pt + 0.08);
+    osc2.start(pt); osc2.stop(pt + 0.1);
+    osc2.onended = () => { osc2.disconnect(); g2.disconnect(); };
 
   } else if (group === 'hihatC') {
-    // Short filtered noise
-    const bufLen = Math.floor(audioContext.sampleRate * 0.04);
-    const buf    = audioContext.createBuffer(1, bufLen, audioContext.sampleRate);
-    const data   = buf.getChannelData(0);
-    for (let i = 0; i < bufLen; i++) data[i] = Math.random() * 2 - 1;
-
-    const src  = audioContext.createBufferSource();
-    const filt = audioContext.createBiquadFilter();
-    const gain = audioContext.createGain();
-    src.buffer = buf;
-    filt.type  = 'highpass'; filt.frequency.value = 8000;
-    src.connect(filt); filt.connect(gain); gain.connect(audioContext.destination);
-    gain.gain.setValueAtTime(vel * 0.25, t);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
-    src.start(t); src.stop(t + 0.06);
+    _noiseNode(0.04, 'highpass', 8000, undefined, vel * 0.25, pt);
 
   } else if (group === 'hihatO') {
-    // Longer filtered noise
-    const bufLen = Math.floor(audioContext.sampleRate * 0.25);
-    const buf    = audioContext.createBuffer(1, bufLen, audioContext.sampleRate);
-    const data   = buf.getChannelData(0);
-    for (let i = 0; i < bufLen; i++) data[i] = Math.random() * 2 - 1;
-
-    const src  = audioContext.createBufferSource();
-    const filt = audioContext.createBiquadFilter();
-    const gain = audioContext.createGain();
-    src.buffer = buf;
-    filt.type  = 'highpass'; filt.frequency.value = 6000;
-    src.connect(filt); filt.connect(gain); gain.connect(audioContext.destination);
-    gain.gain.setValueAtTime(vel * 0.25, t);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
-    src.start(t); src.stop(t + 0.3);
+    _noiseNode(0.25, 'highpass', 6000, undefined, vel * 0.25, pt);
 
   } else if (group === 'clap') {
-    // Two quick noise bursts
     for (let k = 0; k < 2; k++) {
-      const offset = k * 0.01;
-      const bufLen = Math.floor(audioContext.sampleRate * 0.05);
-      const buf    = audioContext.createBuffer(1, bufLen, audioContext.sampleRate);
-      const data   = buf.getChannelData(0);
-      for (let i = 0; i < bufLen; i++) data[i] = Math.random() * 2 - 1;
-      const src  = audioContext.createBufferSource();
-      const filt = audioContext.createBiquadFilter();
-      const gain = audioContext.createGain();
-      src.buffer = buf;
-      filt.type  = 'bandpass'; filt.frequency.value = 1200; filt.Q.value = 0.7;
-      src.connect(filt); filt.connect(gain); gain.connect(audioContext.destination);
-      gain.gain.setValueAtTime(vel * 0.45, t + offset);
-      gain.gain.exponentialRampToValueAtTime(0.001, t + offset + 0.06);
-      src.start(t + offset); src.stop(t + offset + 0.08);
+      _noiseNode(0.06, 'bandpass', 1200, 0.7, vel * 0.45, pt + k * 0.01);
     }
 
   } else if (group === 'tomH' || group === 'tomL') {
     const freq = group === 'tomH' ? 200 : 100;
     const osc  = audioContext.createOscillator();
     const gain = audioContext.createGain();
-    osc.connect(gain); gain.connect(audioContext.destination);
-    osc.frequency.setValueAtTime(freq * 1.5, t);
-    osc.frequency.exponentialRampToValueAtTime(freq, t + 0.06);
-    gain.gain.setValueAtTime(vel * 0.5, t);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
-    osc.start(t); osc.stop(t + 0.2);
+    osc.connect(gain); gain.connect(masterGain);
+    osc.frequency.setValueAtTime(freq * 1.5, pt);
+    osc.frequency.exponentialRampToValueAtTime(freq, pt + 0.06);
+    gain.gain.setValueAtTime(vel * 0.5, pt);
+    gain.gain.exponentialRampToValueAtTime(0.001, pt + 0.18);
+    osc.start(pt); osc.stop(pt + 0.2);
+    osc.onended = () => { osc.disconnect(); gain.disconnect(); };
 
   } else if (group === 'crash') {
-    const bufLen = Math.floor(audioContext.sampleRate * 0.6);
-    const buf    = audioContext.createBuffer(1, bufLen, audioContext.sampleRate);
-    const data   = buf.getChannelData(0);
-    for (let i = 0; i < bufLen; i++) data[i] = Math.random() * 2 - 1;
-    const src  = audioContext.createBufferSource();
-    const filt = audioContext.createBiquadFilter();
-    const gain = audioContext.createGain();
-    src.buffer = buf;
-    filt.type  = 'highpass'; filt.frequency.value = 5000;
-    src.connect(filt); filt.connect(gain); gain.connect(audioContext.destination);
-    gain.gain.setValueAtTime(vel * 0.3, t);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
-    src.start(t); src.stop(t + 0.65);
+    _noiseNode(0.6, 'highpass', 5000, undefined, vel * 0.3, pt);
 
   } else if (group === 'ride') {
-    const bufLen = Math.floor(audioContext.sampleRate * 0.2);
-    const buf    = audioContext.createBuffer(1, bufLen, audioContext.sampleRate);
-    const data   = buf.getChannelData(0);
-    for (let i = 0; i < bufLen; i++) data[i] = Math.random() * 2 - 1;
-    const src  = audioContext.createBufferSource();
-    const filt = audioContext.createBiquadFilter();
-    const gain = audioContext.createGain();
-    src.buffer = buf;
-    filt.type  = 'bandpass'; filt.frequency.value = 4000; filt.Q.value = 1;
-    src.connect(filt); filt.connect(gain); gain.connect(audioContext.destination);
-    gain.gain.setValueAtTime(vel * 0.2, t);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
-    src.start(t); src.stop(t + 0.25);
+    _noiseNode(0.2, 'bandpass', 4000, 1, vel * 0.2, pt);
   }
 }
 
@@ -768,18 +832,16 @@ function playDrumsBeat(drumLoop, beatInBar, startTime) {
     const stepStart = startTime + sub * stepDuration;
     const velocities = drumLoop[step]; // array of 128 velocity values
 
-    // Deduplicate drum groups per step (loudest velocity wins)
-    const groupBest = {};
+    // LPD dataset stores binary velocity (0 or 1), not 0–127.
+    // Python hardcodes note_on(9, n, 127) — we must do the same or drums are silent.
+    const groupHit = new Set();
     velocities.forEach((vel, midi) => {
       if (vel === 0) return;
       const group = midiToDrumGroup(midi);
-      if (!group) return;
-      if (!groupBest[group] || vel > groupBest[group]) groupBest[group] = vel;
+      if (group) groupHit.add(group);
     });
 
-    for (const [group, vel] of Object.entries(groupBest)) {
-      playDrumNote(group, vel, stepStart);
-    }
+    groupHit.forEach(group => playDrumNote(group, 127, stepStart));
   }
 }
 
@@ -788,14 +850,16 @@ function playDrumsBeat(drumLoop, beatInBar, startTime) {
 // =============================================================
 
 function playMetronomeClick(t, strong) {
-  if (!audioContext) return;
+  if (!audioContext || !masterGain) return;
+  const pt   = Math.max(audioContext.currentTime + 0.003, t);
   const osc  = audioContext.createOscillator();
   const gain = audioContext.createGain();
-  osc.connect(gain); gain.connect(audioContext.destination);
+  osc.connect(gain); gain.connect(masterGain);
   osc.frequency.value = strong ? 1200 : 800;
-  gain.gain.setValueAtTime(0.2, t);
-  gain.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
-  osc.start(t); osc.stop(t + 0.05);
+  gain.gain.setValueAtTime(0.2, pt);
+  gain.gain.exponentialRampToValueAtTime(0.001, pt + 0.04);
+  osc.start(pt); osc.stop(pt + 0.05);
+  osc.onended = () => { osc.disconnect(); gain.disconnect(); };
 }
 
 // =============================================================
@@ -814,8 +878,8 @@ function resizeCanvas() {
 window.addEventListener('resize', resizeCanvas);
 resizeCanvas();
 
-const VIZ_MIDI_LOW  = 48;  // C3
-const VIZ_MIDI_HIGH = 84;  // C6
+const VIZ_MIDI_LOW  = 36;  // C2  (MIDI 36 = C2 in this system where C4=60, A4=69)
+const VIZ_MIDI_HIGH = 96;  // C7
 
 function noteToY(note) {
   const midi = noteNameToMidi(note);
@@ -826,56 +890,53 @@ function noteToY(note) {
 
 function drawVisualiser() {
   const W = canvas.width, H = canvas.height;
-  ctx2d.fillStyle = '#0e0e0e';
+  ctx2d.fillStyle = '#0a0806';
   ctx2d.fillRect(0, 0, W, H);
 
-  // Horizontal grid lines (C notes)
-  ctx2d.strokeStyle = '#1e1e1e';
-  ctx2d.lineWidth = 1;
-  for (let midi = VIZ_MIDI_LOW; midi <= VIZ_MIDI_HIGH; midi++) {
-    if (midi % 12 === 0) {
-      const y = noteToY(freqToNoteName(440 * Math.pow(2, (midi - 69) / 12)));
-      ctx2d.beginPath(); ctx2d.moveTo(0, y); ctx2d.lineTo(W, y); ctx2d.stroke();
-      const name = ROOTS[midi % 12] + (Math.floor(midi / 12) - 1);
-      ctx2d.fillStyle = '#333';
-      ctx2d.font = '11px Arial';
-      ctx2d.fillText(name, 4, y - 3);
-    }
+  const slotW = W / HISTORY_SLOTS;
+
+  // ---- Vertical beat / bar grid lines ----
+  // barMarks[slot]: 1 = beat boundary, 2 = bar boundary
+  // Oldest slot is at index historyHead; display column i ↔ slot (historyHead+i)%HISTORY_SLOTS
+  ctx2d.setLineDash([]);
+  for (let i = 0; i < HISTORY_SLOTS; i++) {
+    const slot   = (historyHead + i) % HISTORY_SLOTS;
+    const mark   = barMarks[slot];
+    if (!mark) continue;
+    const x = i * slotW;
+    ctx2d.strokeStyle = mark === 2 ? '#2e2e2e' : '#1c1c1c';
+    ctx2d.lineWidth   = mark === 2 ? 1.5 : 1;
+    ctx2d.beginPath(); ctx2d.moveTo(x, 0); ctx2d.lineTo(x, H); ctx2d.stroke();
   }
 
-  // Draw pitch history as dots
-  const slotW = W / HISTORY_SLOTS;
+  // ---- Horizontal pitch grid lines (C notes, C2–C7) ----
+  ctx2d.lineWidth = 1;
+  for (let midi = VIZ_MIDI_LOW; midi <= VIZ_MIDI_HIGH; midi++) {
+    if (midi % 12 !== 0) continue;   // only C notes
+    const y = noteToY(freqToNoteName(440 * Math.pow(2, (midi - 69) / 12)));
+    ctx2d.strokeStyle = '#1e1e1e';
+    ctx2d.beginPath(); ctx2d.moveTo(0, y); ctx2d.lineTo(W, y); ctx2d.stroke();
+    const octave = Math.floor(midi / 12) - 1;
+    ctx2d.fillStyle = '#363636';
+    ctx2d.font = '10px Arial';
+    ctx2d.fillText(`C${octave}`, 4, y - 3);
+  }
+
+  // ---- Pitch history dots ----
   for (let i = 0; i < HISTORY_SLOTS; i++) {
     const idx  = (historyHead + i) % HISTORY_SLOTS;
     const note = pitchHistory[idx];
     if (!note) continue;
-    const x = i * slotW + slotW / 2;
-    const y = noteToY(note);
-    if (y < 0) continue;
-    const age = 1 - i / HISTORY_SLOTS;
-    ctx2d.fillStyle = `rgba(80, 220, 140, ${0.3 + age * 0.7})`;
+    const x   = i * slotW + slotW / 2;
+    const y   = noteToY(note);
+    if (y < 0 || y > H) continue;
+    const age = i / (HISTORY_SLOTS - 1);   // 0 = oldest, 1 = newest
+    ctx2d.fillStyle = `rgba(93, 207, 144, ${0.2 + age * 0.8})`;
     ctx2d.beginPath();
-    ctx2d.arc(x, y, 4, 0, Math.PI * 2);
+    ctx2d.arc(x, y, 3.5, 0, Math.PI * 2);
     ctx2d.fill();
   }
 
-  // Vertical beat progress line
-  const beatPct = Math.min(1, (audioContext ? (audioContext.currentTime - lastBeatTime) / (60 / tempo) : 0));
-  ctx2d.strokeStyle = '#5AAEFF';
-  ctx2d.lineWidth = 2;
-  ctx2d.setLineDash([4, 4]);
-  ctx2d.beginPath();
-  ctx2d.moveTo(W - (1 - beatPct) * slotW * 4, 0);
-  ctx2d.lineTo(W - (1 - beatPct) * slotW * 4, H);
-  ctx2d.stroke();
-  ctx2d.setLineDash([]);
-
-  // Chord label overlay
-  if (predictedChord !== '–') {
-    ctx2d.font = 'bold 18px Arial';
-    ctx2d.fillStyle = '#5AAEFF';
-    ctx2d.fillText(predictedChord, W - 100, 24);
-  }
 }
 
 // updateBeatDots() → shared.js
@@ -900,19 +961,28 @@ function stopMic() {
     audioContext.close();
     audioContext = null;
   }
-  analyser = null;
+  analyser   = null;
+  masterGain = null;
+
+  // Unload soundfont players
+  sf.piano = null; sf.guitar = null; sf.bass = null;
+  sfReady  = 0;
 
   // Reset playback state (keep tempo)
   currentLoops   = null;
   prevVoicing    = { guitar: null, piano: null, bass: null };
   stepBuffer     = [];
   beatHistory    = '';
+  apiCallId      = 0;
   predictedChord = '–';
   lastNote       = '–';
   currentBeat    = 1;
   lastBeatTime   = 0;
-  pitchHistory   = new Array(HISTORY_SLOTS).fill(null);
-  historyHead    = 0;
+  pitchHistory    = new Array(HISTORY_SLOTS).fill(null);
+  barMarks        = new Array(HISTORY_SLOTS).fill(0);
+  historyHead     = 0;
+  lastStepTime    = 0;
+  pendingBeatMark = 0;
 
   document.getElementById('chord-display').textContent = '–';
   document.getElementById('note-display').textContent  = '–';
@@ -954,8 +1024,23 @@ async function checkAPI() {
     const d   = await res.json();
     const ok  = d.status === 'ok';
     const el  = document.getElementById('api-status');
-    el.textContent = ok ? 'connected' : 'not connected (chord prediction unavailable)';
-    el.className   = ok ? 'status-ok' : 'status-err';
+    if (ok) {
+      // Mirrors piano.html: preserve soundfont loading status when running
+      if (running) {
+        el.textContent = sfReady >= 3
+          ? 'connected · sounds ready'
+          : sfReady > 0
+            ? `connected · loading sounds (${sfReady}/3)…`
+            : 'connected';
+        el.className = sfReady >= 3 ? 'status-ok' : '';
+      } else {
+        el.textContent = 'connected';
+        el.className   = 'status-ok';
+      }
+    } else {
+      el.textContent = 'not connected (chord prediction unavailable)';
+      el.className   = 'status-err';
+    }
   } catch (e) {
     const el = document.getElementById('api-status');
     el.textContent = 'not connected (chord prediction unavailable)';

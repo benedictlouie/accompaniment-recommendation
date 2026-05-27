@@ -36,6 +36,11 @@ class WebLoopLookup:
         self.guitar   = data["guitar"]     # [N, 16, 8]   int8
         self.bass     = data["bass"]       # [N, 16, 1]   int8
         self._n       = len(self.features)
+        # Only search patterns that have at least kick, snare, or hi-hat —
+        # silent/rest segments in the dataset produce all-zero grooves that
+        # win nearest-neighbour by default and yield no audible output.
+        drum_active = data["drums"][:, :, [35, 36, 38, 40, 42, 44, 46]].any(axis=(1, 2))
+        self._active_idx = np.where(drum_active)[0]
 
     def get_loops(self, melody, top_k: int = 10) -> dict:
         """
@@ -46,18 +51,19 @@ class WebLoopLookup:
             dict with keys 'drums', 'piano', 'guitar', 'bass',
             each a Python list suitable for JSON serialisation.
         """
-        query   = _groove(melody)                                  # [16]
-        dists   = np.abs(self.features - query).sum(axis=1)       # [N] manhattan
+        query          = _groove(melody)                                         # [16]
+        active_feats   = self.features[self._active_idx]                         # [M, 16]
+        dists          = np.abs(active_feats - query).sum(axis=1)               # [M]
 
-        k       = min(top_k, self._n)
-        top_idx = np.argpartition(dists, k - 1)[:k]
-        top_d   = dists[top_idx]
+        k       = min(top_k, len(self._active_idx))
+        top_pos = np.argpartition(dists, k - 1)[:k]
+        top_d   = dists[top_pos]
 
         logits  = -top_d / max(TEMPERATURE, 1e-6)
         probs   = softmax(logits).astype(np.float64)
         probs  /= probs.sum()
 
-        chosen  = top_idx[np.random.choice(k, p=probs)]
+        chosen  = self._active_idx[top_pos[np.random.choice(k, p=probs)]]
 
         return {
             "drums":  self.drums[chosen].tolist(),

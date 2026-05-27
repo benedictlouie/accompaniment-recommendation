@@ -17,6 +17,27 @@ const API_BASE       = '/api';
 const BEATS_PER_BAR  = 4;
 const STEPS_PER_BEAT = 4;    // MELODY_NOTES_PER_BEAT
 
+// Interval offsets per quality (mirrors Python CHORD_TO_TETRAD / QUALITIES_ALL).
+// Used by piano.html (chordMidis) and harmoniser.html (CHORD_TETRAD).
+const CHORD_INTERVALS = {
+  maj:  [0,4,7,12], min:  [0,3,7,12],
+  maj7: [0,4,7,11], min7: [0,3,7,10],
+  aug:  [0,4,8,12], dim:  [0,3,6,12], dim7: [0,3,6,9],
+  sus2: [0,2,7,12], sus4: [0,5,7,12],
+  '7':  [0,4,7,10], '6':  [0,4,7,9],  min6: [0,3,7,9],
+  m7b5: [0,3,6,10], mM7:  [0,3,7,11],
+};
+
+// Absolute-MIDI tetrad per chord label (root pinned to BASE_OCTAVE = C2).
+// harmoniser.html uses this for voice-leading; piano.html uses chordMidis() instead.
+const CHORD_TETRAD = { N: [-1,-1,-1,-1] };
+ROOTS.forEach((r, i) => {
+  const root = BASE_OCTAVE + i;
+  for (const [q, ivs] of Object.entries(CHORD_INTERVALS)) {
+    CHORD_TETRAD[`${r}:${q}`] = ivs.map(iv => root + iv);
+  }
+});
+
 // =============================================================
 // SHARED MUTABLE STATE
 // =============================================================
