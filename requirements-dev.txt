@@ -1,0 +1,28 @@
+# Full local / training environment
+# pip install -r requirements-dev.txt
+
+-r requirements.txt   # includes the Vercel base deps
+
+# ML / training
+torch
+tensorboard
+scikit-learn
+scipy
+gensim
+
+# MIDI / audio
+mido
+music21
+pypianoroll
+pygame
+pyfluidsynth
+python-rtmidi
+sounddevice
+liveaudio
+
+# ONNX export (run scripts/export_onnx.py)
+onnx
+onnxscript
+
+# Visualisation
+seaborn

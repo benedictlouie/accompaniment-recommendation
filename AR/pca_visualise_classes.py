@@ -144,7 +144,8 @@ def visualize_class_weights_2d(model):
 
     qualities = np.arange(len(pc1)) % NUM_QUALITIES_ALL
 
-    fig, ax = plt.subplots(figsize=(10, 8))
+    fig = plt.figure(figsize=(12, 8))
+    ax = fig.add_axes([0.22, 0.1, 0.65, 0.8])  # leave left margin for checkbox
 
     cmap = plt.cm.get_cmap("tab20", NUM_QUALITIES_ALL)
 
@@ -158,7 +159,7 @@ def visualize_class_weights_2d(model):
         rg = radius[idxs]
 
         # scatter (color = radius)
-        scatter = ax.scatter(xg, yg, c=rg, cmap="viridis", s=80)
+        scatter = ax.scatter(xg, yg, c=rg, cmap="viridis", s=20)
 
         # labels
         texts = []
@@ -180,7 +181,7 @@ def visualize_class_weights_2d(model):
                     [yg[i], yg[j]],
                     color=cmap(q),
                     alpha=0.5,
-                    linewidth=1
+                    linewidth=2.5
                 )
                 lines.append(line)
 
@@ -222,7 +223,6 @@ def visualize_class_weights_2d(model):
 
     check.on_clicked(toggle)
 
-    plt.tight_layout()
     plt.show()
 
 def visualize_class_weights_4d(model):
@@ -497,4 +497,5 @@ if __name__ == "__main__":
         raise FileNotFoundError(f"{MODEL_PATH} not found!")
 
     model = load_model(MODEL_PATH, INPUT_DIM, NUM_CLASSES_ALL)
-    progressive_pca(model)
+    # progressive_pca(model)
+    visualize_class_weights_2d(model)

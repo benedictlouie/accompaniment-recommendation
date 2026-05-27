@@ -1,10 +1,29 @@
 import numpy as np
-import torch
-import pygame
 import os
-from data.lpd import storage as lpd_storage
 
-DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+# torch — only available locally (not on Vercel serverless)
+try:
+    import torch
+    _TORCH_AVAILABLE = True
+    DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+except ImportError:
+    _TORCH_AVAILABLE = False
+    DEVICE = None
+
+# pygame — only available locally
+try:
+    import pygame
+    _PYGAME_AVAILABLE = True
+except ImportError:
+    _PYGAME_AVAILABLE = False
+
+# lpd_storage — only available locally (data/ excluded from Vercel bundle)
+try:
+    from data.lpd import storage as lpd_storage
+    _LPD_AVAILABLE = True
+except (ImportError, ModuleNotFoundError):
+    lpd_storage = None
+    _LPD_AVAILABLE = False
 
 ROOTS = np.array(['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'])
 QUALITIES = ['maj', 'min']
@@ -128,15 +147,6 @@ STEPS_PER_BAR = BEATS_PER_BAR * STEPS_PER_BEAT
 
 SAMPLE_RATE = 44100
 
-pygame.init()
-pygame.mixer.init(frequency=SAMPLE_RATE, size=-16, channels=1)
-
-# Load metronome click
-CLICK_SOUND = pygame.mixer.Sound("utils/click.wav")
-CLICK_SOUND_STRONG = pygame.mixer.Sound("utils/click_strong.wav")
-CLICK_SOUND.set_volume(0.3)
-CLICK_SOUND_STRONG.set_volume(0.3)
-
 # Key mapping (1.5 octaves starting from C4)
 KEYBOARD_MAP = {
     'a': 'C4', 'w': 'C#4', 's': 'D4', 'e': 'D#4', 'd': 'E4',
@@ -149,10 +159,6 @@ KEYBOARD_LABELS = {"C": "a", "C#": "w", "D": "s", "D#": "e", "E": "d",
                    "F": "f", "F#": "t", "G": "g", "G#": "y", "A": "h", "A#": "u", "B": "j",
                    "C2": "k", "C#2": "o", "D2": "l", "D#2": "p", "E2": ";", "F2": "'",
 }
-FONT = pygame.font.SysFont(None, 24)
-FONT_BIG = pygame.font.SysFont("Arial", 42)
-FONT_MED = pygame.font.SysFont("Arial", 28)
-FONT_SMALL = pygame.font.SysFont("Arial", 18)
 
 BLACK = (20, 20, 20)
 DARK_GRAY = (40, 44, 52)
@@ -161,6 +167,41 @@ GRAY = (120, 120, 120)
 BLUE = (90, 170, 255)
 RED = (255, 90, 90)
 GREEN = (80, 220, 140)
+
+# pygame-dependent constants — only available locally
+if _PYGAME_AVAILABLE:
+    try:
+        pygame.init()
+        pygame.mixer.init(frequency=SAMPLE_RATE, size=-16, channels=1)
+        CLICK_SOUND = pygame.mixer.Sound("utils/click.wav")
+        CLICK_SOUND_STRONG = pygame.mixer.Sound("utils/click_strong.wav")
+        CLICK_SOUND.set_volume(0.3)
+        CLICK_SOUND_STRONG.set_volume(0.3)
+        FONT = pygame.font.SysFont(None, 24)
+        FONT_BIG = pygame.font.SysFont("Arial", 42)
+        FONT_MED = pygame.font.SysFont("Arial", 28)
+        FONT_SMALL = pygame.font.SysFont("Arial", 18)
+        pygame.mixer.set_num_channels(len({  # NOTE_FREQS not yet defined, count below
+            'C2': 65.41, 'C#2': 69.30, 'D2': 73.42, 'D#2': 77.78, 'E2': 82.41,
+            'F2': 87.31, 'F#2': 92.50, 'G2': 98.00, 'G#2': 103.83, 'A2': 110.00,
+            'A#2': 116.54, 'B2': 123.47, 'C3': 130.81, 'C#3': 138.59, 'D3': 146.83,
+            'D#3': 155.56, 'E3': 164.81, 'F3': 174.61, 'F#3': 185.00, 'G3': 196.00,
+            'G#3': 207.65, 'A3': 220.00, 'A#3': 233.08, 'B3': 246.94, 'C4': 261.63,
+            'C#4': 277.18, 'D4': 293.66, 'D#4': 311.13, 'E4': 329.63, 'F4': 349.23,
+            'F#4': 369.99, 'G4': 392.00, 'G#4': 415.30, 'A4': 440.00, 'A#4': 466.16,
+            'B4': 493.88, 'C5': 523.25, 'C#5': 554.37, 'D5': 587.33, 'D#5': 622.25,
+            'E5': 659.25, 'F5': 698.46, 'F#5': 739.99, 'G5': 783.99, 'G#5': 830.61,
+            'A5': 880.00, 'A#5': 932.33, 'B5': 987.77, 'C6': 1046.50, 'C#6': 1108.73,
+            'D6': 1174.66, 'D#6': 1244.51, 'E6': 1318.51, 'F6': 1396.91, 'F#6': 1479.98,
+            'G6': 1567.98, 'G#6': 1661.22, 'A6': 1760.00, 'A#6': 1864.66, 'B6': 1975.53
+        }) + 8)
+    except Exception as _e:
+        print(f"Warning: pygame audio init failed ({_e}); running without audio.")
+        CLICK_SOUND = CLICK_SOUND_STRONG = None
+        FONT = FONT_BIG = FONT_MED = FONT_SMALL = None
+else:
+    CLICK_SOUND = CLICK_SOUND_STRONG = None
+    FONT = FONT_BIG = FONT_MED = FONT_SMALL = None
 
 # Frequencies for each note
 NOTE_FREQS = {
@@ -193,18 +234,26 @@ NOTE_TO_MIDI = {
 WHITE_KEYS = ['C', 'D', 'E', 'F', 'G', 'A', 'B'] * 2
 BLACK_KEYS = ['C#', 'D#', '', 'F#', 'G#', 'A#', '',
               'C#', 'D#', '', 'F#', 'G#', 'A#', '']
-pygame.mixer.set_num_channels(len(NOTE_FREQS) + 8)
-NOTE_CHANNELS = {note: pygame.mixer.Channel(i) for i, note in enumerate(NOTE_FREQS)}
+
+if _PYGAME_AVAILABLE:
+    try:
+        NOTE_CHANNELS = {note: pygame.mixer.Channel(i) for i, note in enumerate(NOTE_FREQS)}
+    except Exception:
+        NOTE_CHANNELS = {}
+else:
+    NOTE_CHANNELS = {}
 
 def safe_load(instrument):
+    if not _LPD_AVAILABLE or lpd_storage is None:
+        return (None, None)
     if lpd_storage.exists(instrument):
         return lpd_storage.load(instrument)
     else:
         print(f"Warning: LPD loops for {instrument!r} not found.")
         return (None, None)
 
-NN, DRUMS = safe_load("drums")
-_, BASSES = safe_load("bass")
+NN, DRUMS  = safe_load("drums")
+_, BASSES  = safe_load("bass")
 _, GUITARS = safe_load("guitar")
-_, PIANOS = safe_load("piano")
+_, PIANOS  = safe_load("piano")
 

@@ -1,17 +1,5 @@
-torch
+# Vercel serverless — keep this minimal
 flask
 flask-cors
 numpy
-seaborn
-scikit-learn
-tensorboard
-mido
-music21
-pygame
-pyqt6
-python-rtmidi
-sounddevice
-liveaudio
-pypianoroll
-pyfluidsynth
-gensim
+onnxruntime>=1.17   # 1.17+ supports ONNX IR v10 (produced by torch 2.5+ exporter)

@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Real-time Piano Accompaniment</title>
+<!-- soundfont-player — correct dist path (browser/soundfont-player.min.js was 404) -->
+<script src="https://unpkg.com/soundfont-player@0.12.0/dist/soundfont-player.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #141414; color: #f0f0f0;
+    font-family: Arial, sans-serif;
+    user-select: none;
+    display: flex; flex-direction: column; align-items: center;
+    padding: 20px; min-height: 100vh;
+  }
+
+  #app { width: 1100px; max-width: 100%; }
+
+  /* ── back link ── */
+  #back-btn {
+    position: fixed; top: 16px; left: 20px; z-index: 200;
+    color: #787878; text-decoration: none; font-size: 13px;
+    display: flex; align-items: center; gap: 6px;
+    transition: color .15s;
+  }
+  #back-btn:hover { color: #5AAEFF; }
+
+  /* ── top bar ── */
+  #top-bar {
+    background: #282C34; height: 100px;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 20px; border-radius: 8px 8px 0 0; position: relative;
+  }
+
+  #metronome-area {
+    display: flex; flex-direction: column; align-items: center; gap: 6px; flex: 1;
+  }
+
+  #tempo-row { display: flex; align-items: center; gap: 12px; }
+
+  .tempo-btn {
+    background: #5AAEFF; border: none; color: #f0f0f0;
+    font-size: 22px; font-weight: bold; width: 40px; height: 40px;
+    border-radius: 8px; cursor: pointer; line-height: 1;
+  }
+  .tempo-btn:hover { background: #78bbff; }
+
+  #bpm-display {
+    font-size: 28px; font-weight: bold; color: #f0f0f0;
+    min-width: 120px; text-align: center;
+  }
+
+  #beat-dots { display: flex; gap: 16px; }
+  .beat-dot {
+    width: 20px; height: 20px; border-radius: 50%;
+    background: #787878; transition: background 0.05s;
+  }
+  .beat-dot.active { background: #ff5a5a; }
+
+  #range-label { display: block; text-align: center; font-size: 12px; color: #aaa; margin-top: 6px; }
+
+  #chord-area { min-width: 180px; text-align: right; }
+  #chord-label { font-size: 13px; color: #787878; }
+  #chord-display { font-size: 24px; font-weight: bold; color: #5AAEFF; margin-top: 4px; }
+
+  /* ── piano ── */
+  #piano-container {
+    position: relative; width: 100%; height: 280px;
+    background: #141414; border-radius: 0 0 8px 8px; overflow: hidden;
+  }
+  #piano { position: relative; width: 100%; height: 100%; display: flex; }
+
+  .white-key {
+    flex: 1; background: #f0f0f0; border: 2px solid #141414;
+    border-top: none; border-radius: 0 0 6px 6px; cursor: pointer;
+    position: relative; display: flex; align-items: flex-end;
+    justify-content: center; padding-bottom: 8px; transition: background 0.04s;
+  }
+  .white-key:hover { background: #d8eeff; }
+  .white-key.active { background: #5AAEFF !important; }
+  .white-key .key-label { font-size: 12px; color: #333; pointer-events: none; }
+  .white-key.active .key-label { color: #141414; }
+
+  .black-key {
+    position: absolute; top: 0; height: 60%;
+    width: calc(100% / 14 * 0.58); background: #141414;
+    border-radius: 0 0 5px 5px; cursor: pointer; z-index: 2;
+    display: flex; align-items: flex-end; justify-content: center;
+    padding-bottom: 6px; transition: background 0.04s;
+  }
+  .black-key:hover { background: #2a2a2a; }
+  .black-key.active { background: #5AAEFF !important; }
+  .black-key .key-label { font-size: 10px; color: #aaa; pointer-events: none; }
+  .black-key.active .key-label { color: #fff; }
+
+  /* ── status bar ── */
+  #status-bar { margin-top: 12px; font-size: 13px; color: #787878; text-align: center; }
+  #api-status { display: inline-block; margin-left: 8px; }
+  .status-ok  { color: #50DC8C; }
+  .status-err { color: #ff5a5a; }
+
+  /* ── circular play / stop button — lives below the piano, never overlaps ── */
+  #play-btn-wrap {
+    display: flex; justify-content: center; align-items: center;
+    padding: 18px 0 6px;
+  }
+  #play-btn {
+    width: 76px; height: 76px; border-radius: 50%;
+    background: #5AAEFF; border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 28px; color: #fff;
+    box-shadow: 0 0 32px rgba(90,174,255,.4);
+    transition: background .15s, box-shadow .15s, font-size .2s;
+    flex-shrink: 0;
+  }
+  #play-btn:hover { background: #78bbff; }
+  #play-btn.playing {
+    background: #ff5a5a;
+    box-shadow: 0 0 20px rgba(255,90,90,.35);
+    font-size: 22px;
+  }
+  #play-btn.playing:hover { background: #ff7a7a; }
+
+  #engine-selector {
+    display: flex; gap: 8px; margin-top: 10px;
+    justify-content: center; align-items: center;
+  }
+  #engine-selector span { font-size: 13px; color: #787878; }
+  .engine-btn {
+    background: #282C34; border: 2px solid #444; color: #aaa;
+    font-size: 13px; padding: 5px 14px; border-radius: 6px; cursor: pointer;
+  }
+  .engine-btn.active { border-color: #5AAEFF; color: #5AAEFF; background: #1a2535; }
+  .engine-btn:hover  { border-color: #5AAEFF; }
+
+  /* ---- INSTRUMENT TOGGLES ---- */
+  #instrument-toggles {
+    display: flex; gap: 8px; margin-top: 12px;
+    justify-content: center; align-items: center; flex-wrap: wrap;
+  }
+  #instrument-toggles span { font-size: 13px; color: #787878; }
+  .toggle-btn {
+    background: #282C34; border: 2px solid #444; color: #aaa;
+    font-size: 13px; padding: 5px 14px; border-radius: 6px; cursor: pointer;
+    display: flex; align-items: center; gap: 6px;
+    transition: border-color .15s, color .15s, background .15s;
+  }
+  .toggle-btn.on  { border-color: #50DC8C; color: #50DC8C; background: #112518; }
+  .toggle-btn.off { border-color: #444;    color: #555;    background: #1e1e1e; }
+  .toggle-btn:hover { border-color: #6feaa5; }
+  .toggle-btn[data-inst="metronome"].on  { border-color: #f0c040; color: #f0c040; background: #1f1a00; }
+  .toggle-btn[data-inst="metronome"]:hover { border-color: #f5d060; }
+
+  @media (max-width: 680px) {
+    #instrument-toggles { gap: 6px; }
+    .toggle-btn { font-size: 12px; padding: 4px 10px; }
+  }
+
+  /* ── MOBILE ── */
+  @media (max-width: 680px) {
+    body { padding: 10px; }
+    #app { width: 100%; }
+
+    #top-bar {
+      flex-direction: column; height: auto;
+      padding: 12px 12px 10px; gap: 8px;
+      border-radius: 8px;
+    }
+    #metronome-area { width: 100%; }
+    #chord-area { text-align: center; min-width: unset; width: 100%; }
+    #chord-display { font-size: 20px; }
+    #bpm-display { font-size: 22px; min-width: unset; }
+    .tempo-btn { width: 36px; height: 36px; font-size: 18px; }
+    #beat-dots { gap: 12px; }
+    .beat-dot  { width: 16px; height: 16px; }
+    #range-label { font-size: 11px; }
+
+    #piano-container { height: 160px; }
+
+    #play-btn { width: 64px; height: 64px; font-size: 24px; }
+
+    #engine-selector { flex-wrap: wrap; }
+    .engine-btn { font-size: 12px; padding: 4px 10px; }
+  }
+</style>
+</head>
+<body>
+
+<a href="/" id="back-btn">← Home</a>
+
+<div id="app">
+  <div id="top-bar">
+    <div id="metronome-area">
+      <div id="tempo-row">
+        <button class="tempo-btn" id="btn-minus">−</button>
+        <span id="bpm-display">100 BPM</span>
+        <button class="tempo-btn" id="btn-plus">+</button>
+      </div>
+      <div id="beat-dots">
+        <div class="beat-dot" data-beat="1"></div>
+        <div class="beat-dot" data-beat="2"></div>
+        <div class="beat-dot" data-beat="3"></div>
+        <div class="beat-dot" data-beat="4"></div>
+      </div>
+      <span id="range-label">Range C4–B5 &nbsp;(z / x to shift octave)</span>
+    </div>
+
+    <div id="chord-area">
+      <div id="chord-label">Predicted Chord</div>
+      <div id="chord-display">–</div>
+    </div>
+  </div>
+
+  <div id="piano-container">
+    <div id="piano"></div>
+  </div>
+
+  <!-- Play / Stop button — sits below piano, never overlaps keys -->
+  <div id="play-btn-wrap">
+    <button id="play-btn" title="Start">▶</button>
+  </div>
+
+  <div id="engine-selector">
+    <span>Engine:</span>
+    <button class="engine-btn active" data-engine="transformer">AR Transformer</button>
+  </div>
+
+  <div id="instrument-toggles">
+    <span>Play:</span>
+    <button class="toggle-btn on" data-inst="piano"     title="Toggle piano">🎹 Piano</button>
+    <button class="toggle-btn on" data-inst="guitar"    title="Toggle guitar">🎸 Guitar</button>
+    <button class="toggle-btn on" data-inst="bass"      title="Toggle bass">🎵 Bass</button>
+    <button class="toggle-btn on" data-inst="drums"     title="Toggle drums">🥁 Drums</button>
+    <button class="toggle-btn on" data-inst="metronome" title="Toggle metronome">🔔 Click</button>
+  </div>
+
+  <div id="status-bar">
+    API: <span id="api-status" class="status-err">not connected</span>
+  </div>
+</div>
+
+<script>
+// =============================================================
+// CONSTANTS  (mirrors utils/constants.py)
+// =============================================================
+
+const NOTE_FREQS = {
+  'C2':65.41,'C#2':69.30,'D2':73.42,'D#2':77.78,'E2':82.41,'F2':87.31,
+  'F#2':92.50,'G2':98.00,'G#2':103.83,'A2':110.00,'A#2':116.54,'B2':123.47,
+  'C3':130.81,'C#3':138.59,'D3':146.83,'D#3':155.56,'E3':164.81,'F3':174.61,
+  'F#3':185.00,'G3':196.00,'G#3':207.65,'A3':220.00,'A#3':233.08,'B3':246.94,
+  'C4':261.63,'C#4':277.18,'D4':293.66,'D#4':311.13,'E4':329.63,'F4':349.23,
+  'F#4':369.99,'G4':392.00,'G#4':415.30,'A4':440.00,'A#4':466.16,'B4':493.88,
+  'C5':523.25,'C#5':554.37,'D5':587.33,'D#5':622.25,'E5':659.25,'F5':698.46,
+  'F#5':739.99,'G5':783.99,'G#5':830.61,'A5':880.00,'A#5':932.33,'B5':987.77,
+  'C6':1046.50,'C#6':1108.73,'D6':1174.66,'D#6':1244.51,'E6':1318.51,
+};
+
+const KEYBOARD_MAP = {
+  'a':'C4','w':'C#4','s':'D4','e':'D#4','d':'E4',
+  'f':'F4','t':'F#4','g':'G4','y':'G#4','h':'A4',
+  'u':'A#4','j':'B4','k':'C5','o':'C#5','l':'D5',
+  'p':'D#5',';':'E5',"'":'F5'
+};
+
+const OCT1_LABELS = {C:'a','C#':'w',D:'s','D#':'e',E:'d',F:'f','F#':'t',G:'g','G#':'y',A:'h','A#':'u',B:'j'};
+const OCT2_LABELS = {C:'k','C#':'o',D:'l','D#':'p',E:';',F:"'"};
+
+const ROOTS       = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+const WHITE_NAMES = ['C','D','E','F','G','A','B'];
+
+const CHORD_INTERVALS = {
+  maj:[0,4,7,12], min:[0,3,7,12], maj7:[0,4,7,11], min7:[0,3,7,10],
+  aug:[0,4,8,12], dim:[0,3,6,12], dim7:[0,3,6,9],  sus2:[0,2,7,12],
+  sus4:[0,5,7,12], '7':[0,4,7,10], '6':[0,4,7,9],  min6:[0,3,7,9],
+  m7b5:[0,3,6,10], mM7:[0,3,7,11],
+};
+
+const BASE_OCTAVE = 36;
+const API_BASE    = '/api';
+const STEPS_PER_BEAT = 4;
+const BEATS_PER_BAR  = 4;
+
+// =============================================================
+// STATE
+// =============================================================
+
+let audioContext    = null;
+let started         = false;
+let tempo           = 100;
+let octaveOffset    = 0;
+const OCTAVE_MIN = -2, OCTAVE_MAX = 1;
+
+let notesPressed  = {};
+let notesPlayed   = [];
+let predictedChord = '–';
+let currentBeat   = 1;
+
+let engineHistory = '';
+let currentLoops  = {};
+let pendingLoops  = {};
+const accEnabled  = true;
+
+// ---- INSTRUMENT TOGGLES ----
+const instrumentOn = { piano: true, guitar: true, bass: true, drums: true, metronome: true };
+
+let nextBeatTime    = 0;
+let schedulerTimer  = null;
+const LOOKAHEAD_MS     = 25;
+const SCHEDULE_AHEAD_S = 0.12;
+
+let apiOk = false;
+
+// =============================================================
+// SOUNDFONT INSTRUMENTS
+// =============================================================
+
+const sf = { piano: null, guitar: null, bass: null };
+let sfReady = 0;   // count of loaded instruments
+
+function loadSoundfonts() {
+  if (typeof Soundfont === 'undefined') return;
+
+  const instruments = {
+    piano:  'bright_acoustic_piano',   // closest to UprightPianoKW
+    guitar: 'acoustic_guitar_nylon',   // closest to Guitar.SF2
+    bass:   'acoustic_bass',           // closest to FingerBassYR
+  };
+
+  Object.entries(instruments).forEach(([key, name]) => {
+    Soundfont.instrument(audioContext, name, { soundfont: 'MusyngKite' })
+      .then(player => {
+        sf[key] = player;
+        sfReady++;
+        updateSfStatus();
+      })
+      .catch(err => console.warn('Soundfont load failed:', key, err));
+  });
+}
+
+function updateSfStatus() {
+  const el = document.getElementById('api-status');
+  if (!apiOk) return;
+  if (sfReady < 3) {
+    el.textContent = `connected · loading sounds (${sfReady}/3)…`;
+    el.className = '';
+  } else {
+    el.textContent = 'connected · sounds ready';
+    el.className = 'status-ok';
+  }
+}
+
+// soundfont-player accepts raw MIDI numbers directly (0-127)
+// DO NOT convert to note name — samples are indexed with flat notation
+// (e.g. "Bb4" not "A#4") so passing a string from our sharp-based
+// converter would miss the buffer. Pass the integer and let the
+// library resolve it.
+
+// =============================================================
+// AUDIO UTILS
+// =============================================================
+
+function startAudio() {
+  if (started) return;
+  started = true;
+
+  audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioContext.state === 'suspended') audioContext.resume();
+
+  nextBeatTime = audioContext.currentTime + 0.15;
+  scheduleBeats();
+  resetEngineHistory();
+  loadSoundfonts();
+
+  // Switch button to stop mode
+  const btn = document.getElementById('play-btn');
+  btn.textContent = '■';
+  btn.title = 'Stop';
+  btn.classList.add('playing');
+}
+
+// ── melody note synthesis (additive, bright piano-like) ─────────────────────
+const HARMONIC_AMPS = [1.0, 0.8, 0.6, 0.4, 0.3, 0.2];
+const AMP_SUM = HARMONIC_AMPS.reduce((a,b)=>a+b,0);
+
+function startNote(noteName) {
+  if (!audioContext) return;
+  const freq = NOTE_FREQS[noteName];
+  if (!freq) return;
+  const playFreq = freq * 2;
+  const master = audioContext.createGain();
+  const filter = audioContext.createBiquadFilter();
+  filter.type = 'lowpass'; filter.frequency.value = 3500;
+  const oscs = HARMONIC_AMPS.map((amp, i) => {
+    const osc = audioContext.createOscillator();
+    const g   = audioContext.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = playFreq * (i + 1);
+    g.gain.value = amp / AMP_SUM * 0.35;
+    osc.connect(g); g.connect(filter);
+    osc.start();
+    return osc;
+  });
+  filter.connect(master);
+  master.connect(audioContext.destination);
+  const t = audioContext.currentTime;
+  master.gain.setValueAtTime(0, t);
+  master.gain.linearRampToValueAtTime(1, t + 0.01);
+  return { oscs, master };
+}
+
+function stopNote(audioNodes) {
+  if (!audioNodes || !audioContext) return;
+  const t = audioContext.currentTime;
+  audioNodes.master.gain.setValueAtTime(audioNodes.master.gain.value, t);
+  audioNodes.master.gain.linearRampToValueAtTime(0, t + 0.25);
+  audioNodes.oscs.forEach(o => o.stop(t + 0.26));
+}
+
+function playClick(time, strong) {
+  if (!audioContext) return;
+  const osc  = audioContext.createOscillator();
+  const gain = audioContext.createGain();
+  osc.connect(gain); gain.connect(audioContext.destination);
+  osc.frequency.value = strong ? 1200 : 800;
+  gain.gain.setValueAtTime(0.25, time);
+  gain.gain.exponentialRampToValueAtTime(0.001, time + 0.04);
+  osc.start(time); osc.stop(time + 0.05);
+}
+
+// ── drum synthesis (Web Audio — no external samples needed) ─────────────────
+function playDrumHit(t, type) {
+  if (!audioContext) return;
+  if (type === 'kick') {
+    const osc = audioContext.createOscillator();
+    const g   = audioContext.createGain();
+    osc.connect(g); g.connect(audioContext.destination);
+    osc.frequency.setValueAtTime(110, t);
+    osc.frequency.exponentialRampToValueAtTime(38, t + 0.09);
+    g.gain.setValueAtTime(0.85, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.13);
+    osc.start(t); osc.stop(t + 0.14);
+  } else if (type === 'snare') {
+    const n = audioContext.sampleRate * 0.1 | 0;
+    const buf = audioContext.createBuffer(1, n, audioContext.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+    const src = audioContext.createBufferSource(); src.buffer = buf;
+    const g   = audioContext.createGain();
+    const f   = audioContext.createBiquadFilter();
+    f.type = 'bandpass'; f.frequency.value = 2800;
+    src.connect(f); f.connect(g); g.connect(audioContext.destination);
+    g.gain.setValueAtTime(0.28, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+    src.start(t); src.stop(t + 0.11);
+  } else if (type === 'hihat') {
+    const n = audioContext.sampleRate * 0.04 | 0;
+    const buf = audioContext.createBuffer(1, n, audioContext.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+    const src = audioContext.createBufferSource(); src.buffer = buf;
+    const g   = audioContext.createGain();
+    const f   = audioContext.createBiquadFilter();
+    f.type = 'highpass'; f.frequency.value = 9000;
+    src.connect(f); f.connect(g); g.connect(audioContext.destination);
+    g.gain.setValueAtTime(0.14, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
+    src.start(t); src.stop(t + 0.05);
+  }
+}
+
+// =============================================================
+// ACCOMPANIMENT  — soundfont-player for melodic instruments
+//                  Web Audio for drums
+// =============================================================
+
+function chordMidis(chordName) {
+  const parts = chordName.split(':');
+  if (parts.length < 2) return [48];
+  const rootIdx   = ROOTS.indexOf(parts[0]);
+  if (rootIdx < 0) return [48];
+  const rootMidi  = BASE_OCTAVE + rootIdx;
+  const intervals = CHORD_INTERVALS[parts[1]] || [0,4,7,12];
+  return intervals.map(i => rootMidi + i);
+}
+
+// Snap `target` to the nearest chord tone that falls within [low, high].
+// The range filter is applied BEFORE picking the winner, so the result is
+// always both a chord tone AND within range — no post-clamp needed.
+// A post-clamp (Math.max / Math.min) after a snap was the root cause of
+// wrong notes: for D:min the snap correctly returned D2 (MIDI 38) but
+// Math.max(40, 38) = 40 = E2, which is NOT in D minor.
+function snapToChordInRange(target, midis, low, high) {
+  let best = null, bestDist = Infinity;
+  for (let shift = -60; shift <= 60; shift += 12) {
+    for (const n of midis) {
+      const c = n + shift;
+      if (c < low || c > high) continue;
+      const d = Math.abs(c - target);
+      if (d < bestDist) { bestDist = d; best = c; }
+    }
+  }
+  return best !== null ? best : midis[0]; // shouldn't be null with generous ranges
+}
+
+// ── sanity check ─────────────────────────────────────────────────────────────
+// Verifies that a MIDI note is a chord tone of the current prediction.
+// Fires a console.warn (not an error) when it isn't.
+function assertChordTone(midi, chordName) {
+  if (!chordName || chordName === '–' || chordName === 'N') return;
+  const midis    = chordMidis(chordName);
+  const chordPcs = new Set(midis.map(m => m % 12));
+  if (!chordPcs.has(midi % 12)) {
+    const noteNames = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+    console.warn(
+      `[chord-snap] ${noteNames[midi%12]}${Math.floor(midi/12)-1} (MIDI ${midi}) ` +
+      `is NOT in ${chordName} — chord pcs: [${[...chordPcs].map(p=>noteNames[p]).join(',')}]`
+    );
+  }
+}
+
+// Play one note via soundfont — `t` is absolute AudioContext time
+function sfPlay(inst, midi, t, dur, gain) {
+  const player = sf[inst];
+  if (!player) return;
+  // Pass raw MIDI number — library resolves to correct flat-notation sample key
+  const playAt = Math.max(audioContext.currentTime + 0.003, t);
+  player.play(midi, playAt, { duration: dur, gain: gain });
+}
+
+function playLoopBeat(chord, beatIndex, beatTime, beatDur) {
+  if (!audioContext || !accEnabled) return;
+  if (!chord || chord === '–' || chord === 'N') return;
+  const loops = currentLoops;
+  if (!loops || Object.keys(loops).length === 0) return;
+
+  const stepDur   = beatDur / STEPS_PER_BEAT;
+  const beatStart = (beatIndex - 1) * STEPS_PER_BEAT;
+  const midis     = chordMidis(chord);
+  const rootMidi  = midis[0];
+
+  // ── guitar ────────────────────────────────────────────────────────────────
+  const gl = loops.guitar;
+  if (gl && instrumentOn.guitar) {
+    for (let sub = 0; sub < STEPS_PER_BEAT; sub++) {
+      const step = beatStart + sub;
+      if (step >= gl.length) continue;
+      const t = beatTime + sub * stepDur;
+      for (const iv of gl[step]) {
+        if (iv < 0) continue;
+        const midi = snapToChordInRange(rootMidi + iv, midis, 36, 84); // C2–C6
+        assertChordTone(midi, chord);
+        sfPlay('guitar', midi, t, stepDur * 1.8, 0.65);
+      }
+    }
+  }
+
+  // ── piano ─────────────────────────────────────────────────────────────────
+  const pl = loops.piano;
+  if (pl && instrumentOn.piano) {
+    const pianoMidis = midis.map(m => m + 12);
+    for (let sub = 0; sub < STEPS_PER_BEAT; sub++) {
+      const step = beatStart + sub;
+      if (step >= pl.length) continue;
+      const t = beatTime + sub * stepDur;
+      for (const iv of pl[step]) {
+        if (iv < 0) continue;
+        const midi = snapToChordInRange(rootMidi + 12 + iv, pianoMidis, 36, 96); // C2–C7
+        assertChordTone(midi, chord);
+        sfPlay('piano', midi, t, stepDur * 1.4, 0.55);
+      }
+    }
+  }
+
+  // ── bass ──────────────────────────────────────────────────────────────────
+  const bl = loops.bass;
+  if (bl && instrumentOn.bass) {
+    for (let sub = 0; sub < STEPS_PER_BEAT; sub++) {
+      const step = beatStart + sub;
+      if (step >= bl.length) continue;
+      const t = beatTime + sub * stepDur;
+      for (const iv of bl[step]) {
+        if (iv < 0) continue;
+        const midi = snapToChordInRange(rootMidi + iv, midis, 24, 55); // C1–G3
+        assertChordTone(midi, chord);
+        sfPlay('bass', midi, t, stepDur * 2.2, 0.9);
+      }
+    }
+  }
+
+  // ── drums (Web Audio — reliable, no CDN needed) ───────────────────────────
+  const dl = loops.drums;
+  if (dl && instrumentOn.drums) {
+    for (let sub = 0; sub < STEPS_PER_BEAT; sub++) {
+      const step = beatStart + sub;
+      if (step >= dl.length) continue;
+      const t = beatTime + sub * stepDur;
+      const row = dl[step];
+      if (row[36] || row[35]) playDrumHit(t, 'kick');
+      if (row[38] || row[40]) playDrumHit(t, 'snare');
+      if (row[42] || row[44] || row[46]) playDrumHit(t, 'hihat');
+    }
+  }
+}
+
+// =============================================================
+// METRONOME
+// =============================================================
+
+function scheduleBeats() {
+  if (!audioContext) return;
+
+  while (nextBeatTime < audioContext.currentTime + SCHEDULE_AHEAD_S) {
+    const beatTime = nextBeatTime;
+    const beat     = currentBeat;
+    const strong   = beat === 1;
+    const beatDur  = 60 / tempo;
+
+    if (beat === 1 && Object.keys(pendingLoops).length > 0) {
+      currentLoops = pendingLoops;
+      pendingLoops = {};
+    }
+
+    if (instrumentOn.metronome) {
+      playClick(beatTime, strong);
+    }
+
+    playLoopBeat(predictedChord, beat, beatTime, beatDur);
+
+    const msUntil = (beatTime - audioContext.currentTime) * 1000;
+    setTimeout(() => onBeat(beat, beatTime, beatDur), Math.max(0, msUntil));
+
+    nextBeatTime += beatDur;
+    currentBeat = currentBeat % 4 + 1;
+  }
+
+  schedulerTimer = setTimeout(scheduleBeats, LOOKAHEAD_MS);
+}
+
+function onBeat(beat, beatTime, beatDur) {
+  updateBeatDots(beat);
+
+  const windowStart = beatTime - beatDur;
+  const activeNotes = Object.entries(notesPressed)
+    .filter(([, data]) => data.startTime <= beatTime)
+    .map(([note, data]) => ({ note, start: data.startTime, end: beatTime }));
+  const beatNotes = notesPlayed.concat(activeNotes);
+  notesPlayed = [];
+
+  predictChordFromAPI(beatNotes, windowStart, beat, beatDur);
+}
+
+// =============================================================
+// API
+// =============================================================
+
+async function predictChordFromAPI(notes, beatStart, beatIndex, beatDur) {
+  try {
+    const res = await fetch(`${API_BASE}/predict-chord`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        notes:       notes.map(n => ({ note: n.note, start: n.start, end: n.end })),
+        beat_start:  beatStart,
+        beat_index:  beatIndex,
+        tempo,
+        history:     engineHistory,
+      })
+    });
+    const data = await res.json();
+    if (data.chord) {
+      predictedChord = data.chord;
+      document.getElementById('chord-display').textContent = data.chord;
+    }
+    if (data.history) engineHistory = data.history;
+    if (data.loops && Object.keys(data.loops).length > 0) pendingLoops = data.loops;
+  } catch (e) { /* silent fallback */ }
+}
+
+async function checkAPI() {
+  const el = document.getElementById('api-status');
+  for (let attempt = 0; attempt < 5; attempt++) {
+    if (attempt > 0) {
+      el.textContent = `warming up… (${attempt}/4)`;
+      el.className   = '';
+      await new Promise(r => setTimeout(r, 2000));
+    }
+    try {
+      const res = await fetch(`${API_BASE}/health`, { signal: AbortSignal.timeout(6000) });
+      if (res.ok) {
+        const d = await res.json();
+        apiOk = d.status === 'ok';
+        if (apiOk) {
+          el.textContent = started ? (sfReady < 3 ? `connected · loading sounds (${sfReady}/3)…` : 'connected · sounds ready') : 'connected';
+          el.className   = 'status-ok';
+          return;
+        }
+      }
+    } catch (e) { /* retry */ }
+  }
+  apiOk = false;
+  el.textContent = 'not connected (chord prediction unavailable)';
+  el.className   = 'status-err';
+}
+
+async function resetEngineHistory() {
+  engineHistory  = '';
+  currentLoops   = {};
+  pendingLoops   = {};
+  predictedChord = '–';
+  document.getElementById('chord-display').textContent = '–';
+  try {
+    await fetch(`${API_BASE}/reset`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({})
+    });
+  } catch (e) {}
+}
+
+// =============================================================
+// PIANO KEYBOARD
+// =============================================================
+
+function buildPiano() {
+  const piano = document.getElementById('piano');
+  piano.innerHTML = '';
+  const oct1 = 4 + octaveOffset;
+  const oct2 = oct1 + 1;
+
+  for (let i = 0; i < 14; i++) {
+    const octave   = i < 7 ? oct1 : oct2;
+    const name     = WHITE_NAMES[i % 7];
+    const note     = `${name}${octave}`;
+    const labelMap = i < 7 ? OCT1_LABELS : OCT2_LABELS;
+    const label    = labelMap[name] || '';
+    const div = document.createElement('div');
+    div.className = 'white-key'; div.dataset.note = note;
+    div.innerHTML = `<span class="key-label">${label}</span>`;
+    div.addEventListener('mousedown',  e => { e.preventDefault(); if (started) pressNote(note); });
+    div.addEventListener('mouseup',    () => releaseNote(note));
+    div.addEventListener('mouseleave', () => releaseNote(note));
+    div.addEventListener('touchstart', e => { e.preventDefault(); if (started) pressNote(note); }, { passive: false });
+    div.addEventListener('touchend',   e => { e.preventDefault(); releaseNote(note); }, { passive: false });
+    piano.appendChild(div);
+  }
+
+  const totalWhite  = 14;
+  const whiteKeyPct = 100 / totalWhite;
+  const blackDefs = [
+    [0,'C#',0],[1,'D#',0],[3,'F#',0],[4,'G#',0],[5,'A#',0],
+    [7,'C#',1],[8,'D#',1],[10,'F#',1],[11,'G#',1],[12,'A#',1]
+  ];
+  blackDefs.forEach(([wIdx, name, octIdx]) => {
+    const octave   = octIdx === 0 ? oct1 : oct2;
+    const note     = `${name}${octave}`;
+    const labelMap = octIdx === 0 ? OCT1_LABELS : OCT2_LABELS;
+    const label    = labelMap[name] || '';
+    const div = document.createElement('div');
+    div.className = 'black-key'; div.dataset.note = note;
+    div.style.left = `${(wIdx + 0.67) * whiteKeyPct}%`;
+    div.innerHTML = `<span class="key-label">${label}</span>`;
+    div.addEventListener('mousedown',  e => { e.preventDefault(); if (started) pressNote(note); });
+    div.addEventListener('mouseup',    () => releaseNote(note));
+    div.addEventListener('mouseleave', () => releaseNote(note));
+    div.addEventListener('touchstart', e => { e.preventDefault(); if (started) pressNote(note); }, { passive: false });
+    div.addEventListener('touchend',   e => { e.preventDefault(); releaseNote(note); }, { passive: false });
+    piano.appendChild(div);
+  });
+  updateRangeLabel();
+}
+
+function updateRangeLabel() {
+  const oct1 = 4 + octaveOffset;
+  document.getElementById('range-label').textContent =
+    `Range C${oct1}–B${oct1+1}   (z / x to shift octave)`;
+}
+
+function updateBeatDots(beat) {
+  document.querySelectorAll('.beat-dot').forEach(dot => {
+    dot.classList.toggle('active', parseInt(dot.dataset.beat) === beat);
+  });
+}
+
+// =============================================================
+// NOTE PRESS / RELEASE  — monophonic top voice
+// Only the highest currently-held key produces sound.
+// All held keys are still recorded for chord prediction.
+// =============================================================
+
+// Convert note name (e.g. "A#4") → MIDI int
+function noteNameToMidi(name) {
+  const root = name.slice(0, -1);
+  const oct  = parseInt(name.slice(-1));
+  const idx  = ROOTS.indexOf(root);
+  return idx >= 0 ? (oct + 1) * 12 + idx : -1;
+}
+
+// Return the note name with the highest MIDI pitch currently held
+function topPressedNote() {
+  let best = null, bestMidi = -1;
+  for (const n of Object.keys(notesPressed)) {
+    const m = noteNameToMidi(n);
+    if (m > bestMidi) { bestMidi = m; best = n; }
+  }
+  return best;
+}
+
+let soloAudioNote = null;   // the one note currently making melody sound
+
+function pressNote(noteName) {
+  if (!audioContext || !started) return;
+  if (notesPressed[noteName]) return;
+
+  const newMidi  = noteNameToMidi(noteName);
+  const prevTop  = topPressedNote();
+  const prevMidi = prevTop ? noteNameToMidi(prevTop) : -1;
+
+  // Register for chord prediction (no audio yet)
+  notesPressed[noteName] = { startTime: audioContext.currentTime, audioNodes: null };
+  document.querySelectorAll(`[data-note="${noteName}"]`).forEach(el => el.classList.add('active'));
+
+  // Only sound this note if it's the new highest
+  if (newMidi >= prevMidi) {
+    // Stop previous sounding note's audio (keep it registered for prediction)
+    if (soloAudioNote && notesPressed[soloAudioNote]?.audioNodes) {
+      stopNote(notesPressed[soloAudioNote].audioNodes);
+      notesPressed[soloAudioNote].audioNodes = null;
+    }
+    const nodes = startNote(noteName);
+    notesPressed[noteName].audioNodes = nodes;
+    soloAudioNote = noteName;
+  }
+}
+
+function releaseNote(noteName) {
+  const data = notesPressed[noteName];
+  if (!data) return;
+  if (data.audioNodes) stopNote(data.audioNodes);
+  const end = audioContext ? audioContext.currentTime : Date.now()/1000;
+  notesPlayed.push({ note: noteName, start: data.startTime, end });
+  delete notesPressed[noteName];
+  document.querySelectorAll(`[data-note="${noteName}"]`).forEach(el => el.classList.remove('active'));
+
+  // If we just released the sounding note, pass audio to next-highest held key
+  if (noteName === soloAudioNote) {
+    soloAudioNote = null;
+    const next = topPressedNote();
+    if (next) {
+      const nodes = startNote(next);
+      notesPressed[next].audioNodes = nodes;
+      soloAudioNote = next;
+    }
+  }
+}
+
+// =============================================================
+// KEYBOARD INPUT
+// =============================================================
+
+const keysDown = new Set();
+
+function noteFromKey(key) {
+  const baseNote = KEYBOARD_MAP[key];
+  if (!baseNote) return null;
+  const name   = baseNote.slice(0, -1);
+  const octave = parseInt(baseNote.slice(-1)) + octaveOffset;
+  const shifted = `${name}${octave}`;
+  return NOTE_FREQS[shifted] ? shifted : null;
+}
+
+document.addEventListener('keydown', e => {
+  if (e.repeat) return;
+  if (e.key === 'z') {
+    octaveOffset = Math.max(OCTAVE_MIN, octaveOffset - 1);
+    Object.keys(notesPressed).forEach(releaseNote);
+    buildPiano(); return;
+  }
+  if (e.key === 'x') {
+    octaveOffset = Math.min(OCTAVE_MAX, octaveOffset + 1);
+    Object.keys(notesPressed).forEach(releaseNote);
+    buildPiano(); return;
+  }
+  const note = noteFromKey(e.key);
+  if (note && !keysDown.has(e.key)) { keysDown.add(e.key); pressNote(note); }
+});
+
+document.addEventListener('keyup', e => {
+  keysDown.delete(e.key);
+  const note = noteFromKey(e.key);
+  if (note) releaseNote(note);
+});
+
+// =============================================================
+// TEMPO + PLAY/STOP BUTTON
+// =============================================================
+
+function setTempo(bpm) {
+  tempo = Math.max(20, Math.min(300, bpm));
+  document.getElementById('bpm-display').textContent = `${tempo} BPM`;
+}
+
+document.getElementById('btn-plus' ).addEventListener('click', () => setTempo(tempo + 5));
+document.getElementById('btn-minus').addEventListener('click', () => setTempo(tempo - 5));
+
+document.getElementById('play-btn').addEventListener('click', () => {
+  if (!started) {
+    startAudio();
+  } else {
+    location.reload();
+  }
+});
+
+// =============================================================
+// INIT
+// =============================================================
+
+// =============================================================
+// INSTRUMENT TOGGLE BUTTONS
+// =============================================================
+
+document.querySelectorAll('.toggle-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const inst = btn.dataset.inst;
+    instrumentOn[inst] = !instrumentOn[inst];
+    btn.classList.toggle('on',  instrumentOn[inst]);
+    btn.classList.toggle('off', !instrumentOn[inst]);
+  });
+});
+
+buildPiano();
+checkAPI();
+setInterval(checkAPI, 5000);
+</script>
+</body>
+</html>

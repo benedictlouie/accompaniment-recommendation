@@ -1,3 +1,4 @@
+import itertools
 import numpy as np
 import random
 import pygame
@@ -132,6 +133,20 @@ class HarmonyPlayer:
             "bass": set(),
         }
 
+        # Last voiced chord per instrument (MIDI notes), used for voice leading
+        self.prev_voicing = {
+            "guitar": None,
+            "piano": None,
+            "bass": None,
+        }
+
+        # Cache: skip recompute when the same chord repeats across beats
+        self._vl_cache = {
+            "guitar": (None, None),   # (chord_name, voiced_chord)
+            "piano":  (None, None),
+            "bass":   (None, None),
+        }
+
     def extend_chord(self, chord_name):
         chord = CHORD_TO_TETRAD[chord_name].copy()
         if chord_name == "N":
@@ -146,6 +161,49 @@ class HarmonyPlayer:
             print(f"{chord_name.split(':')[0]}:{ext}")
         chord += [root + i for i in EXTENSION_INTERVALS.get(ext, [])]
         return chord
+
+    # --------------------------------------------------
+    # VOICE LEADING
+    # --------------------------------------------------
+
+    def voice_lead(self, prev_notes: list, chord_pcs: list, pitch_range=(36, 84)) -> list:
+        """
+        Given the previous chord voicing (MIDI notes) and the new chord's pitch
+        classes, return the closest voicing that minimises total semitone
+        displacement across voices.
+
+        Example: prev C major [48,52,55] + G major pcs [7,11,2]
+                 → returns [47,50,55]  (G/B first inversion, bass drops semitone)
+        """
+        lo, hi = pitch_range
+        n = len(chord_pcs)
+
+        # All candidate MIDI notes for each pitch class within range
+        candidates = [
+            [pc + 12 * o for o in range(-1, 9) if lo <= pc + 12 * o <= hi]
+            for pc in chord_pcs
+        ]
+
+        # Fallback: nothing in range
+        if not all(candidates):
+            return [pc + 48 for pc in chord_pcs]
+
+        prev_sorted = sorted(prev_notes[:n])   # compare against same number of voices
+        best, best_cost = None, float("inf")
+
+        for combo in itertools.product(*candidates):
+            voicing = sorted(combo)
+            # Reject unisons / extreme clusters (< 1 semitone between any two voices)
+            if any(voicing[i + 1] - voicing[i] < 1 for i in range(len(voicing) - 1)):
+                continue
+            cost = sum(abs(v - p) for v, p in zip(voicing, prev_sorted))
+            if cost < best_cost:
+                best_cost, best = cost, voicing
+
+        if best is None:
+            best = sorted(cands[0] for cands in candidates)
+
+        return best
 
     # --------------------------------------------------
     # SIMPLE GUITAR HARMONY
@@ -183,13 +241,13 @@ class HarmonyPlayer:
     # SNAP NOTE TO CHORD
     # --------------------------------------------------
 
-    def snap_to_chord(self, target, chord):
+    def snap_to_chord(self, target, chord, pitch_range=None):
 
         best = None
         best_dist = 1e9
 
         for octave in (-12, 0, 12):
-            
+
             if octave == 12 and len(chord) > 4:
                 continue
 
@@ -200,11 +258,22 @@ class HarmonyPlayer:
             for n in chord_notes:
 
                 candidate = n + octave
+
+                # Reject candidates outside the instrument's pitch range
+                if pitch_range is not None:
+                    lo, hi = pitch_range
+                    if not (lo <= candidate <= hi):
+                        continue
+
                 d = abs(candidate - target)
 
                 if d < best_dist:
                     best_dist = d
                     best = candidate
+
+        # Fallback: ignore range constraint if nothing matched (avoid None)
+        if best is None:
+            best = self.snap_to_chord(target, chord, pitch_range=None)
 
         return best
 
@@ -212,15 +281,22 @@ class HarmonyPlayer:
     # NN HARMONY
     # --------------------------------------------------
 
+    # Per-instrument pitch ranges for voice leading
+    VOICE_RANGES = {
+        "guitar": (40, 67),   # E2 – G4
+        "piano":  (48, 84),   # C3 – C6
+        "bass":   (28, 52),   # E1 – E3
+    }
+
     def play_harmony_nn(self, chord_name, loop, beat_index, instrument, bpm):
 
         if chord_name not in CHORD_TO_TETRAD:
             return
-        
+
         if loop is None:
             return
 
-        chord = CHORD_TO_TETRAD[chord_name]
+        chord = list(CHORD_TO_TETRAD[chord_name])  # copy so we don't mutate the dict
 
         channel = {"guitar":0, "piano":1, "bass":2}[instrument]
         velocity = {"guitar":85, "piano":100, "bass":127}[instrument]
@@ -229,10 +305,30 @@ class HarmonyPlayer:
             chord = self.extend_chord(chord_name)
             chord = [n+12 for n in chord]
 
+        # --------------------------------------------------
+        # VOICE LEADING: re-voice the chord so each voice moves
+        # as little as possible from the previous chord.
+        # Cache the result per chord_name so repeated beats in
+        # the same bar don't rerun the search.
+        # --------------------------------------------------
+        cached_name, cached_voiced = self._vl_cache[instrument]
+        if cached_name == chord_name:
+            # Same chord as last time — reuse voiced result
+            chord = cached_voiced
+        else:
+            prev = self.prev_voicing[instrument]
+            if prev is not None:
+                chord_pcs = [n % 12 for n in chord]
+                chord = self.voice_lead(prev, chord_pcs, self.VOICE_RANGES[instrument])
+            self.prev_voicing[instrument] = chord
+            self._vl_cache[instrument] = (chord_name, chord)
+
         seconds_per_beat = 60.0 / bpm
         step_duration = seconds_per_beat / STEPS_PER_BEAT
 
         start_step = beat_index * STEPS_PER_BEAT
+
+        pitch_range = self.VOICE_RANGES[instrument]
 
         for sub in range(STEPS_PER_BEAT):
 
@@ -251,7 +347,7 @@ class HarmonyPlayer:
                     continue
 
                 target = chord[0] + interval
-                midi = self.snap_to_chord(target, chord)
+                midi = self.snap_to_chord(target, chord, pitch_range)
 
                 notes_now.add(midi)
 

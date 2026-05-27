@@ -1,0 +1,36 @@
+# ── Large files not needed at runtime ────────────────────────────────────────
+checkpoints/
+data/
+soundfonts/
+runs/
+
+# ── Dev / training / local-only code ─────────────────────────────────────────
+scripts/
+archive/
+transcribe/
+report/
+
+# ── Python files not imported by api/index.py ─────────────────────────────────
+AR/
+CRF/
+engines/transformer_engine.py
+engines/crf_engine.py
+engines/base_engine.py
+engines/factory.py
+accompaniment/accompaniment_system.py
+accompaniment/nn.py
+accompaniment/piano_app.py
+
+# ── Audio / soundfont files ───────────────────────────────────────────────────
+utils/click.wav
+utils/click_strong.wav
+
+# ── Dev / misc ────────────────────────────────────────────────────────────────
+requirements-dev.txt
+output.mid
+__pycache__/
+*.pyc
+.DS_Store
+.venv/
+.python-version
+.claude/
