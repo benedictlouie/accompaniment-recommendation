@@ -4,7 +4,6 @@ import numpy as np
 
 import matplotlib
 import matplotlib.pyplot as plt
-from typer import prompt
 matplotlib.use("QtAgg")
 
 from matplotlib.widgets import RangeSlider, Button
@@ -15,6 +14,63 @@ from matplotlib.widgets import CheckButtons
 import os
 from AR.ar_transformer import TransformerModel
 from utils.constants import INPUT_DIM, QUALITIES_ALL, NUM_CLASSES_ALL, NUM_QUALITIES_ALL, DEVICE, CHORD_CLASSES_ALL
+
+# Cycle-of-fifths root order (semitone indices 0=C … 11=B)
+_COF_ROOTS = [0, 7, 2, 9, 4, 11, 6, 1, 8, 3, 10, 5]
+
+
+def _draw_cof_lines_2d(ax, all_coords_2d, cmap, alpha=0.5, lw=1.5,
+                       skip_outliers=False):
+    """Connect each quality group's 12 chords in cycle-of-fifths order (2D).
+    skip_outliers: drop edges above the natural gap in the length distribution."""
+    threshold = np.inf
+    if skip_outliers:
+        all_lens = []
+        for q in range(NUM_QUALITIES_ALL):
+            ring = [r * NUM_QUALITIES_ALL + q for r in _COF_ROOTS]
+            for i in range(len(ring)):
+                a = ring[i]; b = ring[(i + 1) % len(ring)]
+                all_lens.append(np.linalg.norm(all_coords_2d[a] - all_coords_2d[b]))
+        desc = np.sort(all_lens)[::-1]
+        gap_idx = int(np.argmax(desc[:-1] - desc[1:]))
+        threshold = (desc[gap_idx] + desc[gap_idx + 1]) / 2
+
+    for q in range(NUM_QUALITIES_ALL):
+        ring = [r * NUM_QUALITIES_ALL + q for r in _COF_ROOTS]
+        for i in range(len(ring)):
+            ia = ring[i]; ib = ring[(i + 1) % len(ring)]
+            pa = all_coords_2d[ia]; pb = all_coords_2d[ib]
+            if np.linalg.norm(pa - pb) > threshold:
+                continue
+            ax.plot([pa[0], pb[0]], [pa[1], pb[1]],
+                    color=cmap(q), alpha=alpha, linewidth=lw, zorder=2)
+
+
+def _draw_cof_lines_3d(ax, xs, ys, zs, cmap, alpha=0.5, lw=1.0,
+                       skip_longest=False, skip_n_longest=1):
+    """Connect each quality group's 12 chords in cycle-of-fifths order (3D)."""
+    coords3d = np.stack([xs, ys, zs], axis=1)
+    for q in range(NUM_QUALITIES_ALL):
+        ring = [r * NUM_QUALITIES_ALL + q for r in _COF_ROOTS]
+        edges = [(ring[i], ring[(i + 1) % len(ring)]) for i in range(len(ring))]
+        skip_set = set()
+        if skip_longest:
+            lengths = [np.linalg.norm(coords3d[a] - coords3d[b]) for a, b in edges]
+            degree = [2] * len(edges)
+            for idx in np.argsort(lengths)[::-1]:
+                if len(skip_set) >= skip_n_longest:
+                    break
+                ai = ring.index(edges[idx][0])
+                bi = ring.index(edges[idx][1])
+                if degree[ai] > 1 and degree[bi] > 1:
+                    skip_set.add(idx)
+                    degree[ai] -= 1
+                    degree[bi] -= 1
+        for i, (ia, ib) in enumerate(edges):
+            if i in skip_set:
+                continue
+            ax.plot([xs[ia], xs[ib]], [ys[ia], ys[ib]], [zs[ia], zs[ib]],
+                    color=cmap(q), alpha=alpha, linewidth=lw)
 
 # ----------------------------
 # Load Model
@@ -71,25 +127,10 @@ def visualize_class_weights_3d(model):
             t = ax.text(xs[i], ys[i], zs[i], CHORD_CLASSES_ALL[i], size=8)
             texts.append(t)
 
-        # nearest neighbour lines (within group)
-        pts = np.stack([xg, yg, zg], axis=1)
-        dists = pairwise_distances(pts)
+        group_artists.append((scatter, texts, []))
 
-        lines = []
-
-        for i in range(len(idxs)):
-
-            order = np.argsort(dists[i])[1:3]  # 2 closest (skip self)
-
-            for j in order:
-                xline = [xg[i], xg[j]]
-                yline = [yg[i], yg[j]]
-                zline = [zg[i], zg[j]]
-
-                line, = ax.plot(xline, yline, zline, color=color, alpha=0.5, linewidth=1)
-                lines.append(line)
-
-        group_artists.append((scatter, texts, lines))
+    # cycle-of-fifths ring connections
+    _draw_cof_lines_3d(ax, xs, ys, zs, cmap, alpha=0.5, lw=1.0)
 
     # axes labels
     ax.set_title("Chord Similarity")
@@ -167,31 +208,17 @@ def visualize_class_weights_2d(model):
             t = ax.text(pc1[i], phase[i], CHORD_CLASSES_ALL[i], fontsize=8)
             texts.append(t)
 
-        # nearest neighbour lines
-        pts = np.stack([xg, yg], axis=1)
-        dists = pairwise_distances(pts)
+        group_artists.append((scatter, texts, []))
 
-        lines = []
-        for i in range(len(idxs)):
-            order = np.argsort(dists[i])[1:3]
-
-            for j in order:
-                line, = ax.plot(
-                    [xg[i], xg[j]],
-                    [yg[i], yg[j]],
-                    color=cmap(q),
-                    alpha=0.5,
-                    linewidth=2.5
-                )
-                lines.append(line)
-
-        group_artists.append((scatter, texts, lines))
+    # cycle-of-fifths ring connections (skip 2 longest per quality to remove phase-crossing lines)
+    all_pts = np.stack([pc1[:168], phase[:168]], axis=1)
+    _draw_cof_lines_2d(ax, all_pts, cmap, alpha=0.5, lw=2.0, skip_longest=True, skip_n_longest=2)
 
     # colorbar (global)
     cbar = plt.colorbar(group_artists[0][0], ax=ax)
     cbar.set_label("Radius (sqrt(PC2² + PC3²))")
 
-    ax.set_title("PC1 vs Phase(PC2, PC3)")
+    ax.set_title("PC1 vs Phase(PC2, PC3)  [cycle-of-fifths connections]")
     ax.set_xlabel("PC1")
     ax.set_ylabel("Phase (radians)")
     ax.grid(True)
@@ -267,26 +294,11 @@ def visualize_class_weights_4d(model):
             t = ax.text(pc1[i], pc2[i], theta[i], CHORD_CLASSES_ALL[i], size=4)
             texts.append(t)
 
-        # nearest neighbour lines
-        pts = np.stack([xg, yg, zg], axis=1)
-        dists = pairwise_distances(pts)
+        group_artists.append((scatter, texts, []))
 
-        lines = []
-        for i in range(len(idxs)):
-            order = np.argsort(dists[i])[1:3]
-
-            for j in order:
-                line, = ax.plot(
-                    [xg[i], xg[j]],
-                    [yg[i], yg[j]],
-                    [zg[i], zg[j]],
-                    color=cmap(q),
-                    alpha=0.5,
-                    linewidth=1
-                )
-                lines.append(line)
-
-        group_artists.append((scatter, texts, lines))
+    # cycle-of-fifths ring connections in (PC1, PC2, theta) space
+    _draw_cof_lines_3d(ax, pc1[:168], pc2[:168], theta[:168], cmap, alpha=0.4, lw=0.8,
+                       skip_longest=True, skip_n_longest=2)
 
     # colorbar
     cbar = plt.colorbar(group_artists[0][0], ax=ax, shrink=0.7, pad=0.1)

@@ -333,7 +333,10 @@ def plot_latent_distance_heatmap(dist_matrix: np.ndarray, n_songs: int,
 
     # ── left: 33×33 heatmap ───────────────────────────────────────────────────
     ax = axes[0]
-    im = ax.imshow(dist_matrix, aspect="auto", cmap="viridis_r", origin="upper")
+    vmin = np.percentile(dist_matrix, 1)
+    vmax = np.percentile(dist_matrix, 99)
+    im = ax.imshow(dist_matrix, aspect="auto", cmap="turbo",
+                   origin="upper", vmin=vmin, vmax=vmax)
     plt.colorbar(im, ax=ax, label="Mean ||h_t − emb(gt_chord_t)||")
     ticks = list(range(0, T, 4)) + [T - 1]
     ax.set_xticks(ticks)
@@ -341,7 +344,7 @@ def plot_latent_distance_heatmap(dist_matrix: np.ndarray, n_songs: int,
     ax.set_xticklabels([str(t) for t in ticks], fontsize=8)
     ax.set_yticklabels([f"{r}" for r in ticks], fontsize=8)
     ax.set_xlabel("AR decoding step t (bar within window)", fontsize=11)
-    ax.set_ylabel("Window position in song (early → late)", fontsize=11)
+    ax.set_ylabel("Window position in song", fontsize=11)
     ax.set_title(
         f"||h_t − emb(gt_chord_t)|| — {n_songs} songs, 33 windows each from middle\n"
         "Rows = consecutive windows (middle of song)   Cols = AR step within window",
@@ -351,12 +354,18 @@ def plot_latent_distance_heatmap(dist_matrix: np.ndarray, n_songs: int,
     # ── right: column means — distance per AR step, averaged over window pos ──
     ax2 = axes[1]
     col_mean = dist_matrix.mean(axis=0)   # (33,) — average over window positions
+    col_std  = dist_matrix.std(axis=0)
     ax2.plot(range(T), col_mean, marker="o", markersize=4, lw=1.8, color="tab:orange")
-    ax2.fill_between(range(T), col_mean, alpha=0.15, color="tab:orange")
+    ax2.fill_between(range(T), col_mean - col_std, col_mean + col_std,
+                     alpha=0.20, color="tab:orange", label=r"$\pm$1 std")
+    # tight zoom: ±0.5× range around [min, max]
+    margin = max((col_mean.max() - col_mean.min()) * 0.5, 0.02)
+    ax2.set_ylim(col_mean.min() - margin, col_mean.max() + margin)
     ax2.set_xlabel("AR decoding step t", fontsize=11)
     ax2.set_ylabel("Mean distance to GT embedding", fontsize=11)
     ax2.set_title("Mean across window positions\n(how distance to GT evolves within a window)", fontsize=11)
     ax2.set_xticks(range(0, T, 4))
+    ax2.legend(fontsize=9)
     ax2.grid(True, alpha=0.3)
 
     fig.suptitle("Latent distance to ground truth chord embedding — sliding window view",
@@ -418,6 +427,7 @@ def run_latent_distance_aggregate(model, song_ids, out_dir="AR", start_frac=0.5)
     plot_latent_distance_heatmap(dist_matrix, n_songs=n_songs,
                                   n_sequences=song_count * T, out_path=out_path)
     print(f"Aggregated over {song_count} songs ({song_count * T} windows total).")
+    return dist_matrix
 
 
 # ── helpers ───────────────────────────────────────────────────────────────────

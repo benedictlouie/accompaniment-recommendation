@@ -5,7 +5,7 @@ Run from the project root:  python report/scripts/eval_models.py
 Metrics reported for both models:
   - Val Cross-Entropy
   - Top-1 Accuracy
-  - Mean Chord2Vec PCA distance (Euclidean in PC1/PC2 of token_embeddings_32d.json)
+  - Mean embedding distance (Euclidean in 128D output-embedding space)
 
 CRF is evaluated on a random 2000-sample subset (Viterbi is slow on CPU).
 Transformer is evaluated on the full val set.
@@ -25,33 +25,11 @@ from utils.constants import (
     FIFTHS_CHORD_LIST, FIFTHS_CHORD_INDICES, MAJOR, MINOR, QUALITY_SIMPLIFIER
 )
 from AR.ar_transformer import TransformerModel, MusicDataset
-from data.chord2vec import load_embeddings, compute_pca_3d
 
 VAL_NPZ    = "data/data_val.npz"
 AR_CKPT    = "checkpoints/transformer_model.pth"
 CRF_TRANS  = "CRF/chord_transition_matrix.npy"
-EMBED_PATH = "data/token_embeddings_32d.json"
 CRF_SAMPLES = 2000
-
-# ── Shared Chord2Vec PCA reference space ─────────────────────────────────────
-tokens, labels, mod, embeddings = load_embeddings(EMBED_PATH)
-coords_3d = compute_pca_3d(embeddings)   # [N, 3]
-coords_2d = coords_3d[:, :2]             # PC1, PC2
-
-label_to_coord = {labels[i]: coords_2d[i] for i in range(len(labels))}
-
-# 169-class index → 2D coord
-idx_to_coord_169 = np.zeros((NUM_CLASSES_ALL, 2), dtype=np.float32)
-for i, chord in enumerate(CHORD_CLASSES_ALL):
-    if chord in label_to_coord:
-        idx_to_coord_169[i] = label_to_coord[chord]
-idx_to_coord_t = torch.tensor(idx_to_coord_169)
-
-# 25-class index → 2D coord
-idx_to_coord_25 = np.zeros((NUM_CLASSES, 2), dtype=np.float32)
-for i, chord in enumerate(CHORD_CLASSES):
-    if chord in label_to_coord:
-        idx_to_coord_25[i] = label_to_coord[chord]
 
 
 # ── AR Transformer evaluation ─────────────────────────────────────────────────
@@ -62,11 +40,15 @@ def eval_transformer():
     model.eval()
     criterion = nn.CrossEntropyLoss()
 
-    # Random baseline for normalised dist
+    # 128D output embedding weights: shape [169, 128]
+    emb_weight = model.embedding_output.weight.detach().cpu()
+
+    # Random baseline for normalised dist in 128D
     rng = np.random.default_rng(0)
     ri = rng.integers(0, NUM_CLASSES_ALL, 100000)
     rj = rng.integers(0, NUM_CLASSES_ALL, 100000)
-    rand_baseline = np.linalg.norm(idx_to_coord_169[ri] - idx_to_coord_169[rj], axis=1).mean()
+    emb_np = emb_weight.numpy()
+    rand_baseline = np.linalg.norm(emb_np[ri] - emb_np[rj], axis=1).mean()
 
     # Precompute simplified maj/min label for each of the 169 chord indices
     majmin_map = [simplify_to_majmin(c) for c in CHORD_CLASSES_ALL]
@@ -86,8 +68,8 @@ def eval_transformer():
                 tot_ce      += criterion(last_logits, last_targets).item() * inputs.size(0)
                 preds        = last_logits.argmax(dim=-1)
                 tot_correct += (preds == last_targets).sum().item()
-                pred_c       = idx_to_coord_t[preds.cpu()]
-                true_c       = idx_to_coord_t[last_targets.cpu()]
+                pred_c       = emb_weight[preds.cpu()]
+                true_c       = emb_weight[last_targets.cpu()]
                 tot_dist    += torch.norm(pred_c - true_c, dim=1).sum().item()
                 for p, t in zip(preds.cpu().tolist(), last_targets.cpu().tolist()):
                     tot_majmin += int(majmin_map[p] == majmin_map[t])
@@ -109,10 +91,10 @@ def eval_transformer():
     print(f"  Val Cross-Entropy                           : {va['ce']:.4f}")
     print(f"  Train Major/Minor Accuracy                  : {tr['majmin']*100:.2f}%")
     print(f"  Val Major/Minor Accuracy                    : {va['majmin']*100:.2f}%")
-    print(f"  Train Output-Layer PCA dist                 : {tr['dist']:.4f}")
-    print(f"  Val Output-Layer PCA dist                   : {va['dist']:.4f}")
-    print(f"  Train Output-Layer PCA dist (normalised)    : {tr['dist_norm']:.4f}  (rand baseline = {rand_baseline:.4f})")
-    print(f"  Val Output-Layer PCA dist (normalised)      : {va['dist_norm']:.4f}  (rand baseline = {rand_baseline:.4f})")
+    print(f"  Train Output-Layer emb dist (128D)          : {tr['dist']:.4f}")
+    print(f"  Val Output-Layer emb dist (128D)            : {va['dist']:.4f}")
+    print(f"  Train Output-Layer emb dist (normalised)    : {tr['dist_norm']:.4f}  (rand baseline = {rand_baseline:.4f})")
+    print(f"  Val Output-Layer emb dist (normalised)      : {va['dist_norm']:.4f}  (rand baseline = {rand_baseline:.4f})")
     return tr, va
 
 
@@ -234,4 +216,4 @@ if __name__ == "__main__":
 
     print("\n=== Summary ===")
     print(f"  CRF  — Top-1: {val_crf['top1_acc']*100:.2f}%  FifthsLoss: {val_crf['fifths_loss']:.4f}  Maj/Min: {val_crf['majmin_acc']*100:.2f}%  CoF dist (norm): {val_crf['fifths_dist_norm']:.4f}")
-    print(f"  AR   — Train CE: {ar_tr['ce']:.4f}  Val CE: {ar_va['ce']:.4f}  Train Acc: {ar_tr['acc']*100:.2f}%  Val Acc: {ar_va['acc']*100:.2f}%  PCA dist (norm): {ar_va['dist_norm']:.4f}")
+    print(f"  AR   — Train CE: {ar_tr['ce']:.4f}  Val CE: {ar_va['ce']:.4f}  Train Acc: {ar_tr['acc']*100:.2f}%  Val Acc: {ar_va['acc']*100:.2f}%  Emb dist 128D (norm): {ar_va['dist_norm']:.4f}")

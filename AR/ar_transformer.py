@@ -128,7 +128,7 @@ def train(model, train_loader, val_loader, optimizer, num_epochs=10, start_epoch
             optimizer.zero_grad()
 
             step = epoch * len(train_loader) + i
-            teacher_forcing_ratio = max(0.1, 1 - step / 500000)
+            teacher_forcing_ratio = max(0.1, 1 - step / 300000)
             use_teacher = random.random() < teacher_forcing_ratio
             output = model(input_seq, target_seq, use_teacher)     # [B, MAX_LEN, OUTPUT_DIM]
 
@@ -196,7 +196,7 @@ if __name__ == "__main__":
     nhead = 8
     num_encoder_layers = 6
     num_decoder_layers = 6
-    num_epochs = 10
+    num_epochs = 2
     batch_size = 32
 
     model = TransformerModel(INPUT_DIM, OUTPUT_DIM, d_model, nhead,
