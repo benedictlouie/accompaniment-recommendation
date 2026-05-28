@@ -36,10 +36,7 @@ class WebLoopLookup:
         self.guitar   = data["guitar"]     # [N, 16, 8]   int8
         self.bass     = data["bass"]       # [N, 16, 1]   int8
         self._n       = len(self.features)
-        # Only search patterns that have at least kick, snare, or hi-hat —
-        # silent/rest segments in the dataset produce all-zero grooves that
-        # win nearest-neighbour by default and yield no audible output.
-        drum_active = data["drums"][:, :, [35, 36, 38, 40, 42, 44, 46]].any(axis=(1, 2))
+        drum_active  = data["drums"][:, :, [35, 36, 38, 40, 42, 44, 46]].any(axis=(1, 2))
         self._active_idx = np.where(drum_active)[0]
 
     def get_loops(self, melody, top_k: int = 10) -> dict:

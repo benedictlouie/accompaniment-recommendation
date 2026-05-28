@@ -220,6 +220,7 @@ let predictedChord = '–';
 let currentBeat   = 1;
 
 let engineHistory = '';
+let prevDrumLoop  = '';
 let currentLoops  = {};
 let pendingLoops  = {};
 const accEnabled  = true;
@@ -582,11 +583,12 @@ async function predictChordFromAPI(notes, beatStart, beatIndex, beatDur) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        notes:       notes.map(n => ({ note: n.note, start: n.start, end: n.end })),
-        beat_start:  beatStart,
-        beat_index:  beatIndex,
+        notes:          notes.map(n => ({ note: n.note, start: n.start, end: n.end })),
+        beat_start:     beatStart,
+        beat_index:     beatIndex,
         tempo,
-        history:     engineHistory,
+        history:        engineHistory,
+        prev_drum_loop: prevDrumLoop,
       })
     });
     const data = await res.json();
@@ -595,6 +597,7 @@ async function predictChordFromAPI(notes, beatStart, beatIndex, beatDur) {
       document.getElementById('chord-display').textContent = data.chord;
     }
     if (data.history) engineHistory = data.history;
+    if (data.prev_drum_loop) prevDrumLoop = data.prev_drum_loop;
     if (data.loops && Object.keys(data.loops).length > 0) pendingLoops = data.loops;
   } catch (e) { /* silent fallback */ }
 }
@@ -847,6 +850,7 @@ function stopAudio() {
   currentBeat    = 1;
   nextBeatTime   = 0;
   engineHistory  = '';
+  prevDrumLoop   = '';
   predictedChord = '–';
 
   document.getElementById('chord-display').textContent = '–';

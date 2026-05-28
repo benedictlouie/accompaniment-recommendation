@@ -26,19 +26,19 @@
     align-items: center;
     justify-content: center;
     gap: 20px;
-    margin-bottom: 20px;
+    margin-bottom: 10px;
     position: relative;
     background: var(--card);
     border: 1px solid var(--border);
     border-radius: 18px;
-    padding: 18px 24px 48px; /* bottom padding for beat dots */
+    padding: 12px 18px 36px; /* bottom padding for beat dots */
   }
 
   #bpm-display {
-    font-size: 30px;
+    font-size: 24px;
     font-weight: 700;
     color: var(--text);
-    min-width: 130px;
+    min-width: 110px;
     text-align: center;
     font-variant-numeric: tabular-nums;
   }
@@ -47,7 +47,7 @@
     display: flex;
     gap: 14px;
     position: absolute;
-    bottom: 16px;
+    bottom: 12px;
     left: 50%;
     transform: translateX(-50%);
   }
@@ -57,21 +57,21 @@
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin-top: 16px;
-    margin-bottom: 14px;
+    margin-top: 8px;
+    margin-bottom: 8px;
     padding: 0 4px;
   }
 
-  .info-block { display: flex; flex-direction: column; gap: 4px; }
-  .info-label { font-size: 12px; color: var(--muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.8px; }
-  .info-value { font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .info-block { display: flex; flex-direction: column; gap: 2px; }
+  .info-label { font-size: 11px; color: var(--muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.8px; }
+  .info-value { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
   .note-value  { color: #5dcf90; }
   .chord-value { color: #74b8f0; }
 
   /* ---- LEVEL METER ---- */
   #level-area {
     padding: 0 4px;
-    margin-bottom: 14px;
+    margin-bottom: 8px;
     display: flex;
     align-items: center;
     gap: 12px;
@@ -104,6 +104,14 @@
     border: 1px solid var(--border);
     display: block;
   }
+
+  /* ── compact overrides (keep piano.html unchanged) ── */
+  #play-btn-wrap   { padding: 8px 0 4px; }
+  #play-btn        { width: 60px; height: 60px; font-size: 22px; }
+  #play-btn.playing { font-size: 18px; }
+  #engine-selector    { margin-top: 8px; }
+  #instrument-toggles { margin-top: 8px; }
+  #status-bar      { margin-top: 6px; }
 
   /* ── MOBILE (harmoniser-specific overrides) ── */
   @media (max-width: 680px) {
@@ -161,7 +169,7 @@
     </div>
   </div>
 
-  <canvas id="viz-canvas" width="1200" height="420"></canvas>
+  <canvas id="viz-canvas" width="1200" height="200"></canvas>
 
   <div id="play-btn-wrap">
     <button id="play-btn" title="Start microphone">▶</button>
@@ -215,8 +223,9 @@ let engineType     = 'transformer';  // FIX 1: was undefined, crashed resetEngin
 
 // FIX 2: history round-trip — API is stateless, history is base64-encoded
 // and must be sent back each call so the engine has context.
-let beatHistory = '';
-let apiCallId   = 0;   // incremented each beat; stale responses are dropped
+let beatHistory   = '';
+let prevDrumLoop  = '';  // base64 drum loop round-tripped for quality fallback
+let apiCallId     = 0;   // incremented each beat; stale responses are dropped
 
 // Python: beat_audio_buffer fills between beat N-1 and beat N firing, then
 // capture_beat_4_16ths() reads it and CLEARS it.  We mirror this with one buffer:
@@ -226,6 +235,7 @@ let stepBuffer = [];   // accumulates notes since last beat fired
 
 // FIX 5: loops returned by API at bar-start are used for accompaniment
 let currentLoops = null;   // { guitar, piano, bass, drums } — arrays from API
+let pendingLoops = null;   // next bar's loops (mirrors piano.html pendingLoops pattern)
 let prevVoicing  = { guitar: null, piano: null, bass: null };
 
 // Soundfont players (mirrors piano.html) — loaded after AudioContext is created
@@ -259,18 +269,17 @@ let barMarks = new Array(HISTORY_SLOTS).fill(0);
 let masterGain = null;
 
 async function startMic() {
+  // audioContext + masterGain are created synchronously in the click handler
+  // (see below) so Chrome doesn't suspend the context after the getUserMedia await.
   try {
     mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
   } catch (e) {
     alert('Microphone access denied: ' + e.message);
+    // Clean up the pre-created context since we're aborting.
+    if (audioContext) { audioContext.close(); audioContext = null; }
+    masterGain = null;
     return;
   }
-
-  audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: SAMPLE_RATE_TARGET });
-
-  masterGain = audioContext.createGain();
-  masterGain.gain.value = 1.0;
-  masterGain.connect(audioContext.destination);
 
   loadSoundfonts();
 
@@ -465,8 +474,16 @@ function loop() {
 
     const beatInBar = (currentBeat - 1) % BEATS_PER_BAR;
 
+    // Promote pending loops at bar start — mirrors piano.html's pendingLoops pattern.
+    // Ensures all 4 beats of a bar use the same loop (not a mid-bar async update).
+    if (beatInBar === 0 && pendingLoops) {
+      currentLoops = pendingLoops;
+      prevVoicing  = { guitar: null, piano: null, bass: null };
+      pendingLoops = null;
+    }
+
     if (currentLoops && predictedChord !== '–' && predictedChord !== 'N') {
-      playLoopBeat(predictedChord, currentLoops, beatInBar, beatStart);  // beatStart not now — matches piano.html
+      playLoopBeat(predictedChord, currentLoops, beatInBar, beatStart);
     }
 
     // Schedule click at the exact beat time (beatStart), not at the rAF time (now).
@@ -534,15 +551,23 @@ async function predictChordFromAPI(notes, beatStart, beatIndex) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         notes,
-        beat_start: beatStart,
-        beat_index: beatIndex,
+        beat_start:     beatStart,
+        beat_index:     beatIndex,
         tempo,
-        history: beatHistory,
+        history:        beatHistory,
+        prev_drum_loop: prevDrumLoop,
       })
     });
     const data = await res.json();
 
-    // Discard if a newer beat has already updated state (slow/out-of-order response)
+    // Loops only returned on beat_index=1. Store in pendingLoops (not currentLoops
+    // directly) so they take effect at the next bar start — same as piano.html.
+    if (data.loops && Object.keys(data.loops).length > 0) {
+      pendingLoops = data.loops;
+    }
+    if (data.prev_drum_loop) prevDrumLoop = data.prev_drum_loop;
+
+    // Discard chord/history if a newer beat has already updated state.
     if (callId !== apiCallId) return;
 
     if (data.chord) {
@@ -551,10 +576,6 @@ async function predictChordFromAPI(notes, beatStart, beatIndex) {
     }
     if (data.history) {
       beatHistory = data.history;
-    }
-    if (data.loops && Object.keys(data.loops).length > 0) {
-      currentLoops = data.loops;
-      prevVoicing  = { guitar: null, piano: null, bass: null };
     }
   } catch (e) {}
 }
@@ -881,7 +902,7 @@ function resizeCanvas() {
   const cssW = canvas.clientWidth || 1200;
   const ratio = cssW / 1200;
   canvas.width  = 1200;
-  canvas.height = Math.round(420 * Math.max(0.4, ratio));
+  canvas.height = Math.round(200 * Math.max(0.4, ratio));
 }
 window.addEventListener('resize', resizeCanvas);
 resizeCanvas();
@@ -978,9 +999,11 @@ function stopMic() {
 
   // Reset playback state (keep tempo)
   currentLoops   = null;
+  pendingLoops   = null;
   prevVoicing    = { guitar: null, piano: null, bass: null };
   stepBuffer     = [];
   beatHistory    = '';
+  prevDrumLoop   = '';
   apiCallId      = 0;
   predictedChord = '–';
   lastNote       = '–';
@@ -1016,6 +1039,18 @@ function stopMic() {
 
 document.getElementById('play-btn').addEventListener('click', () => {
   if (!document.getElementById('play-btn').classList.contains('playing')) {
+    // Create AudioContext HERE, synchronously inside the click handler, so Chrome's
+    // user-gesture token is still active. After the getUserMedia await inside startMic()
+    // the token expires and any AudioContext created there starts suspended — currentTime
+    // freezes at 0, the beat check never fires, and nothing plays.
+    try {
+      audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: SAMPLE_RATE_TARGET });
+    } catch (_) {
+      audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    masterGain = audioContext.createGain();
+    masterGain.gain.value = 1.0;
+    masterGain.connect(audioContext.destination);
     startMic();
   } else {
     stopMic();
@@ -1059,7 +1094,9 @@ async function checkAPI() {
 // FIX 6: reset ALL local state, not just the server-side history
 async function resetEngineHistory() {
   beatHistory  = '';
+  prevDrumLoop = '';
   currentLoops = null;
+  pendingLoops = null;
   prevVoicing  = { guitar: null, piano: null, bass: null };
   stepBuffer = [];
   try {

@@ -62,6 +62,25 @@ def _encode_history(arr: np.ndarray) -> str:
     return base64.b64encode(arr.astype(np.float32).tobytes()).decode()
 
 
+def _decode_drum_loop(h64: str):
+    """base64 → uint8 [16, 128] or None."""
+    if not h64:
+        return None
+    try:
+        raw = base64.b64decode(h64)
+        arr = np.frombuffer(raw, dtype=np.uint8).copy()
+        if arr.size != 16 * 128:
+            return None
+        return arr.reshape(16, 128)
+    except Exception:
+        return None
+
+
+def _encode_drum_loop(arr: np.ndarray) -> str:
+    """uint8 [16, 128] → base64 string."""
+    return base64.b64encode(arr.astype(np.uint8).tobytes()).decode()
+
+
 # ── beat feature builder ──────────────────────────────────────────────────────
 
 def _build_beat(notes_played, beat_start: float, step_duration: float,
@@ -93,11 +112,12 @@ def health():
 def predict_chord():
     data = request.get_json(force=True) or {}
 
-    raw_notes   = data.get("notes", [])
-    beat_start  = float(data.get("beat_start", 0.0))
-    beat_index  = int(data.get("beat_index", 1))
-    tempo       = int(data.get("tempo", 100))
-    history_b64 = data.get("history", "")
+    raw_notes      = data.get("notes", [])
+    beat_start     = float(data.get("beat_start", 0.0))
+    beat_index     = int(data.get("beat_index", 1))
+    tempo          = int(data.get("tempo", 100))
+    history_b64    = data.get("history", "")
+    prev_drum_b64  = data.get("prev_drum_loop", "")
 
     beat_dur   = 60.0 / tempo
     step_dur   = beat_dur / STEPS_PER_BEAT
@@ -126,19 +146,48 @@ def predict_chord():
         traceback.print_exc()
 
     # ── loop retrieval (bar start only) ───────────────────────────────────────
-    loops = {}
+    loops          = {}
+    prev_drum_loop = _decode_drum_loop(prev_drum_b64)
+    next_drum_b64  = prev_drum_b64   # pass through unchanged on non-bar beats
+
     if beat_index == 1:
         last_bar = history[-BEATS_PER_BAR:, -STEPS_PER_BEAT:].flatten()
         try:
-            loops = _loops().get_loops(last_bar)
+            candidate  = _loops().get_loops(last_bar)
+            drum_arr   = np.array(candidate["drums"], dtype=np.uint8)
+            drum_steps = np.nonzero(drum_arr)[0]
+
+            if len(drum_steps) < 10:
+                # Sparse candidate — fall back to prev if available, else silence
+                if prev_drum_loop is not None:
+                    drum_arr = prev_drum_loop
+                    candidate["drums"] = prev_drum_loop.tolist()
+                else:
+                    candidate["drums"] = np.zeros((16, 128), dtype=np.uint8).tolist()
+                    drum_arr = np.zeros((16, 128), dtype=np.uint8)
+                # Either way, don't update prev — avoid locking in a sparse pattern
+            else:
+                # Good candidate — apply Jaccard continuity check
+                if prev_drum_loop is not None:
+                    a = (prev_drum_loop > 0).flatten()
+                    b = (drum_arr > 0).flatten()
+                    union = np.logical_or(a, b).sum()
+                    if union > 0 and 1.0 - np.logical_and(a, b).sum() / union > 0.75:
+                        drum_arr = prev_drum_loop
+                        candidate["drums"] = prev_drum_loop.tolist()
+                # Only store prev when using a good (dense) pattern
+                next_drum_b64 = _encode_drum_loop(drum_arr)
+
+            loops = candidate
         except Exception:
             traceback.print_exc()
 
     return jsonify({
-        "chord":   chord,
-        "duration": beat_dur,
-        "history": _encode_history(history),
-        "loops":   loops,
+        "chord":          chord,
+        "duration":       beat_dur,
+        "history":        _encode_history(history),
+        "loops":          loops,
+        "prev_drum_loop": next_drum_b64,
     })
 
 
