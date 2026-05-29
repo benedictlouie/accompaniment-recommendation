@@ -497,7 +497,7 @@ function loop() {
     }
 
     if (currentLoops && predictedChord !== '–' && predictedChord !== 'N') {
-      playLoopBeat(predictedChord, currentLoops, beatInBar, beatStart);
+      playLoopBeat(predictedChord, currentLoops, beatInBar, now);
     }
 
     // Schedule click at the exact beat time (beatStart), not at the rAF time (now).
