@@ -2,7 +2,7 @@
 
 A real-time AI system that listens to a solo melody and generates a full accompaniment — drums, bass, piano, and guitar — beat by beat.
 
-Try it live: **[fyp2.vercel.app](https://fyp2.vercel.app)** *(or your deployed URL)*
+Try it live: **[accompaniment-recommendation.vercel.app](https://accompaniment-recommendation.vercel.app)**
 
 ---
 
