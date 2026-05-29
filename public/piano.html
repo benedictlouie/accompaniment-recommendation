@@ -442,14 +442,7 @@ function assertChordTone(midi, chordName) {
   }
 }
 
-// Play one note via soundfont — `t` is absolute AudioContext time
-function sfPlay(inst, midi, t, dur, gain) {
-  const player = sf[inst];
-  if (!player) return;
-  // Pass raw MIDI number — library resolves to correct flat-notation sample key
-  const playAt = Math.max(audioContext.currentTime + 0.003, t);
-  player.play(midi, playAt, { duration: dur, gain: gain });
-}
+// sfPlay() → shared.js
 
 function playLoopBeat(chord, beatIndex, beatTime, beatDur) {
   if (!audioContext || !accEnabled) return;
@@ -701,21 +694,13 @@ function updateRangeLabel() {
     `Range C${oct1}–B${oct1+1}   (z / x to shift octave)`;
 }
 
-// updateBeatDots() → shared.js
+// updateBeatDots(), noteNameToMidi() → shared.js
 
 // =============================================================
 // NOTE PRESS / RELEASE  — monophonic top voice
 // Only the highest currently-held key produces sound.
 // All held keys are still recorded for chord prediction.
 // =============================================================
-
-// Convert note name (e.g. "A#4") → MIDI int
-function noteNameToMidi(name) {
-  const root = name.slice(0, -1);
-  const oct  = parseInt(name.slice(-1));
-  const idx  = ROOTS.indexOf(root);
-  return idx >= 0 ? (oct + 1) * 12 + idx : -1;
-}
 
 // Return the note name with the highest MIDI pitch currently held
 function topPressedNote() {

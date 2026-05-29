@@ -200,10 +200,37 @@
 // CONSTANTS  (harmoniser-specific; shared ones live in shared.js)
 // =============================================================
 
-// ROOTS, API_BASE, BEATS_PER_BAR, STEPS_PER_BEAT, BASE_OCTAVE → shared.js
+// ROOTS, API_BASE, BEATS_PER_BAR, STEPS_PER_BEAT, BASE_OCTAVE, CHORD_TETRAD → shared.js
 const SAMPLE_RATE_TARGET = 44100;
 
-// CHORD_TETRAD → shared.js
+// mirrors Python QUALITY_SIMPLIFIER_REVERSE — probability weights per extension type
+const QUALITY_SIMPLIFIER_REVERSE = {
+  '7':    {none:702942,'9':8620,'11':173,'79':8693,'79b':22995,'79#':15125,'7911':26,'7911#':5400,'7913':4404,'79b13':306,'79b13b':105,'79#13':29,'79#11#':28,'7alt':5500},
+  'maj7': {none:228010,'maj9':200,'maj79':685,'j79#':4,'j7911#':11846,'j79#11#':52},
+  'min7': {none:526480,'min9':822,'min11':121,'min13':28,'min79':3816,'min79b':26,'min7911':5532,'min7913':64},
+  'mM7':  {none:2338,'mM7911#':64,'mM7913':64},
+  '6':    {none:59144,'69':3744,'6911#':6911},
+  'min6': {none:22072,'min69':2913},
+  'aug':  {none:5071,'aug7':9225,'aug79':144,'aug79#':424,'aug79b':60,'aug7911#':8,'augj7':250},
+  'sus2': {none:179266,'power':13},
+  'maj':  {none:1863597,'pedal':98},
+};
+
+// mirrors Python EXTENSION_INTERVALS — semitone offsets above root per extension type
+const EXTENSION_INTERVALS = {
+  none:[],
+  '9':[14],'79':[14],'79b':[13],'79#':[15],
+  '7911':[14,17],'7911#':[14,18],'7913':[14,21],'79b13':[14,20],'79b13b':[13,20],
+  '79#13':[15,21],'79#11#':[15,18],'7alt':[13,15,18],
+  'maj9':[14],'maj79':[14],'j79#':[15],'j7911#':[14,18],'j79#11#':[15,18],
+  'min9':[14],'min11':[14,17],'min13':[14,17,21],'min79':[14],'min79b':[13],
+  'min7911':[14,17],'min7913':[14,21],
+  'mM7911#':[14,18],'mM7913':[14,21],
+  '69':[14],'6911#':[14,18],'min69':[14],
+  'aug7':[10],'aug79':[10,14],'aug79#':[10,15],'aug79b':[10,13],'aug7911#':[10,14,18],'augj7':[11],
+  'power':[7],'pedal':[12],
+  '11':[17],
+};
 
 // =============================================================
 // STATE
@@ -349,12 +376,7 @@ function freqToNoteName(freq) {
   return `${name}${octave}`;
 }
 
-function noteNameToMidi(name) {
-  const root   = name.slice(0, -1);
-  const octave = parseInt(name.slice(-1));
-  const idx    = ROOTS.indexOf(root);
-  return idx >= 0 ? (octave + 1) * 12 + idx : -1;
-}
+// noteNameToMidi() → shared.js
 
 // =============================================================
 // LEVEL METER
@@ -394,14 +416,7 @@ function updateSfStatus() {
   }
 }
 
-// Play one note via soundfont — t is absolute AudioContext time
-// Mirrors piano.html sfPlay(); passes raw MIDI int (not note name).
-function sfPlay(inst, midi, t, dur, gain) {
-  const player = sf[inst];
-  if (!player) return;
-  const playAt = Math.max(audioContext.currentTime + 0.003, t);
-  player.play(midi, playAt, { duration: dur, gain: gain });
-}
+// sfPlay() → shared.js
 
 // =============================================================
 // BEAT TIMING  (mirrors Python harmoniser main loop)
@@ -474,8 +489,7 @@ function loop() {
 
     const beatInBar = (currentBeat - 1) % BEATS_PER_BAR;
 
-    // Promote pending loops at bar start — mirrors piano.html's pendingLoops pattern.
-    // Ensures all 4 beats of a bar use the same loop (not a mid-bar async update).
+    // Promote pending loops at bar start (beat 1).
     if (beatInBar === 0 && pendingLoops) {
       currentLoops = pendingLoops;
       prevVoicing  = { guitar: null, piano: null, bass: null };
@@ -612,37 +626,95 @@ const VOICE_RANGES = {
   bass:   [28, 52],
 };
 
-// Build voiced chord for an instrument, applying simple closest-octave voice leading
-function buildVoicedChord(chordName, instrument) {
+// mirrors Python HarmonyPlayer.extend_chord — randomly adds extensions (9th/11th/13th)
+// to enrich the piano voicing. Uses QUALITY_SIMPLIFIER_REVERSE probability weights.
+function extendChord(chordName) {
   const base = CHORD_TETRAD[chordName];
-  if (!base) return null;
-  let chord = base.slice();
+  if (!base || chordName === 'N') return base ? base.slice() : [];
+  const quality = chordName.split(':')[1];
+  const probs   = QUALITY_SIMPLIFIER_REVERSE[quality];
+  if (!probs) return base.slice();
 
-  // Piano plays an octave higher; bass plays an octave lower.
-  // CHORD_TETRAD is rooted at C2 (MIDI 36) — without the bass shift, bass and
-  // guitar land in the same C2–C3 register and share 3 out of 4 chord tones.
-  if (instrument === 'piano') chord = chord.map(n => n + 12);
-  if (instrument === 'bass')  chord = chord.map(n => n - 12);
+  // weighted random choice — mirrors Python random.choices(weights=...)
+  const keys    = Object.keys(probs);
+  const weights = keys.map(k => probs[k]);
+  const total   = weights.reduce((a, b) => a + b, 0);
+  let r = Math.random() * total;
+  let ext = keys[keys.length - 1];
+  for (let i = 0; i < keys.length; i++) {
+    r -= weights[i];
+    if (r <= 0) { ext = keys[i]; break; }
+  }
+
+  const chord = base.slice();
+  const root  = chord[0];
+  (EXTENSION_INTERVALS[ext] || []).forEach(iv => chord.push(root + iv));
+  return chord;
+}
+
+// mirrors Python HarmonyPlayer.voice_lead — exhaustive itertools.product search for
+// the globally-optimal voicing (minimum total semitone displacement from prev).
+// Rejects voicings with unisons (two voices on the same pitch).
+function voiceLead(prevNotes, chordPcs, lo, hi) {
+  const candidates = chordPcs.map(pc => {
+    const opts = [];
+    for (let o = -1; o < 9; o++) {
+      const cand = pc + 12 * o;
+      if (cand >= lo && cand <= hi) opts.push(cand);
+    }
+    return opts;
+  });
+
+  if (candidates.some(c => c.length === 0)) return chordPcs.map(pc => pc + 48);
+
+  const n          = chordPcs.length;
+  const prevSorted = prevNotes.slice(0, n).sort((a, b) => a - b);
+  let best = null, bestCost = Infinity;
+
+  // recursive product — equivalent to itertools.product(*candidates)
+  function search(depth, current) {
+    if (depth === n) {
+      const voicing = current.slice().sort((a, b) => a - b);
+      for (let i = 0; i < voicing.length - 1; i++) {
+        if (voicing[i + 1] - voicing[i] < 1) return;   // reject unisons
+      }
+      const cost = voicing.reduce((acc, v, i) => acc + Math.abs(v - prevSorted[i]), 0);
+      if (cost < bestCost) { bestCost = cost; best = voicing; }
+      return;
+    }
+    for (const cand of candidates[depth]) {
+      current.push(cand);
+      search(depth + 1, current);
+      current.pop();
+    }
+  }
+  search(0, []);
+
+  return best ?? candidates.map(c => c[0]).sort((a, b) => a - b);
+}
+
+// mirrors Python HarmonyPlayer — builds a voiced chord for an instrument.
+// Piano: extend_chord + +12 shift. Bass: -12 shift. Guitar: base tetrad.
+// Voice leading (voiceLead) applied when prev voicing exists; otherwise clamp to range.
+function buildVoicedChord(chordName, instrument) {
+  if (!CHORD_TETRAD[chordName]) return null;
+
+  // Piano uses extended chord (7ths/9ths added randomly); bass/guitar use base tetrad.
+  let chord;
+  if (instrument === 'piano') {
+    chord = extendChord(chordName).map(n => n + 12);
+  } else {
+    chord = CHORD_TETRAD[chordName].slice();
+    if (instrument === 'bass') chord = chord.map(n => n - 12);
+  }
 
   const [lo, hi] = VOICE_RANGES[instrument];
   const prev     = prevVoicing[instrument];
 
   if (prev) {
-    // Voice leading: for each pitch class keep the octave closest to prev voicing
-    const pcs = chord.map(n => n % 12);
-    chord = pcs.map((pc, i) => {
-      const target = prev[i] ?? (lo + hi) / 2;
-      let best = pc + 48, bestDist = Infinity;
-      for (let o = -1; o < 9; o++) {
-        const cand = pc + 12 * o;
-        if (cand < lo || cand > hi) continue;
-        const d = Math.abs(cand - target);
-        if (d < bestDist) { bestDist = d; best = cand; }
-      }
-      return best;
-    }).sort((a, b) => a - b);
+    const chordPcs = chord.map(n => n % 12);
+    chord = voiceLead(prev, chordPcs, lo, hi);
   } else {
-    // First voicing: clamp to instrument range
     chord = chord.map(n => {
       while (n < lo) n += 12;
       while (n > hi) n -= 12;

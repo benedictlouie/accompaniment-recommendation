@@ -52,6 +52,30 @@ const instrumentOn = { piano: true, guitar: true, bass: true, drums: true, metro
 // SHARED FUNCTIONS
 // =============================================================
 
+/**
+ * Convert a note name (e.g. "A#4") to a MIDI integer.
+ * Used by both piano.html (key mapping) and harmoniser.html (pitch visualiser).
+ */
+function noteNameToMidi(name) {
+  const root = name.slice(0, -1);
+  const oct  = parseInt(name.slice(-1));
+  const idx  = ROOTS.indexOf(root);
+  return idx >= 0 ? (oct + 1) * 12 + idx : -1;
+}
+
+/**
+ * Play one note via soundfont at absolute AudioContext time t.
+ * Passes a raw MIDI integer so the library resolves the correct
+ * flat-notation sample key (e.g. Bb4, not A#4).
+ * Depends on page-level globals: sf (soundfont players), audioContext.
+ */
+function sfPlay(inst, midi, t, dur, gain) {
+  const player = sf[inst];
+  if (!player) return;
+  const playAt = Math.max(audioContext.currentTime + 0.003, t);
+  player.play(midi, playAt, { duration: dur, gain: gain });
+}
+
 /** Clamp BPM to [20, 300] and update the display. */
 function setTempo(bpm) {
   tempo = Math.max(20, Math.min(300, bpm));
