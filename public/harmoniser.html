@@ -465,13 +465,15 @@ function loop() {
       }
     });
 
-    predictChordFromAPI(processedNotes, prevBeatStart, prevBeat);
+    if (processedNotes.length > 0) {
+      predictChordFromAPI(processedNotes, prevBeatStart, prevBeat);
+    }
 
-    // Mirrors Python: beat_in_bar = current_beat % BEATS_PER_BAR
-    // → beat 4 maps to 0, so loop step 0 plays on beat 4 (same as Python).
-    const beatInBar = currentBeat % BEATS_PER_BAR;
+    // 0-indexed position within the bar: beat 1 → 0, beat 2 → 1, …, beat 4 → 3.
+    // Matches piano.html where (beatIndex-1)*STEPS_PER_BEAT maps beat 1 to steps 0-3.
+    const beatInBar = (currentBeat - 1) % BEATS_PER_BAR;
 
-    // Promote pending loops at beat 4 (beatInBar === 0), matching Python.
+    // Promote pending loops at beat 1 (beatInBar === 0), matching piano.html.
     if (beatInBar === 0) {
       if (pendingLoops) {
         currentLoops = pendingLoops;
