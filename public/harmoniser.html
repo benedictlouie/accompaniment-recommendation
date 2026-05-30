@@ -265,9 +265,7 @@ let currentLoops = null;   // { guitar, piano, bass, drums } — arrays from API
 let pendingLoops = null;   // next bar's loops (mirrors piano.html pendingLoops pattern)
 let prevVoicing  = { guitar: null, piano: null, bass: null };
 
-// Soundfont players (mirrors piano.html) — loaded after AudioContext is created
-const sf     = { piano: null, guitar: null, bass: null };
-let sfReady  = 0;
+// Soundfont players (sf, sfReady, loadSoundfonts, updateSfStatus) → shared.js
 
 // Real-time pitch history clock — advances at 16th-note rate so pitch dots
 // appear immediately (no 1-beat lag from the beat_audio_buffer approach).
@@ -308,7 +306,7 @@ async function startMic() {
     return;
   }
 
-  loadSoundfonts();
+  loadSoundfonts(SOUNDFONT_INSTRUMENTS);
 
   analyser = audioContext.createAnalyser();
   analyser.fftSize = 2048;
@@ -388,35 +386,16 @@ function updateLevelMeter(rms) {
 }
 
 // =============================================================
-// SOUNDFONT INSTRUMENTS  (mirrors piano.html)
+// SOUNDFONT INSTRUMENTS
 // =============================================================
 
-function loadSoundfonts() {
-  if (typeof Soundfont === 'undefined') return;
-  const instruments = {
-    piano:  'acoustic_grand_piano',
-    guitar: 'acoustic_guitar_steel',
-    bass:   'electric_bass_finger',
-  };
-  Object.entries(instruments).forEach(([key, name]) => {
-    Soundfont.instrument(audioContext, name, { soundfont: 'MusyngKite' })
-      .then(player => { sf[key] = player; sfReady++; updateSfStatus(); })
-      .catch(err => console.warn('Soundfont load failed:', key, err));
-  });
-}
+const SOUNDFONT_INSTRUMENTS = {
+  piano:  'acoustic_grand_piano',
+  guitar: 'acoustic_guitar_steel',
+  bass:   'electric_bass_finger',
+};
 
-function updateSfStatus() {
-  const el = document.getElementById('api-status');
-  if (sfReady < 3) {
-    el.textContent = `API connected · loading sounds (${sfReady}/3)…`;
-    el.className   = '';
-  } else {
-    el.textContent = 'API connected · sounds ready';
-    el.className   = 'status-ok';
-  }
-}
-
-// sfPlay() → shared.js
+// loadSoundfonts(), updateSfStatus(), sfPlay() → shared.js
 
 // =============================================================
 // BEAT TIMING  (mirrors Python harmoniser main loop)
@@ -496,14 +475,14 @@ function loop() {
       pendingLoops = null;
     }
 
-    if (currentLoops && predictedChord !== '–' && predictedChord !== 'N') {
-      playLoopBeat(predictedChord, currentLoops, beatInBar, now);
-    }
-
     // Schedule click at the exact beat time (beatStart), not at the rAF time (now).
     // This matches piano.html which schedules audio events against the audio clock.
     if (instrumentOn.metronome) {
       playMetronomeClick(beatStart, currentBeat === 1);  // strong on beat 1
+    }
+
+    if (currentLoops && predictedChord !== '–' && predictedChord !== 'N') {
+      playLoopBeat(predictedChord, currentLoops, beatInBar, now);
     }
 
     // ---- VISUALISER: mark beat/bar boundary for the real-time step clock ----
@@ -1134,20 +1113,13 @@ document.getElementById('play-btn').addEventListener('click', () => {
 // =============================================================
 
 async function checkAPI() {
+  const el = document.getElementById('api-status');
   try {
     const res = await fetch(`${API_BASE}/health`);
     const d   = await res.json();
-    const ok  = d.status === 'ok';
-    const el  = document.getElementById('api-status');
-    if (ok) {
-      // Mirrors piano.html: preserve soundfont loading status when running
+    if (d.status === 'ok') {
       if (running) {
-        el.textContent = sfReady >= 3
-          ? 'connected · sounds ready'
-          : sfReady > 0
-            ? `connected · loading sounds (${sfReady}/3)…`
-            : 'connected';
-        el.className = sfReady >= 3 ? 'status-ok' : '';
+        updateSfStatus();
       } else {
         el.textContent = 'connected';
         el.className   = 'status-ok';
@@ -1157,7 +1129,6 @@ async function checkAPI() {
       el.className   = 'status-err';
     }
   } catch (e) {
-    const el = document.getElementById('api-status');
     el.textContent = 'not connected (chord prediction unavailable)';
     el.className   = 'status-err';
   }

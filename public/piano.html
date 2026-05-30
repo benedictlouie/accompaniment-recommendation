@@ -238,40 +238,13 @@ let apiOk = false;
 // SOUNDFONT INSTRUMENTS
 // =============================================================
 
-const sf = { piano: null, guitar: null, bass: null };
-let sfReady = 0;   // count of loaded instruments
+// sf, sfReady, loadSoundfonts(), updateSfStatus() → shared.js
 
-function loadSoundfonts() {
-  if (typeof Soundfont === 'undefined') return;
-
-  const instruments = {
-    piano:  'bright_acoustic_piano',   // closest to UprightPianoKW
-    guitar: 'acoustic_guitar_nylon',   // closest to Guitar.SF2
-    bass:   'acoustic_bass',           // closest to FingerBassYR
-  };
-
-  Object.entries(instruments).forEach(([key, name]) => {
-    Soundfont.instrument(audioContext, name, { soundfont: 'MusyngKite' })
-      .then(player => {
-        sf[key] = player;
-        sfReady++;
-        updateSfStatus();
-      })
-      .catch(err => console.warn('Soundfont load failed:', key, err));
-  });
-}
-
-function updateSfStatus() {
-  const el = document.getElementById('api-status');
-  if (!apiOk) return;
-  if (sfReady < 3) {
-    el.textContent = `connected · loading sounds (${sfReady}/3)…`;
-    el.className = '';
-  } else {
-    el.textContent = 'connected · sounds ready';
-    el.className = 'status-ok';
-  }
-}
+const SOUNDFONT_INSTRUMENTS = {
+  piano:  'bright_acoustic_piano',   // closest to UprightPianoKW
+  guitar: 'acoustic_guitar_nylon',   // closest to Guitar.SF2
+  bass:   'acoustic_bass',           // closest to FingerBassYR
+};
 
 // soundfont-player accepts raw MIDI numbers directly (0-127)
 // DO NOT convert to note name — samples are indexed with flat notation
@@ -293,7 +266,7 @@ function startAudio() {
   nextBeatTime = audioContext.currentTime + 0.15;
   scheduleBeats();
   resetEngineHistory();
-  loadSoundfonts();
+  loadSoundfonts(SOUNDFONT_INSTRUMENTS);
 
   // Switch button to stop mode
   const btn = document.getElementById('play-btn');
@@ -609,8 +582,7 @@ async function checkAPI() {
         const d = await res.json();
         apiOk = d.status === 'ok';
         if (apiOk) {
-          el.textContent = started ? (sfReady < 3 ? `connected · loading sounds (${sfReady}/3)…` : 'connected · sounds ready') : 'connected';
-          el.className   = 'status-ok';
+          if (started) { updateSfStatus(); } else { el.textContent = 'connected'; el.className = 'status-ok'; }
           return;
         }
       }

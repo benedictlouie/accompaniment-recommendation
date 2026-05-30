@@ -67,7 +67,7 @@ function noteNameToMidi(name) {
  * Play one note via soundfont at absolute AudioContext time t.
  * Passes a raw MIDI integer so the library resolves the correct
  * flat-notation sample key (e.g. Bb4, not A#4).
- * Depends on page-level globals: sf (soundfont players), audioContext.
+ * Depends on page-level global: audioContext.
  */
 function sfPlay(inst, midi, t, dur, gain) {
   const player = sf[inst];
@@ -105,3 +105,28 @@ document.querySelectorAll('.toggle-btn').forEach(btn => {
     btn.classList.toggle('off', !instrumentOn[inst]);
   });
 });
+
+// =============================================================
+// SOUNDFONT  (shared by piano.html and harmoniser.html)
+// Each page defines SOUNDFONT_INSTRUMENTS = { piano, guitar, bass }.
+// =============================================================
+
+const sf    = { piano: null, guitar: null, bass: null };
+let sfReady = 0;
+
+function loadSoundfonts(instruments) {
+  if (typeof Soundfont === 'undefined') return;
+  Object.entries(instruments).forEach(([key, name]) => {
+    Soundfont.instrument(audioContext, name, { soundfont: 'MusyngKite' })
+      .then(player => { sf[key] = player; sfReady++; updateSfStatus(); })
+      .catch(err => console.warn('Soundfont load failed:', key, err));
+  });
+}
+
+function updateSfStatus() {
+  const el = document.getElementById('api-status');
+  el.textContent = sfReady < 3
+    ? `connected · loading sounds (${sfReady}/3)…`
+    : 'connected · sounds ready';
+  el.className = 'status-ok';
+}
