@@ -45,6 +45,24 @@ ROOTS.forEach((r, i) => {
 // Current tempo in BPM — modified by setTempo(); read by page scripts.
 let tempo = 100;
 
+// Active engine: "transformer" | "crf"
+let selectedEngine = 'transformer';
+
+// CRF state round-tripped as base64 (stateless API pattern)
+let crfDelta        = '';
+let crfBarHistory   = '';
+let crfBarPitch     = '';
+let crfBeatCount    = 0;
+let crfLoopHistory  = '';
+// Chord predicted at bar-end (beat 4), applied at next bar-start (beat 1)
+let crfPendingChord = '';
+
+/** Reset all CRF round-trip state. */
+function resetCRFState() {
+  crfDelta = ''; crfBarHistory = ''; crfBarPitch = ''; crfBeatCount = 0;
+  crfLoopHistory = ''; crfPendingChord = '';
+}
+
 // Per-instrument on/off flags — toggled by the UI buttons below.
 const instrumentOn = { piano: true, guitar: true, bass: true, drums: true, metronome: true };
 
@@ -103,6 +121,23 @@ document.querySelectorAll('.toggle-btn').forEach(btn => {
     instrumentOn[inst] = !instrumentOn[inst];
     btn.classList.toggle('on',  instrumentOn[inst]);
     btn.classList.toggle('off', !instrumentOn[inst]);
+  });
+});
+
+/**
+ * Page-specific stop callback — set by each page so the engine
+ * selector in shared.js can stop+reset when the user switches engines.
+ */
+let onEngineSwitch = () => {};
+
+document.querySelectorAll('.engine-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (btn.dataset.engine === selectedEngine) return;
+    selectedEngine = btn.dataset.engine;
+    document.querySelectorAll('.engine-btn').forEach(b =>
+      b.classList.toggle('active', b.dataset.engine === selectedEngine));
+    resetCRFState();
+    onEngineSwitch();
   });
 });
 

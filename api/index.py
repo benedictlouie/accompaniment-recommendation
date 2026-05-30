@@ -20,7 +20,7 @@ from flask_cors import CORS
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
-from utils.constants import INPUT_DIM, MEMORY, NOTE_TO_MIDI, STEPS_PER_BEAT, BEATS_PER_BAR
+from utils.constants import INPUT_DIM, MEMORY, NOTE_TO_MIDI, STEPS_PER_BEAT, BEATS_PER_BAR, REVERSE_ROOT_MAP
 
 app = Flask(__name__)
 CORS(app, origins="*")
@@ -44,6 +44,18 @@ def _loops():
         from accompaniment.nn_web import WebLoopLookup
         _loop_lookup = WebLoopLookup()
     return _loop_lookup
+
+
+# ── CRF engine (lazy) ────────────────────────────────────────────────────────
+
+_crf_step = None
+
+def _crf():
+    global _crf_step
+    if _crf_step is None:
+        from CRF.web_engine import step as _s
+        _crf_step = _s
+    return _crf_step
 
 
 # ── history serialisation ─────────────────────────────────────────────────────
@@ -79,6 +91,64 @@ def _decode_drum_loop(h64: str):
 def _encode_drum_loop(arr: np.ndarray) -> str:
     """uint8 [16, 128] → base64 string."""
     return base64.b64encode(arr.astype(np.uint8).tobytes()).decode()
+
+
+def _decode_crf_delta(h64: str, num_classes: int) -> np.ndarray | None:
+    """base64 → float32 [NUM_CLASSES], or None if empty."""
+    if not h64:
+        return None
+    raw = base64.b64decode(h64)
+    return np.frombuffer(raw, dtype=np.float32).copy()
+
+
+def _encode_crf_delta(arr: np.ndarray) -> str:
+    return base64.b64encode(arr.astype(np.float32).tobytes()).decode()
+
+
+def _decode_crf_bar_history(h64: str) -> np.ndarray:
+    """base64 → float32 [N, 13], empty gives shape (0, 13)."""
+    if not h64:
+        return np.zeros((0, 13), dtype=np.float32)
+    raw = base64.b64decode(h64)
+    arr = np.frombuffer(raw, dtype=np.float32).copy()
+    return arr.reshape(-1, 13)
+
+
+def _encode_crf_bar_history(arr: np.ndarray) -> str:
+    return base64.b64encode(arr.astype(np.float32).tobytes()).decode()
+
+
+def _decode_crf_bar_pitch(h64: str) -> np.ndarray:
+    """base64 → float32 [12] accumulated pitch durations, zeros if empty."""
+    if not h64:
+        return np.zeros(12, dtype=np.float32)
+    raw = base64.b64decode(h64)
+    return np.frombuffer(raw, dtype=np.float32).copy()
+
+
+def _encode_crf_bar_pitch(arr: np.ndarray) -> str:
+    return base64.b64encode(arr.astype(np.float32).tobytes()).decode()
+
+
+def _notes_to_pitch_durations(notes_played) -> np.ndarray:
+    """Convert [(note, start, end), ...] → float32[12] pitch-class durations."""
+    pc_dur = np.zeros(12, dtype=np.float32)
+    for note, start, end in notes_played:
+        root = note[:-1]  # strip octave: "C#4" → "C#"
+        if root in REVERSE_ROOT_MAP:
+            pc_dur[REVERSE_ROOT_MAP[root]] += max(0.0, end - start)
+    return pc_dur
+
+
+def _bar_pitch_to_histogram(bar_pitch: np.ndarray) -> np.ndarray:
+    """float32[12] pitch durations → float32[13] histogram (bin 0 = silence)."""
+    bars = np.zeros(13, dtype=np.float32)
+    total = bar_pitch.sum()
+    if total < 1e-9:
+        bars[0] = 1.0
+    else:
+        bars[1:] = bar_pitch / total
+    return bars
 
 
 # ── beat feature builder ──────────────────────────────────────────────────────
@@ -118,6 +188,7 @@ def predict_chord():
     tempo          = int(data.get("tempo", 100))
     history_b64    = data.get("history", "")
     prev_drum_b64  = data.get("prev_drum_loop", "")
+    engine_type    = data.get("engine", "transformer")
 
     beat_dur   = 60.0 / tempo
     step_dur   = beat_dur / STEPS_PER_BEAT
@@ -128,7 +199,84 @@ def predict_chord():
         if n.get("note") and n["note"] not in ("quiet", "no pitch")
     ]
 
-    # ── build & append this beat to history ──────────────────────────────────
+    # ── CRF engine branch ─────────────────────────────────────────────────────
+    if engine_type == "crf":
+        crf_delta_b64    = data.get("crf_delta", "")
+        crf_history_b64  = data.get("crf_bar_history", "")
+        crf_pitch_b64    = data.get("crf_bar_pitch", "")
+        crf_beat_count   = int(data.get("crf_beat_count", 0))
+        crf_loop_hist_b64 = data.get("crf_loop_history", "")
+
+        delta       = _decode_crf_delta(crf_delta_b64, 25)
+        bar_history = _decode_crf_bar_history(crf_history_b64)
+        bar_pitch   = _decode_crf_bar_pitch(crf_pitch_b64)
+
+        # Build melody beat feature for loop retrieval (same as transformer path)
+        new_beat = _build_beat(notes_played, beat_start, step_dur, beat_index)
+        loop_history = _decode_history(crf_loop_hist_b64)
+        if len(loop_history) == 0:
+            empty = np.concatenate([np.zeros(1), -np.ones(STEPS_PER_BEAT)]).astype(np.float32)
+            loop_history = np.tile(empty, MEMORY).reshape(MEMORY, INPUT_DIM)
+        loop_history = np.vstack([loop_history, new_beat[np.newaxis, :]])[-MEMORY:]
+
+        bar_pitch += _notes_to_pitch_durations(notes_played)
+        crf_beat_count += 1
+
+        chord = None  # no prediction until bar is complete
+        if crf_beat_count >= BEATS_PER_BAR:
+            bars = _bar_pitch_to_histogram(bar_pitch)
+            try:
+                chord, delta, bar_history = _crf()(bars, delta, bar_history)
+            except Exception:
+                traceback.print_exc()
+            bar_pitch      = np.zeros(12, dtype=np.float32)
+            crf_beat_count = 0
+
+        # ── loop retrieval (bar start only, same logic as transformer) ─────────
+        loops          = {}
+        prev_drum_loop = _decode_drum_loop(prev_drum_b64)
+        next_drum_b64  = prev_drum_b64
+
+        if beat_index == 1:
+            last_bar = loop_history[-BEATS_PER_BAR:, -STEPS_PER_BEAT:].flatten()
+            try:
+                candidate  = _loops().get_loops(last_bar)
+                drum_arr   = np.array(candidate["drums"], dtype=np.uint8)
+                drum_steps = np.nonzero(drum_arr)[0]
+                if len(drum_steps) < 10:
+                    if prev_drum_loop is not None:
+                        drum_arr = prev_drum_loop
+                        candidate["drums"] = prev_drum_loop.tolist()
+                    else:
+                        candidate["drums"] = np.zeros((16, 128), dtype=np.uint8).tolist()
+                        drum_arr = np.zeros((16, 128), dtype=np.uint8)
+                else:
+                    if prev_drum_loop is not None:
+                        a = (prev_drum_loop > 0).flatten()
+                        b = (drum_arr > 0).flatten()
+                        union = np.logical_or(a, b).sum()
+                        if union > 0 and 1.0 - np.logical_and(a, b).sum() / union > 0.75:
+                            drum_arr = prev_drum_loop
+                            candidate["drums"] = prev_drum_loop.tolist()
+                    next_drum_b64 = _encode_drum_loop(drum_arr)
+                loops = candidate
+            except Exception:
+                traceback.print_exc()
+
+        return jsonify({
+            "chord":            chord,
+            "duration":         beat_dur,
+            "history":          history_b64,
+            "loops":            loops,
+            "prev_drum_loop":   next_drum_b64,
+            "crf_delta":        _encode_crf_delta(delta) if delta is not None else "",
+            "crf_bar_history":  _encode_crf_bar_history(bar_history),
+            "crf_bar_pitch":    _encode_crf_bar_pitch(bar_pitch),
+            "crf_beat_count":   crf_beat_count,
+            "crf_loop_history": _encode_history(loop_history),
+        })
+
+    # ── Transformer engine branch (default) ───────────────────────────────────
     history  = _decode_history(history_b64)
     new_beat = _build_beat(notes_played, beat_start, step_dur, beat_index)
 
@@ -138,7 +286,6 @@ def predict_chord():
 
     history = np.vstack([history, new_beat[np.newaxis, :]])[-MEMORY:]
 
-    # ── chord prediction ──────────────────────────────────────────────────────
     chord = "N"
     try:
         chord = _engine().predict(history)
@@ -148,7 +295,7 @@ def predict_chord():
     # ── loop retrieval (bar start only) ───────────────────────────────────────
     loops          = {}
     prev_drum_loop = _decode_drum_loop(prev_drum_b64)
-    next_drum_b64  = prev_drum_b64   # pass through unchanged on non-bar beats
+    next_drum_b64  = prev_drum_b64
 
     if beat_index == 1:
         last_bar = history[-BEATS_PER_BAR:, -STEPS_PER_BEAT:].flatten()
@@ -158,16 +305,13 @@ def predict_chord():
             drum_steps = np.nonzero(drum_arr)[0]
 
             if len(drum_steps) < 10:
-                # Sparse candidate — fall back to prev if available, else silence
                 if prev_drum_loop is not None:
                     drum_arr = prev_drum_loop
                     candidate["drums"] = prev_drum_loop.tolist()
                 else:
                     candidate["drums"] = np.zeros((16, 128), dtype=np.uint8).tolist()
                     drum_arr = np.zeros((16, 128), dtype=np.uint8)
-                # Either way, don't update prev — avoid locking in a sparse pattern
             else:
-                # Good candidate — apply Jaccard continuity check
                 if prev_drum_loop is not None:
                     a = (prev_drum_loop > 0).flatten()
                     b = (drum_arr > 0).flatten()
@@ -175,7 +319,6 @@ def predict_chord():
                     if union > 0 and 1.0 - np.logical_and(a, b).sum() / union > 0.75:
                         drum_arr = prev_drum_loop
                         candidate["drums"] = prev_drum_loop.tolist()
-                # Only store prev when using a good (dense) pattern
                 next_drum_b64 = _encode_drum_loop(drum_arr)
 
             loops = candidate

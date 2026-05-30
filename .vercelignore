@@ -12,7 +12,12 @@ report/
 
 # ── Python files not imported by api/index.py ─────────────────────────────────
 AR/
-CRF/
+CRF/chord_engine.py
+CRF/chord_melody_relation.py
+CRF/chord_transition_matrix.npy
+CRF/chord_transition_prior.py
+CRF/crf.py
+CRF/demo.py
 engines/transformer_engine.py
 engines/crf_engine.py
 engines/base_engine.py

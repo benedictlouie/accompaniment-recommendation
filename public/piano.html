@@ -154,6 +154,7 @@
   <div id="engine-selector">
     <span>Engine:</span>
     <button class="engine-btn active" data-engine="transformer">AR Transformer</button>
+    <button class="engine-btn" data-engine="crf">CRF</button>
   </div>
 
   <div id="instrument-toggles">
@@ -505,9 +506,15 @@ function scheduleBeats() {
     const strong   = beat === 1;
     const beatDur  = 60 / tempo;
 
-    if (beat === 1 && Object.keys(pendingLoops).length > 0) {
-      currentLoops = pendingLoops;
-      pendingLoops = {};
+    if (beat === 1) {
+      if (Object.keys(pendingLoops).length > 0) {
+        currentLoops = pendingLoops;
+        pendingLoops = {};
+      }
+      if (selectedEngine === 'crf' && crfPendingChord) {
+        document.getElementById('chord-display').textContent = crfPendingChord;
+        crfPendingChord = '';
+      }
     }
 
     if (instrumentOn.metronome) {
@@ -545,24 +552,44 @@ function onBeat(beat, beatTime, beatDur) {
 
 async function predictChordFromAPI(notes, beatStart, beatIndex, beatDur) {
   try {
-    const res = await fetch(`${API_BASE}/predict-chord`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        notes:          notes.map(n => ({ note: n.note, start: n.start, end: n.end })),
-        beat_start:     beatStart,
-        beat_index:     beatIndex,
-        tempo,
-        history:        engineHistory,
-        prev_drum_loop: prevDrumLoop,
-      })
+    const body = {
+      notes:          notes.map(n => ({ note: n.note, start: n.start, end: n.end })),
+      beat_start:     beatStart,
+      beat_index:     beatIndex,
+      tempo,
+      engine:         selectedEngine,
+      history:        engineHistory,
+      prev_drum_loop: prevDrumLoop,
+    };
+    if (selectedEngine === 'crf') {
+      body.crf_delta        = crfDelta;
+      body.crf_bar_history  = crfBarHistory;
+      body.crf_bar_pitch    = crfBarPitch;
+      body.crf_beat_count   = crfBeatCount;
+      body.crf_loop_history = crfLoopHistory;
+    }
+    const res  = await fetch(`${API_BASE}/predict-chord`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
     });
     const data = await res.json();
-    if (data.chord) {
-      predictedChord = data.chord;
-      document.getElementById('chord-display').textContent = data.chord;
+    if (selectedEngine === 'crf') {
+      crfDelta       = data.crf_delta        ?? crfDelta;
+      crfBarHistory  = data.crf_bar_history  ?? crfBarHistory;
+      crfBarPitch    = data.crf_bar_pitch    ?? crfBarPitch;
+      crfBeatCount   = data.crf_beat_count   ?? crfBeatCount;
+      crfLoopHistory = data.crf_loop_history ?? crfLoopHistory;
+      if (data.chord) {
+        predictedChord  = data.chord;  // audio: immediate so next scheduleBeats pick-up uses it
+        crfPendingChord = data.chord;  // display: held until beat 1 for visual alignment
+      }
+    } else {
+      if (data.history) engineHistory = data.history;
+      if (data.chord) {
+        predictedChord = data.chord;
+        document.getElementById('chord-display').textContent = data.chord;
+      }
     }
-    if (data.history) engineHistory = data.history;
     if (data.prev_drum_loop) prevDrumLoop = data.prev_drum_loop;
     if (data.loops && Object.keys(data.loops).length > 0) pendingLoops = data.loops;
   } catch (e) { /* silent fallback */ }
@@ -595,6 +622,7 @@ async function checkAPI() {
 
 async function resetEngineHistory() {
   engineHistory  = '';
+  resetCRFState();
   currentLoops   = {};
   pendingLoops   = {};
   predictedChord = '–';
@@ -807,6 +835,7 @@ function stopAudio() {
   currentBeat    = 1;
   nextBeatTime   = 0;
   engineHistory  = '';
+  resetCRFState();
   prevDrumLoop   = '';
   predictedChord = '–';
 
@@ -838,6 +867,8 @@ document.getElementById('play-btn').addEventListener('click', () => {
 // =============================================================
 
 // instrument toggle buttons → shared.js
+
+onEngineSwitch = stopAudio;
 
 buildPiano();
 checkAPI();

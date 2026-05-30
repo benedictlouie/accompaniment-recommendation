@@ -178,6 +178,7 @@
   <div id="engine-selector">
     <span>Engine:</span>
     <button class="engine-btn active" data-engine="transformer">AR Transformer</button>
+    <button class="engine-btn" data-engine="crf">CRF</button>
   </div>
 
   <div id="instrument-toggles">
@@ -246,7 +247,7 @@ let currentBeat    = 1;
 let lastBeatTime   = 0;    // AudioContext seconds
 let predictedChord = '–';
 let lastNote       = '–';
-let engineType     = 'transformer';  // FIX 1: was undefined, crashed resetEngineHistory
+// engineType → selectedEngine in shared.js
 
 // FIX 2: history round-trip — API is stateless, history is base64-encoded
 // and must be sent back each call so the engine has context.
@@ -466,13 +467,23 @@ function loop() {
 
     predictChordFromAPI(processedNotes, prevBeatStart, prevBeat);
 
-    const beatInBar = (currentBeat - 1) % BEATS_PER_BAR;
+    // Mirrors Python: beat_in_bar = current_beat % BEATS_PER_BAR
+    // → beat 4 maps to 0, so loop step 0 plays on beat 4 (same as Python).
+    const beatInBar = currentBeat % BEATS_PER_BAR;
 
-    // Promote pending loops at bar start (beat 1).
-    if (beatInBar === 0 && pendingLoops) {
-      currentLoops = pendingLoops;
-      prevVoicing  = { guitar: null, piano: null, bass: null };
-      pendingLoops = null;
+    // Promote pending loops at beat 4 (beatInBar === 0), matching Python.
+    if (beatInBar === 0) {
+      if (pendingLoops) {
+        currentLoops = pendingLoops;
+        prevVoicing  = { guitar: null, piano: null, bass: null };
+        pendingLoops = null;
+      }
+    }
+
+    // CRF chord display updates at bar start (beat 1), independent of loop promotion.
+    if (currentBeat === 1 && selectedEngine === 'crf' && crfPendingChord) {
+      document.getElementById('chord-display').textContent = crfPendingChord;
+      crfPendingChord = '';
     }
 
     // Schedule click at the exact beat time (beatStart), not at the rAF time (now).
@@ -489,7 +500,7 @@ function loop() {
     // pitchHistory is NOT pushed here any more — the step clock below pushes
     // one slot per 16th note using the live detected pitch (zero lag).
     // pendingBeatMark is consumed by the very next step-clock tick.
-    const isBarStart = (beatInBar === 0);
+    const isBarStart = (currentBeat === 1);  // bar boundary stays on beat 1
     pendingBeatMark = isBarStart ? 2 : 1;
 
     // Dot update fires at the precise beat time via setTimeout — mirrors piano.html's
@@ -539,22 +550,28 @@ function loop() {
 async function predictChordFromAPI(notes, beatStart, beatIndex) {
   const callId = ++apiCallId;
   try {
-    const res = await fetch(`${API_BASE}/predict-chord`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        notes,
-        beat_start:     beatStart,
-        beat_index:     beatIndex,
-        tempo,
-        history:        beatHistory,
-        prev_drum_loop: prevDrumLoop,
-      })
+    const body = {
+      notes,
+      beat_start:     beatStart,
+      beat_index:     beatIndex,
+      tempo,
+      engine:         selectedEngine,
+      history:        beatHistory,
+      prev_drum_loop: prevDrumLoop,
+    };
+    if (selectedEngine === 'crf') {
+      body.crf_delta        = crfDelta;
+      body.crf_bar_history  = crfBarHistory;
+      body.crf_bar_pitch    = crfBarPitch;
+      body.crf_beat_count   = crfBeatCount;
+      body.crf_loop_history = crfLoopHistory;
+    }
+    const res  = await fetch(`${API_BASE}/predict-chord`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
     });
     const data = await res.json();
 
-    // Loops only returned on beat_index=1. Store in pendingLoops (not currentLoops
-    // directly) so they take effect at the next bar start — same as piano.html.
     if (data.loops && Object.keys(data.loops).length > 0) {
       pendingLoops = data.loops;
     }
@@ -563,12 +580,22 @@ async function predictChordFromAPI(notes, beatStart, beatIndex) {
     // Discard chord/history if a newer beat has already updated state.
     if (callId !== apiCallId) return;
 
-    if (data.chord) {
-      predictedChord = data.chord;
-      document.getElementById('chord-display').textContent = data.chord;
-    }
-    if (data.history) {
-      beatHistory = data.history;
+    if (selectedEngine === 'crf') {
+      crfDelta       = data.crf_delta        ?? crfDelta;
+      crfBarHistory  = data.crf_bar_history  ?? crfBarHistory;
+      crfBarPitch    = data.crf_bar_pitch    ?? crfBarPitch;
+      crfBeatCount   = data.crf_beat_count   ?? crfBeatCount;
+      crfLoopHistory = data.crf_loop_history ?? crfLoopHistory;
+      if (data.chord) {
+        predictedChord  = data.chord;  // audio: immediate
+        crfPendingChord = data.chord;  // display: held until beat 1
+      }
+    } else {
+      if (data.history) beatHistory = data.history;
+      if (data.chord) {
+        predictedChord = data.chord;
+        document.getElementById('chord-display').textContent = data.chord;
+      }
     }
   } catch (e) {}
 }
@@ -1085,7 +1112,7 @@ function stopMic() {
   // Tell the server to forget its state too
   fetch(`${API_BASE}/reset`, { method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ app: 'harmoniser', engine_type: engineType }) }).catch(() => {});
+    body: JSON.stringify({ app: 'harmoniser', engine_type: selectedEngine }) }).catch(() => {});
 }
 
 document.getElementById('play-btn').addEventListener('click', () => {
@@ -1137,6 +1164,7 @@ async function checkAPI() {
 // FIX 6: reset ALL local state, not just the server-side history
 async function resetEngineHistory() {
   beatHistory  = '';
+  resetCRFState();
   prevDrumLoop = '';
   currentLoops = null;
   pendingLoops = null;
@@ -1146,7 +1174,7 @@ async function resetEngineHistory() {
     const res = await fetch(`${API_BASE}/reset`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ app: 'harmoniser', engine_type: engineType })
+      body: JSON.stringify({ app: 'harmoniser', engine_type: selectedEngine })
     });
     const d = await res.json();
     if (d.history !== undefined) beatHistory = d.history;
@@ -1155,6 +1183,8 @@ async function resetEngineHistory() {
 
 
 // instrument toggle buttons → shared.js
+
+onEngineSwitch = stopMic;
 
 checkAPI();
 setInterval(checkAPI, 5000);
