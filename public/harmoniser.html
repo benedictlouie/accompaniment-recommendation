@@ -440,12 +440,12 @@ function loop() {
     const beatStart = lastBeatTime;
     lastBeatTime += beatDuration;
     const beatFireMs = performance.now();
-    console.log(`[BEAT] beat=${currentBeat}`);
 
     // Python: prev_beat_start = beat_start - engine.beat_duration
     // Python: prev_beat       = (current_beat - 2) % BEATS_PER_BAR + 1
     const prevBeatStart = beatStart - beatDuration;
     const prevBeat      = ((currentBeat - 2) % BEATS_PER_BAR + BEATS_PER_BAR) % BEATS_PER_BAR + 1;
+    console.log(`[BEAT] beat=${prevBeat}`);
 
     // Quantise stepBuffer to 4 16th-note slots — mirrors capture_beat_4_16ths()
     const n = stepBuffer.length;
@@ -570,11 +570,14 @@ async function predictChordFromAPI(notes, beatStart, beatIndex, beatFireMs = per
       body.crf_beat_count   = crfBeatCount;
       body.crf_loop_history = crfLoopHistory;
     }
+    const fetchStartMs = performance.now();
     const res  = await fetch(`${API_BASE}/predict-chord`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
     const data = await res.json();
+    const serverMs = (performance.now() - fetchStartMs).toFixed(0);
+    const preMs    = (fetchStartMs - beatFireMs).toFixed(0);
 
     if (data.loops && Object.keys(data.loops).length > 0) {
       pendingLoops = data.loops;
@@ -593,13 +596,13 @@ async function predictChordFromAPI(notes, beatStart, beatIndex, beatFireMs = per
       if (data.chord) {
         predictedChord  = data.chord;  // audio: immediate
         crfPendingChord = data.chord;  // display: held until beat 1
-        console.log(`[CHORD/CRF] beat=${beatIndex}  chord=${data.chord}  latency=${(performance.now()-beatFireMs).toFixed(0)}ms`);
+        console.log(`[CHORD/CRF] beat=${beatIndex}  chord=${data.chord}  total=${(performance.now()-beatFireMs).toFixed(0)}ms  (pre-fetch=${preMs}ms  server=${serverMs}ms)`);
       }
     } else {
       if (data.history) beatHistory = data.history;
       if (data.chord) {
         predictedChord = data.chord;
-        console.log(`[CHORD] beat=${beatIndex}  chord=${data.chord}  latency=${(performance.now()-beatFireMs).toFixed(0)}ms`);
+        console.log(`[CHORD] beat=${beatIndex}  chord=${data.chord}  total=${(performance.now()-beatFireMs).toFixed(0)}ms  (pre-fetch=${preMs}ms  server=${serverMs}ms)`);
         document.getElementById('chord-display').textContent = data.chord;
       }
     }
