@@ -595,7 +595,8 @@ async function predictChordFromAPI(notes, beatStart, beatIndex, beatFireMs = per
       crfLoopHistory = data.crf_loop_history ?? crfLoopHistory;
       if (data.chord) {
         predictedChord  = data.chord;  // audio: immediate
-        crfPendingChord = data.chord;  // display: held until beat 1
+        crfPendingChord = data.chord;
+        document.getElementById('chord-display').textContent = data.chord;
         console.log(`[CHORD/CRF] beat=${beatIndex}  chord=${data.chord}  total=${(performance.now()-beatFireMs).toFixed(0)}ms  (pre-fetch=${preMs}ms  server=${serverMs}ms)`);
       }
     } else {

@@ -583,7 +583,8 @@ async function predictChordFromAPI(notes, beatStart, beatIndex, beatDur, beatFir
       crfLoopHistory = data.crf_loop_history ?? crfLoopHistory;
       if (data.chord) {
         predictedChord  = data.chord;  // audio: immediate so next scheduleBeats pick-up uses it
-        crfPendingChord = data.chord;  // display: held until beat 1 for visual alignment
+        crfPendingChord = data.chord;
+        document.getElementById('chord-display').textContent = data.chord;
         console.log(`[CHORD/CRF] beat=${beatIndex}  chord=${data.chord}  latency=${(performance.now()-beatFireMs).toFixed(0)}ms`);
       }
     } else {

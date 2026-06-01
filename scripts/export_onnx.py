@@ -49,6 +49,11 @@ class FullInferenceWrapper(nn.Module):
         outputs = self.m(input_seq)          # [1, MAX_LEN, NUM_CLASSES]
         return outputs[:, -1, :]            # [1, NUM_CLASSES] – last step only
 
+# Break weight tying before export: tied weights share the same tensor in the
+# ONNX graph, which confuses ORT's shape inference and breaks quantization.
+# Clone makes fc_out an independent copy with identical values.
+model.fc_out.weight = torch.nn.Parameter(model.embedding_output.weight.detach().clone())
+
 wrapper = FullInferenceWrapper(model)
 wrapper.eval()
 dummy = torch.zeros(1, MEMORY, INPUT_DIM)

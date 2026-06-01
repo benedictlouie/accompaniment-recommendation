@@ -1,3 +1,5 @@
+import queue
+import threading
 import torch
 import numpy as np
 from AR.ar_transformer import OUTPUT_DIM, TransformerModel,load_model_checkpoint
@@ -7,6 +9,22 @@ from utils.constants import DEVICE, CHORD_CLASSES_ALL, REVERSE_CHORD_MAP, MEMORY
 from utils.FifthsCircleLoss import FifthsCircleLoss
 from utils.plot_chords import plot_chords_over_time
 from utils.play import npz_to_midi
+
+_log_queue: queue.Queue = queue.Queue()
+
+def _log_worker():
+    while True:
+        msg = _log_queue.get()
+        if msg is None:
+            break
+        print(msg)
+        _log_queue.task_done()
+
+_log_thread = threading.Thread(target=_log_worker, daemon=True)
+_log_thread.start()
+
+def _log(msg):
+    _log_queue.put(msg)
 
 def generate_chords(model, melody, target=None):
     """
@@ -20,11 +38,11 @@ def generate_chords(model, melody, target=None):
     B, T, _ = melody.shape
 
     np.set_printoptions(threshold=np.inf)
-    print(melody[:, -1].cpu().numpy())
+    _log(str(melody[:, -1].cpu().numpy()))
 
     # melody[(melody[:, :, -STEPS_PER_BEAT:] == -1).all(dim=2).all(dim=1)] = -1
 
-    with torch.no_grad():
+    with torch.inference_mode():
         outputs = model(melody)  # fully autoregressive
 
         probs = torch.nn.functional.softmax(outputs / TEMPERATURE, dim=-1)
@@ -32,8 +50,7 @@ def generate_chords(model, melody, target=None):
         last_probs = probs[:, -1, :]          # (B, V)
         top_probs, top_indices = torch.topk(last_probs, k=8, dim=-1)
         for prob, index in zip(top_probs, top_indices):
-            # print([idx.item() for idx in prob])
-            print([str(CHORD_CLASSES_ALL[chord_idx.item()]) for chord_idx in index])
+            _log(str([str(CHORD_CLASSES_ALL[chord_idx.item()]) for chord_idx in index]))
 
         preds = torch.multinomial(
             probs.view(-1, probs.size(-1)), 1
@@ -47,14 +64,14 @@ def generate_chords(model, melody, target=None):
         target = target.to(DEVICE)
         criterion = torch.nn.CrossEntropyLoss(reduction="mean")
         loss = criterion(outputs[:, -1, :], target[:, -1].squeeze(-1))
-        print("Final-step Average Cross Entropy:", loss.item())
-    
+        _log(f"Final-step Average Cross Entropy: {loss.item()}")
+
     for i in range(len(preds)):
         if target is not None:
-            print("Actual sequence:\t", [str(CHORD_CLASSES_ALL[chord_idx.item()]) for chord_idx in target[i, -10:].squeeze(-1)])
-        print("Predicted sequence:\t", [str(CHORD_CLASSES_ALL[chord_idx.item()]) for chord_idx in preds[i, -10:]])
+            _log("Actual sequence:\t" + str([str(CHORD_CLASSES_ALL[chord_idx.item()]) for chord_idx in target[i, -10:].squeeze(-1)]))
+        _log("Predicted sequence:\t" + str([str(CHORD_CLASSES_ALL[chord_idx.item()]) for chord_idx in preds[i, -10:]]))
 
-    print(preds[:, -1].cpu().numpy())
+    _log(str(preds[:, -1].cpu().numpy()))
     return preds.cpu().numpy()
 
 if __name__ == "__main__":

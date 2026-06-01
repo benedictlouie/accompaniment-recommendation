@@ -35,7 +35,7 @@ tempo = 100
 
 metronome = Metronome(tempo, WIDTH)
 
-engine = create_engine("transformer", tempo)
+engine = create_engine("onnx", tempo)
 
 accompaniment_system = AccompanimentSystem()
 

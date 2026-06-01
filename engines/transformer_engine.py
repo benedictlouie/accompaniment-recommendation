@@ -18,6 +18,7 @@ class ARTransformerEngine(BaseChordEngine):
         checkpoint = torch.load(checkpoint_path, map_location=self.device)
         self.model.load_state_dict(checkpoint)
         self.model.eval()
+        self.model = torch.compile(self.model)
 
     def reset(self):
         self.history = np.zeros((0, INPUT_DIM))
