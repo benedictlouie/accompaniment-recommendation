@@ -68,13 +68,14 @@ def beat_worker():
         if item is None:
             break
 
-        processed_notes, prev_beat_start, prev_beat, current_beat = item
+        processed_notes, prev_beat_start, prev_beat, current_beat, beat_fire_time = item
 
         chord, duration = engine.process_beat(
             processed_notes,
             prev_beat_start,
             prev_beat,
         )
+        print(f"[CHORD] beat={prev_beat}  chord={chord}  latency={1000*(time.time()-beat_fire_time):.0f}ms")
 
         melody = engine.last_bar
 
@@ -161,8 +162,9 @@ while running:
         # send heavy work to background thread
         # prev_beat_start / prev_beat: tell the engine which beat's audio this is
         # current_beat: tells play_beat which loop step to play right now
+        print(f"[BEAT] beat={current_beat}")
         beat_queue.put(
-            (processed_notes, prev_beat_start, prev_beat, current_beat)
+            (processed_notes, prev_beat_start, prev_beat, current_beat, now)
         )
 
         metronome.mute(predicted_chord not in ['-', 'N'])

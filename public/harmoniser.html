@@ -439,6 +439,8 @@ function loop() {
   if (now - lastBeatTime >= beatDuration) {
     const beatStart = lastBeatTime;
     lastBeatTime += beatDuration;
+    const beatFireMs = performance.now();
+    console.log(`[BEAT] beat=${currentBeat}`);
 
     // Python: prev_beat_start = beat_start - engine.beat_duration
     // Python: prev_beat       = (current_beat - 2) % BEATS_PER_BAR + 1
@@ -466,7 +468,7 @@ function loop() {
     });
 
     if (processedNotes.length > 0) {
-      predictChordFromAPI(processedNotes, prevBeatStart, prevBeat);
+      predictChordFromAPI(processedNotes, prevBeatStart, prevBeat, beatFireMs);
     }
 
     // 0-indexed position within the bar: beat 1 → 0, beat 2 → 1, …, beat 4 → 3.
@@ -549,7 +551,7 @@ function loop() {
 // CHORD PREDICTION  (stateless API — history round-tripped as base64)
 // =============================================================
 
-async function predictChordFromAPI(notes, beatStart, beatIndex) {
+async function predictChordFromAPI(notes, beatStart, beatIndex, beatFireMs = performance.now()) {
   const callId = ++apiCallId;
   try {
     const body = {
@@ -591,11 +593,13 @@ async function predictChordFromAPI(notes, beatStart, beatIndex) {
       if (data.chord) {
         predictedChord  = data.chord;  // audio: immediate
         crfPendingChord = data.chord;  // display: held until beat 1
+        console.log(`[CHORD/CRF] beat=${beatIndex}  chord=${data.chord}  latency=${(performance.now()-beatFireMs).toFixed(0)}ms`);
       }
     } else {
       if (data.history) beatHistory = data.history;
       if (data.chord) {
         predictedChord = data.chord;
+        console.log(`[CHORD] beat=${beatIndex}  chord=${data.chord}  latency=${(performance.now()-beatFireMs).toFixed(0)}ms`);
         document.getElementById('chord-display').textContent = data.chord;
       }
     }

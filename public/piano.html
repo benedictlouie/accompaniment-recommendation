@@ -534,6 +534,8 @@ function scheduleBeats() {
 }
 
 function onBeat(beat, beatTime, beatDur) {
+  const beatFireMs = performance.now();
+  console.log(`[BEAT] beat=${beat}`);
   updateBeatDots(beat);
 
   const windowStart = beatTime - beatDur;
@@ -543,14 +545,14 @@ function onBeat(beat, beatTime, beatDur) {
   const beatNotes = notesPlayed.concat(activeNotes);
   notesPlayed = [];
 
-  predictChordFromAPI(beatNotes, windowStart, beat, beatDur);
+  predictChordFromAPI(beatNotes, windowStart, beat, beatDur, beatFireMs);
 }
 
 // =============================================================
 // API
 // =============================================================
 
-async function predictChordFromAPI(notes, beatStart, beatIndex, beatDur) {
+async function predictChordFromAPI(notes, beatStart, beatIndex, beatDur, beatFireMs = performance.now()) {
   try {
     const body = {
       notes:          notes.map(n => ({ note: n.note, start: n.start, end: n.end })),
@@ -582,11 +584,13 @@ async function predictChordFromAPI(notes, beatStart, beatIndex, beatDur) {
       if (data.chord) {
         predictedChord  = data.chord;  // audio: immediate so next scheduleBeats pick-up uses it
         crfPendingChord = data.chord;  // display: held until beat 1 for visual alignment
+        console.log(`[CHORD/CRF] beat=${beatIndex}  chord=${data.chord}  latency=${(performance.now()-beatFireMs).toFixed(0)}ms`);
       }
     } else {
       if (data.history) engineHistory = data.history;
       if (data.chord) {
         predictedChord = data.chord;
+        console.log(`[CHORD] beat=${beatIndex}  chord=${data.chord}  latency=${(performance.now()-beatFireMs).toFixed(0)}ms`);
         document.getElementById('chord-display').textContent = data.chord;
       }
     }

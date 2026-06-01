@@ -123,6 +123,8 @@ while running:
     beat_trigger, beat_start_time = metronome.update()
     if beat_trigger:
         current_beat = metronome.current_beat
+        beat_fire_time = time.time()
+        print(f"[BEAT] beat={current_beat}")
 
         active_notes = [
             (note, start_time, current_time)
@@ -130,6 +132,7 @@ while running:
             if start_time <= beat_start_time
         ]
         chord, duration = engine.process_beat(notes_played + active_notes, beat_start_time, current_beat)
+        print(f"[CHORD] beat={current_beat}  chord={chord}  latency={1000*(time.time()-beat_fire_time):.0f}ms")
         
         # mute if chord == "N"
         metronome.mute(chord != "N")
