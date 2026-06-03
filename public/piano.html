@@ -337,7 +337,7 @@ function playDrumHit(t, type) {
     osc.connect(g); g.connect(audioContext.destination);
     osc.frequency.setValueAtTime(110, t);
     osc.frequency.exponentialRampToValueAtTime(38, t + 0.09);
-    g.gain.setValueAtTime(0.85, t);
+    g.gain.setValueAtTime(0.42, t);
     g.gain.exponentialRampToValueAtTime(0.001, t + 0.13);
     osc.start(t); osc.stop(t + 0.14);
   } else if (type === 'snare') {
@@ -350,7 +350,7 @@ function playDrumHit(t, type) {
     const f   = audioContext.createBiquadFilter();
     f.type = 'bandpass'; f.frequency.value = 2800;
     src.connect(f); f.connect(g); g.connect(audioContext.destination);
-    g.gain.setValueAtTime(0.28, t);
+    g.gain.setValueAtTime(0.14, t);
     g.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
     src.start(t); src.stop(t + 0.11);
   } else if (type === 'hihat') {
@@ -443,7 +443,7 @@ function playLoopBeat(chord, beatIndex, beatTime, beatDur) {
         if (iv < 0) continue;
         const midi = snapToChordInRange(rootMidi + iv, midis, 36, 84); // C2–C6
         assertChordTone(midi, chord);
-        sfPlay('guitar', midi, t, stepDur * 1.8, 1.4);
+        sfPlay('guitar', midi, t, stepDur * 1.8, 0.7);
       }
     }
   }
@@ -460,7 +460,7 @@ function playLoopBeat(chord, beatIndex, beatTime, beatDur) {
         if (iv < 0) continue;
         const midi = snapToChordInRange(rootMidi + 12 + iv, pianoMidis, 36, 96); // C2–C7
         assertChordTone(midi, chord);
-        sfPlay('piano', midi, t, stepDur * 1.4, 1.2);
+        sfPlay('piano', midi, t, stepDur * 1.4, 2.2);
       }
     }
   }
@@ -476,7 +476,7 @@ function playLoopBeat(chord, beatIndex, beatTime, beatDur) {
         if (iv < 0) continue;
         const midi = snapToChordInRange(rootMidi + iv, midis, 24, 55); // C1–G3
         assertChordTone(midi, chord);
-        sfPlay('bass', midi, t, stepDur * 2.2, 1.8);
+        sfPlay('bass', midi, t, stepDur * 2.2, 0.9);
       }
     }
   }

@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Harmonic Accompaniment Recommendation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+<style>
+/* ── TOKENS ────────────────────────────────────────────────── */
+:root {
+  --blue:    #1a6fa8;
+  --green:   #177a3e;
+  --amber:   #b06a08;
+  --bg:      #f7f4ef;
+  --surface: #edeae3;
+  --card:    #ffffff;
+  --border:  #ddd5c8;
+  --text:    #1c1510;
+  --muted:   #1c1510;
+  --faint:   #b8aa9a;
+}
+
+/* ── RESET + SCROLL SNAP ────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html {
+  scroll-snap-type: y mandatory;
+  overflow-y: scroll;
+  height: 100%;
+  background: var(--bg);
+}
+body {
+  height: 100%;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  color: var(--text);
+  line-height: 1.6;
+}
+
+/* ── SLIDE ──────────────────────────────────────────────────── */
+.slide {
+  scroll-snap-align: start;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 4.5vh 5.5vw 3.5vh;
+  position: relative;
+  background: var(--bg);
+}
+.slide-surface { background: var(--surface); }
+.slide-hero {
+  background:
+    radial-gradient(ellipse 70% 60% at 65% 35%, rgba(26,111,168,0.06) 0%, transparent 70%),
+    radial-gradient(ellipse 50% 50% at 20% 80%, rgba(176,106,8,0.05) 0%, transparent 60%),
+    var(--bg);
+}
+.slide-demo {
+  background:
+    radial-gradient(ellipse 60% 50% at 40% 55%, rgba(23,122,62,0.06) 0%, transparent 65%),
+    var(--bg);
+}
+
+/* ── TYPOGRAPHY ─────────────────────────────────────────────── */
+.eyebrow {
+  font-size: clamp(9px, 0.9vw, 11px);
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  font-weight: 600;
+  flex-shrink: 0;
+  margin-bottom: 3px;
+}
+.c-blue  { color: var(--blue); }
+.c-green { color: var(--green); }
+.c-amber { color: var(--amber); }
+.c-muted { color: var(--muted); }
+.c-good  { color: var(--green); font-weight: 600; }
+
+.hero-h1 {
+  font-family: 'DM Serif Display', Georgia, serif;
+  font-size: clamp(32px, 4.5vw, 60px);
+  font-weight: 400;
+  line-height: 1.1;
+  background: linear-gradient(135deg, var(--text) 0%, var(--blue) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.hero-h1 em {
+  font-style: italic;
+  background: linear-gradient(135deg, var(--amber) 0%, #7a4200 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.sh2 {
+  font-family: 'DM Serif Display', Georgia, serif;
+  font-size: clamp(18px, 2.2vw, 30px);
+  font-weight: 400;
+  line-height: 1.15;
+  flex-shrink: 0;
+  margin-bottom: 3px;
+}
+.ssub {
+  font-size: clamp(11px, 1.1vw, 14px);
+  color: var(--muted);
+  line-height: 1.6;
+  flex-shrink: 0;
+  margin-bottom: 8px;
+}
+
+.divider {
+  width: 36px;
+  height: 1.5px;
+  background: linear-gradient(90deg, transparent, var(--faint), transparent);
+  flex-shrink: 0;
+}
+
+/* ── HERO CENTER ─────────────────────────────────────────────── */
+.hero-center {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: clamp(10px, 1.4vh, 18px);
+}
+.hero-sub {
+  font-size: clamp(13px, 1.4vw, 17px);
+  color: var(--muted);
+  max-width: 560px;
+  line-height: 1.7;
+}
+.hero-meta {
+  font-size: clamp(10px, 1vw, 13px);
+  color: var(--muted);
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.sep { color: var(--faint); }
+
+/* ── CARDS ───────────────────────────────────────────────────── */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: clamp(12px, 1.4vh, 18px) clamp(14px, 1.4vw, 20px);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+}
+
+/* ── GRID LAYOUTS ────────────────────────────────────────────── */
+.g2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: clamp(10px, 1.2vw, 16px);
+  flex: 1;
+  min-height: 0;
+}
+.g3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: clamp(8px, 1vw, 14px);
+  flex: 1;
+  min-height: 0;
+}
+.g22 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: clamp(8px, 0.9vw, 12px);
+  flex: 1;
+  min-height: 0;
+}
+.g4060 {
+  display: grid;
+  grid-template-columns: 2fr 3fr;
+  gap: clamp(10px, 1.2vw, 16px);
+  flex: 1;
+  min-height: 0;
+}
+
+/* grid cell overflow guard */
+.g2 > *, .g3 > *, .g22 > *, .g4060 > * {
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ── TABLE ───────────────────────────────────────────────────── */
+.rt { border-collapse: collapse; width: 100%; font-size: clamp(10px, 1vw, 13px); }
+.rt th {
+  background: rgba(26,111,168,0.07);
+  color: var(--blue);
+  padding: 5px 10px;
+  border: 1px solid rgba(26,111,168,0.2);
+  font-weight: 600;
+  text-align: left;
+}
+.rt td {
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+}
+.rt tr:nth-child(even) td { background: rgba(0,0,0,0.02); }
+
+/* ── STATS ───────────────────────────────────────────────────── */
+.stat-row { display: flex; gap: 10px; flex-shrink: 0; }
+.stat {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 14px;
+  text-align: center;
+  flex: 1;
+}
+.stat .val {
+  font-family: 'DM Serif Display', serif;
+  font-size: clamp(18px, 2vw, 26px);
+  font-weight: 700;
+  color: var(--blue);
+  line-height: 1;
+}
+.stat .lbl { font-size: clamp(9px, 0.8vw, 11px); color: var(--muted); margin-top: 3px; line-height: 1.3; }
+
+/* ── BADGES ──────────────────────────────────────────────────── */
+.badge {
+  font-size: clamp(9px, 0.8vw, 11px);
+  padding: 3px 10px;
+  border-radius: 20px;
+  background: rgba(26,111,168,0.07);
+  border: 1px solid rgba(26,111,168,0.2);
+  color: var(--blue);
+  font-weight: 500;
+  display: inline-block;
+}
+.badge-g { background: rgba(23,122,62,0.07);   border-color: rgba(23,122,62,0.2);   color: var(--green); }
+.badge-a { background: rgba(176,106,8,0.07);   border-color: rgba(176,106,8,0.2);   color: var(--amber); }
+.badges  { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; flex-shrink: 0; }
+
+/* ── IMAGES ──────────────────────────────────────────────────── */
+.img-box {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+.img-box img {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  object-fit: contain;
+  border-radius: 6px;
+  display: block;
+}
+.cap {
+  font-size: clamp(9px, 0.75vw, 11px);
+  color: var(--muted);
+  text-align: center;
+  margin-top: 4px;
+  line-height: 1.3;
+  flex-shrink: 0;
+  opacity: 1;
+}
+
+/* ── FEAT ROW ────────────────────────────────────────────────── */
+.feat-row { display: flex; gap: 10px; align-items: flex-start; }
+.feat-icon  { font-size: clamp(18px, 2vw, 24px); flex-shrink: 0; line-height: 1.2; }
+.feat-title { font-size: clamp(12px, 1.1vw, 15px); font-weight: 600; margin-bottom: 3px; }
+.feat-body  { font-size: clamp(10px, 0.9vw, 13px); color: var(--muted); line-height: 1.6; }
+
+/* ── STEP CARDS ──────────────────────────────────────────────── */
+.step-num   { font-family: 'DM Serif Display', serif; font-size: clamp(26px, 3vw, 36px);
+              font-weight: 700; opacity: 0.1; line-height: 1; margin-bottom: 4px; }
+.step-title { font-size: clamp(12px, 1.1vw, 15px); font-weight: 600; margin-bottom: 4px; }
+.step-body  { font-size: clamp(10px, 0.9vw, 13px); color: var(--muted); line-height: 1.6; }
+
+/* ── MODEL TEXT ──────────────────────────────────────────────── */
+.model-title { font-size: clamp(12px, 1.2vw, 15px); font-weight: 600; margin-bottom: 5px; }
+.model-body  { font-size: clamp(10px, 0.9vw, 13px); color: var(--muted); line-height: 1.65; }
+
+/* ── DEMO BUTTONS ────────────────────────────────────────────── */
+.demo-btn {
+  display: inline-block;
+  border: 1.5px solid var(--blue);
+  color: var(--blue);
+  padding: clamp(10px, 1.2vh, 15px) clamp(20px, 2.5vw, 32px);
+  border-radius: 100px;
+  font-size: clamp(13px, 1.3vw, 17px);
+  font-weight: 500;
+  text-decoration: none;
+  font-family: 'DM Sans', sans-serif;
+}
+.btn-primary {
+  display: inline-block;
+  background: var(--amber);
+  color: #1a1000;
+  border: none;
+  padding: clamp(9px, 1.1vh, 13px) clamp(18px, 2vw, 28px);
+  border-radius: 100px;
+  font-size: clamp(12px, 1.2vw, 15px);
+  font-weight: 600;
+  text-decoration: none;
+  font-family: 'DM Sans', sans-serif;
+  box-shadow: 0 4px 16px rgba(232,169,74,0.3);
+}
+.btn-outline {
+  display: inline-block;
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: clamp(9px, 1.1vh, 13px) clamp(18px, 2vw, 28px);
+  border-radius: 100px;
+  font-size: clamp(12px, 1.2vw, 15px);
+  font-weight: 500;
+  text-decoration: none;
+  font-family: 'DM Sans', sans-serif;
+}
+
+/* ── TIMER ───────────────────────────────────────────────────── */
+.timer {
+  position: absolute;
+  bottom: clamp(10px, 1.2vh, 16px);
+  right: clamp(14px, 1.5vw, 20px);
+  font-size: clamp(8px, 0.7vw, 10px);
+  color: var(--faint);
+  letter-spacing: 1.5px;
+  font-weight: 600;
+}
+
+/* ── NAV DOTS (matches website) ──────────────────────────────── */
+#nav-dots {
+  position: fixed;
+  right: 18px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 100;
+}
+.nav-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--faint);
+  cursor: pointer;
+  border: none;
+  padding: 0;
+  transition: background .25s, transform .25s;
+}
+.nav-dot.active { background: var(--amber); transform: scale(1.5); }
+
+/* ── SLIDE NUMBER ────────────────────────────────────────────── */
+.slide-num {
+  position: absolute;
+  bottom: clamp(10px, 1.2vh, 16px);
+  left: clamp(14px, 1.5vw, 20px);
+  font-size: clamp(8px, 0.7vw, 10px);
+  color: var(--faint);
+  letter-spacing: 1px;
+  font-weight: 600;
+}
+</style>
+</head>
+<body>
+
+<!-- NAV DOTS -->
+<nav id="nav-dots">
+  <button class="nav-dot active" data-i="0"  title="Title"></button>
+  <button class="nav-dot"        data-i="1"  title="Contents"></button>
+  <button class="nav-dot"        data-i="2"  title="Problem"></button>
+  <button class="nav-dot"        data-i="3"  title="Pipeline"></button>
+  <button class="nav-dot"        data-i="4"  title="Demo"></button>
+  <button class="nav-dot"        data-i="5"  title="Transcription"></button>
+  <button class="nav-dot"        data-i="6"  title="Problem Formulation"></button>
+  <button class="nav-dot"        data-i="7"  title="CRF Architecture"></button>
+  <button class="nav-dot"        data-i="8"  title="CRF Results"></button>
+  <button class="nav-dot"        data-i="9"  title="Transformer Architecture"></button>
+  <button class="nav-dot"        data-i="10" title="Transformer Results"></button>
+  <button class="nav-dot"        data-i="11" title="Cycle of Fifths"></button>
+  <button class="nav-dot"        data-i="12" title="Attention Maps"></button>
+  <button class="nav-dot"        data-i="13" title="Arrangement"></button>
+  <button class="nav-dot"        data-i="14" title="Latency"></button>
+</nav>
+
+<!-- ═══════════════════════════════════════════════════════════
+     SLIDE 1  TITLE
+═══════════════════════════════════════════════════════════ -->
+<section class="slide slide-hero" id="s0">
+  <div class="hero-center">
+    <p class="eyebrow c-amber">Part IIB Project &nbsp;·&nbsp; University of Cambridge</p>
+    <div class="divider"></div>
+    <h1 class="hero-h1">
+      Harmonic Accompaniment<br>Recommendation with<br><em>Melody Tracking</em>
+    </h1>
+    <div class="divider"></div>
+    <p class="hero-sub">
+      A three stage real time pipeline that listens, infers harmony,
+      and generates a full band accompaniment.
+    </p>
+    <div class="hero-meta">
+      <span>Benedict Louie</span>
+      <span class="sep">|</span>
+      <span>Dr Jossy Sayir &amp; Mr James Cozens</span>
+      <span class="sep">|</span>
+      <span>Assessor: Prof Simon Godsill</span>
+    </div>
+  </div>
+  <div class="slide-num">1 / 15</div>
+  <div class="timer">0:08</div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════
+     SLIDE 2  CONTENTS
+═══════════════════════════════════════════════════════════ -->
+<section class="slide slide-surface" id="s-contents">
+  <div style="flex:1; display:flex; flex-direction:column; justify-content:center; max-width:700px; margin:0 auto; width:100%; gap:clamp(12px,2vh,22px);">
+    <p class="eyebrow c-amber">Agenda</p>
+    <div style="display:flex; flex-direction:column; gap:clamp(10px,1.8vh,20px);">
+      <div style="font-size:clamp(16px,1.8vw,26px);">Problem</div>
+      <div style="font-size:clamp(16px,1.8vw,26px);">Pipeline</div>
+      <div style="font-size:clamp(16px,1.8vw,26px);">Demo</div>
+      <div style="font-size:clamp(16px,1.8vw,26px);">Transcription</div>
+      <div style="font-size:clamp(16px,1.8vw,26px);">Chord Estimation: CRF or Transformer</div>
+      <div style="font-size:clamp(16px,1.8vw,26px);">Arrangement</div>
+      <div style="font-size:clamp(16px,1.8vw,26px);">Latency</div>
+    </div>
+  </div>
+  <div class="slide-num">2 / 15</div>
+  <div class="timer">0:08</div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════
+     SLIDE 3  PROBLEM
+═══════════════════════════════════════════════════════════ -->
+<section class="slide" id="s1">
+  <div class="hero-center" style="align-items:flex-start; text-align:left; gap:clamp(20px,3.5vh,40px); max-width:860px; margin:0 auto; width:100%;">
+    <p class="eyebrow c-amber">Motivation</p>
+    <p style="font-size:clamp(18px,2.2vw,30px); color:var(--text); line-height:1.5;">
+      Solo musicians need to practise with harmonic accompaniment.
+    </p>
+    <p style="font-size:clamp(18px,2.2vw,30px); color:var(--text); line-height:1.5;">
+      Current systems are not adaptive or end to end.
+    </p>
+    <p style="font-size:clamp(18px,2.1vw,28px); color:var(--amber); line-height:1.6; font-style:italic;">
+      "How can machine learning support live improvisation and make
+      harmonically rich music accessible to a wider range of users?"
+    </p>
+  </div>
+  <div class="slide-num">3 / 15</div>
+  <div class="timer">0:25</div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════
+     SLIDE 3  PIPELINE
+═══════════════════════════════════════════════════════════ -->
+<section class="slide slide-surface" id="s2">
+  <p class="eyebrow c-green">System Overview</p>
+  <h2 class="sh2">Three stage end to end real time pipeline</h2>
+  <div style="flex:1; display:flex; align-items:center; justify-content:center; min-height:0;">
+    <svg viewBox="0 0 1100 388" style="width:100%; max-height:75vh;" font-family="'DM Sans',sans-serif" preserveAspectRatio="xMidYMid meet">
+      <defs>
+        <marker id="pa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M0 0 L10 5 L0 10z" fill="#1a6fa8"/>
+        </marker>
+      </defs>
+      <rect x="380" y="10"  width="240" height="42" rx="8" fill="#ffffff" stroke="#ddd5c8" stroke-width="1.5"/>
+      <text x="500" y="36"  text-anchor="middle" fill="#1c1510" font-size="14">🎙 Microphone</text>
+      <line x1="500" y1="52"  x2="500" y2="70"  stroke="#1a6fa8" stroke-width="1.5" marker-end="url(#pa)"/>
+      <rect x="350" y="70"  width="300" height="50" rx="8" fill="#ffffff" stroke="#1a6fa8" stroke-width="1.5"/>
+      <text x="500" y="91"  text-anchor="middle" fill="#1c1510" font-size="14" font-weight="600">pYIN Transcription</text>
+      <text x="500" y="109" text-anchor="middle" fill="#1c1510" font-size="11">beat level pitch · voiced / unvoiced · 16th note grid</text>
+      <line x1="420" y1="120" x2="235" y2="168" stroke="#1a6fa8" stroke-width="1.5" marker-end="url(#pa)"/>
+      <line x1="580" y1="120" x2="765" y2="168" stroke="#1a6fa8" stroke-width="1.5" marker-end="url(#pa)"/>
+      <rect x="60"  y="168" width="350" height="58" rx="8" fill="#ffffff" stroke="#177a3e" stroke-width="1.5"/>
+      <text x="235" y="192" text-anchor="middle" fill="#1c1510" font-size="14" font-weight="600">Chord Inferrer</text>
+      <text x="235" y="212" text-anchor="middle" fill="#177a3e"  font-size="11">CRF or AR Transformer</text>
+      <rect x="690" y="168" width="350" height="58" rx="8" fill="#ffffff" stroke="#177a3e" stroke-width="1.5"/>
+      <text x="865" y="192" text-anchor="middle" fill="#1c1510" font-size="14" font-weight="600">k NN Loop Retrieval</text>
+      <text x="865" y="212" text-anchor="middle" fill="#177a3e"  font-size="11">LPD 5 groove index · 200k bars</text>
+      <line x1="235" y1="226" x2="415" y2="276" stroke="#1a6fa8" stroke-width="1.5" marker-end="url(#pa)"/>
+      <line x1="865" y1="226" x2="585" y2="276" stroke="#1a6fa8" stroke-width="1.5" marker-end="url(#pa)"/>
+      <rect x="320" y="276" width="360" height="50" rx="8" fill="#ffffff" stroke="#1a6fa8" stroke-width="1.5"/>
+      <text x="500" y="297" text-anchor="middle" fill="#1c1510" font-size="14" font-weight="600">Chord Snapping + Voice Leading</text>
+      <text x="500" y="315" text-anchor="middle" fill="#1c1510" font-size="11">transposes loop intervals to predicted chord</text>
+      <line x1="500" y1="326" x2="500" y2="344" stroke="#1a6fa8" stroke-width="1.5" marker-end="url(#pa)"/>
+      <rect x="360" y="344" width="280" height="36" rx="8" fill="#ffffff" stroke="#b06a08" stroke-width="1.5"/>
+      <text x="500" y="367" text-anchor="middle" fill="#b06a08" font-size="13" font-weight="600">MIDI Synthesiser Output</text>
+    </svg>
+  </div>
+  <div class="slide-num">4 / 15</div>
+  <div class="timer">0:30</div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════
+     SLIDE 4  DEMO
+═══════════════════════════════════════════════════════════ -->
+<section class="slide slide-demo" id="s3">
+  <div class="hero-center" style="gap:clamp(12px,1.6vh,22px);">
+    <p class="eyebrow c-amber">Live Demo</p>
+    <h1 class="hero-h1" style="font-size:clamp(30px,4vw,52px);">Try It Live</h1>
+    <a href="https://accompaniment-recommendation.vercel.app" target="_blank" class="demo-btn">
+      accompaniment-recommendation.vercel.app
+    </a>
+    <div style="display:flex; gap:14px; flex-wrap:wrap; justify-content:center;">
+      <a href="https://accompaniment-recommendation.vercel.app/piano"      target="_blank" class="btn-primary">🎹 Piano App</a>
+      <a href="https://accompaniment-recommendation.vercel.app/harmoniser" target="_blank" class="btn-outline">🎤 Harmoniser</a>
+    </div>
+  </div>
+  <div class="slide-num">5 / 15</div>
+  <div class="timer">2:00</div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════
+     SLIDE 5  TRANSCRIPTION
+═══════════════════════════════════════════════════════════ -->
+<section class="slide" id="s4">
+  <p class="eyebrow c-blue">Stage 1</p>
+  <h2 class="sh2" style="margin-bottom:clamp(14px,2.5vh,28px);">Transcription: pYIN Beat Level Pitch</h2>
+  <div class="g2" style="gap:clamp(20px,3vw,40px);">
+    <div style="display:flex; flex-direction:column; gap:clamp(14px,2vh,22px); justify-content:center;">
+      <div class="card" style="padding:clamp(18px,2.5vh,28px) clamp(18px,2vw,28px);">
+        <div class="feat-title" style="font-size:clamp(15px,1.5vw,20px); margin-bottom:8px;">Probabilistic YIN</div>
+        <div class="feat-body" style="font-size:clamp(13px,1.2vw,17px);">Beta CDF over threshold candidates. Viterbi smoothing gives a voiced pitch trajectory per frame.</div>
+      </div>
+      <div class="card" style="padding:clamp(18px,2.5vh,28px) clamp(18px,2vw,28px);">
+        <div class="feat-title" style="font-size:clamp(15px,1.5vw,20px); margin-bottom:8px;">Beat Segmentation</div>
+        <div class="feat-body" style="font-size:clamp(13px,1.2vw,17px);">Each beat split into four 16th note slots. Mode pitch per slot suppresses transient errors.</div>
+      </div>
+      <div class="card" style="padding:clamp(18px,2.5vh,28px) clamp(18px,2vw,28px);">
+        <div class="feat-title" style="font-size:clamp(15px,1.5vw,20px); margin-bottom:8px;">RMS Gate</div>
+        <div class="feat-body" style="font-size:clamp(13px,1.2vw,17px);">Frames below 0.01 RMS classified as silence before pYIN runs.</div>
+      </div>
+    </div>
+    <div style="display:flex; align-items:center; justify-content:center;">
+      <table class="rt" style="font-size:clamp(13px,1.3vw,18px);">
+        <tr><th style="padding:10px 18px;">Metric</th><th style="padding:10px 18px;">Mean</th></tr>
+        <tr><td style="padding:10px 18px;">Voicing F measure</td><td style="padding:10px 18px;">0.978</td></tr>
+        <tr><td style="padding:10px 18px;">Raw Pitch Accuracy</td><td style="padding:10px 18px;">0.517</td></tr>
+        <tr><td style="padding:10px 18px;">Raw Chroma Accuracy</td><td style="padding:10px 18px;">0.562</td></tr>
+        <tr><td style="padding:10px 18px;">Octave Error Rate</td><td style="padding:10px 18px;">0.046</td></tr>
+        <tr><td style="padding:10px 18px;">PC Histogram Cosine</td><td style="padding:10px 18px;" class="c-good">0.977</td></tr>
+      </table>
+    </div>
+  </div>
+  <div class="slide-num">6 / 15</div>
+  <div class="timer">0:30</div>
+</section>
+
+<!-- ═══ SLIDE 7  PROBLEM FORMULATION ═══ -->
+<section class="slide" id="s-form">
+  <div class="hero-center" style="gap:clamp(18px,3vh,36px);">
+    <p class="eyebrow c-blue">Chord Estimation</p>
+    <div style="
+      font-family: 'DM Serif Display', Georgia, serif;
+      font-size: clamp(44px, 7vw, 96px);
+      font-weight: 400;
+      line-height: 1;
+      color: var(--text);
+      letter-spacing: -1px;
+    ">
+      P(C<sub style="font-size:0.55em; vertical-align:-0.25em;">t</sub>
+      &thinsp;|&thinsp;
+      M<sub style="font-size:0.55em; vertical-align:-0.25em;">&lt;t</sub>)
+    </div>
+    <p style="font-size:clamp(14px,1.4vw,20px); color:var(--text); max-width:560px; text-align:center; line-height:1.7;">
+      Predict the chord at beat <em>t</em> from all melody observed so far.
+    </p>
+  </div>
+  <div class="slide-num">7 / 15</div>
+  <div class="timer">0:15</div>
+</section>
+
+<!-- ═══ SLIDE 8  CRF ARCHITECTURE + DATA REP ═══ -->
+<section class="slide slide-surface" id="s5">
+  <p class="eyebrow c-green">Stage 2 · Model A</p>
+  <h2 class="sh2">Conditional Random Field (CRF)</h2>
+  <div style="display:flex; gap:clamp(20px,3vw,40px); flex-shrink:0; margin-bottom:clamp(10px,1.5vh,18px);">
+    <div><span style="font-size:clamp(10px,0.9vw,12px); font-weight:700; text-transform:uppercase; letter-spacing:1.5px; color:var(--amber);">Input</span>&nbsp;&nbsp;<span style="font-size:clamp(13px,1.3vw,18px); font-family:'DM Serif Display',serif;">ℝ<sup style="font-size:0.65em;">13</sup></span></div>
+    <div><span style="font-size:clamp(10px,0.9vw,12px); font-weight:700; text-transform:uppercase; letter-spacing:1.5px; color:var(--green);">Output</span>&nbsp;&nbsp;<span style="font-size:clamp(13px,1.3vw,18px); font-family:'DM Serif Display',serif;">ℝ<sup style="font-size:0.65em;">25</sup></span></div>
+  </div>
+  <div style="flex:1; display:flex; align-items:center; justify-content:center; min-height:0;">
+    <svg viewBox="0 0 310 218" style="width:55%; max-height:68vh;" font-family="'DM Sans',sans-serif" preserveAspectRatio="xMidYMid meet">
+      <defs>
+        <marker id="ca" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="#1a6fa8"/></marker>
+        <marker id="cb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="#1c1510"/></marker>
+      </defs>
+      <text x="50"  y="12" text-anchor="middle" fill="#1a6fa8" font-size="9">M<tspan dy="3" font-size="6.5">b&#x2212;L&#x2212;1:b&#x2212;2</tspan></text>
+      <text x="155" y="12" text-anchor="middle" fill="#1a6fa8" font-size="9">M<tspan dy="3" font-size="6.5">b&#x2212;L:b&#x2212;1</tspan></text>
+      <text x="260" y="12" text-anchor="middle" fill="#1a6fa8" font-size="9">M<tspan dy="3" font-size="6.5">b&#x2212;L+1:b</tspan></text>
+      <line x1="50"  y1="17" x2="50"  y2="42" stroke="#1a6fa8" stroke-width="1.2" marker-end="url(#ca)"/>
+      <line x1="155" y1="17" x2="155" y2="42" stroke="#1a6fa8" stroke-width="1.2" marker-end="url(#ca)"/>
+      <line x1="260" y1="17" x2="260" y2="42" stroke="#1a6fa8" stroke-width="1.2" marker-end="url(#ca)"/>
+      <text x="58"  y="31" fill="#1a6fa8" font-size="9" font-style="italic">h</text>
+      <text x="163" y="31" fill="#1a6fa8" font-size="9" font-style="italic">h</text>
+      <text x="268" y="31" fill="#1a6fa8" font-size="9" font-style="italic">h</text>
+      <circle cx="50"  cy="68" r="24" fill="#ffffff" stroke="#177a3e" stroke-width="1.5"/>
+      <text x="50"  y="68" text-anchor="middle" fill="#1c1510" font-size="12">C<tspan fill="#177a3e" font-size="9" dy="4">b−1</tspan></text>
+      <circle cx="155" cy="68" r="24" fill="#ffffff" stroke="#177a3e" stroke-width="1.5"/>
+      <text x="155" y="68" text-anchor="middle" fill="#1c1510" font-size="12">C<tspan fill="#177a3e" font-size="9" dy="4">b</tspan></text>
+      <circle cx="260" cy="68" r="24" fill="#ffffff" stroke="#177a3e" stroke-width="1.5"/>
+      <text x="260" y="68" text-anchor="middle" fill="#1c1510" font-size="12">C<tspan fill="#177a3e" font-size="9" dy="4">b+1</tspan></text>
+      <line x1="74"  y1="68" x2="131" y2="68" stroke="#1a6fa8" stroke-width="1.4" marker-end="url(#ca)"/>
+      <line x1="179" y1="68" x2="236" y2="68" stroke="#1a6fa8" stroke-width="1.4" marker-end="url(#ca)"/>
+      <text x="103" y="61" text-anchor="middle" fill="#1a6fa8" font-size="10">f</text>
+      <text x="208" y="61" text-anchor="middle" fill="#1a6fa8" font-size="10">f</text>
+      <line x1="8"   y1="68" x2="26"  y2="68" stroke="#b8aa9a" stroke-width="1" stroke-dasharray="3,3"/>
+      <line x1="284" y1="68" x2="302" y2="68" stroke="#b8aa9a" stroke-width="1" stroke-dasharray="3,3"/>
+      <rect x="26"  y="148" width="48" height="28" rx="5" fill="#f7f4ef" stroke="#ddd5c8"/>
+      <text x="50"  y="164" text-anchor="middle" fill="#1c1510" font-size="10">M<tspan dy="3" font-size="7">b&#x2212;1</tspan></text>
+      <rect x="131" y="148" width="48" height="28" rx="5" fill="#f7f4ef" stroke="#ddd5c8"/>
+      <text x="155" y="164" text-anchor="middle" fill="#1c1510" font-size="10">M<tspan dy="3" font-size="7">b</tspan></text>
+      <rect x="236" y="148" width="48" height="28" rx="5" fill="#f7f4ef" stroke="#ddd5c8"/>
+      <text x="260" y="164" text-anchor="middle" fill="#1c1510" font-size="10">M<tspan dy="3" font-size="7">b+1</tspan></text>
+      <line x1="50"  y1="92" x2="50"  y2="148" stroke="#1c1510" stroke-width="1.2" marker-end="url(#cb)"/>
+      <line x1="155" y1="92" x2="155" y2="148" stroke="#1c1510" stroke-width="1.2" marker-end="url(#cb)"/>
+      <line x1="260" y1="92" x2="260" y2="148" stroke="#1c1510" stroke-width="1.2" marker-end="url(#cb)"/>
+      <text x="58"  y="123" fill="#1c1510" font-size="9">g</text>
+      <text x="163" y="123" fill="#1c1510" font-size="9">g</text>
+      <text x="268" y="123" fill="#1c1510" font-size="9">g</text>
+    </svg>
+  </div>
+  <div class="slide-num">8 / 15</div>
+  <div class="timer">0:50</div>
+</section>
+
+<!-- ═══ SLIDE 8  CRF RESULTS ═══ -->
+<section class="slide" id="s5b">
+  <p class="eyebrow c-green">Stage 2 · Model A · Results</p>
+  <h2 class="sh2">CRF Results</h2>
+  <div style="display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:clamp(10px,1.2vw,16px); flex:1; min-height:0;">
+    <div style="display:flex; align-items:center; justify-content:center; min-height:0; overflow:hidden;">
+      <table class="rt" style="font-size:clamp(11px,1.1vw,15px);">
+        <tr><th style="padding:8px 12px;">Metric</th><th style="padding:8px 12px;">Train</th><th style="padding:8px 12px;">Test</th></tr>
+        <tr><td style="padding:8px 12px;">Top 1 Accuracy</td><td style="padding:8px 12px;">28.23%</td><td style="padding:8px 12px;">25.56%</td></tr>
+        <tr><td style="padding:8px 12px;">Norm Cycle of Fifths Dist</td><td style="padding:8px 12px;">0.825</td><td style="padding:8px 12px;" class="c-good">0.849</td></tr>
+      </table>
+    </div>
+    <div class="img-box"><img src="figures/crf_accuracy.png" alt="CRF accuracy"/></div>
+    <div class="img-box"><img src="figures/transition_matrix.png" alt="Transition matrix"/></div>
+    <div class="img-box"><img src="figures/small_model.png" alt="Emission model"/></div>
+  </div>
+  <div class="slide-num">9 / 15</div>
+  <div class="timer">0:50</div>
+</section>
+
+<!-- ═══ SLIDE 9  TRANSFORMER ARCHITECTURE + DATA REP ═══ -->
+<section class="slide" id="s6">
+  <p class="eyebrow c-blue">Stage 2 · Model B</p>
+  <h2 class="sh2">Autoregressive Transformer</h2>
+  <div style="display:flex; gap:clamp(20px,3vw,40px); flex-shrink:0; margin-bottom:clamp(10px,1.5vh,18px);">
+    <div><span style="font-size:clamp(10px,0.9vw,12px); font-weight:700; text-transform:uppercase; letter-spacing:1.5px; color:var(--amber);">Input</span>&nbsp;&nbsp;<span style="font-size:clamp(13px,1.3vw,18px); font-family:'DM Serif Display',serif;">ℝ<sup style="font-size:0.65em;">32×5</sup></span></div>
+    <div><span style="font-size:clamp(10px,0.9vw,12px); font-weight:700; text-transform:uppercase; letter-spacing:1.5px; color:var(--green);">Output</span>&nbsp;&nbsp;<span style="font-size:clamp(13px,1.3vw,18px); font-family:'DM Serif Display',serif;">ℝ<sup style="font-size:0.65em;">33×169</sup></span></div>
+  </div>
+  <div style="flex:1; display:flex; align-items:center; justify-content:center; min-height:0;">
+    <svg viewBox="0 0 1100 390" style="width:100%; max-height:78vh;" font-family="'DM Sans',sans-serif" font-size="11.5" preserveAspectRatio="xMidYMid meet">
+      <defs>
+        <marker id="ta" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="#1a6fa8"/></marker>
+        <marker id="tg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="#177a3e"/></marker>
+      </defs>
+      <!-- ENCODER -->
+      <text x="230" y="18" text-anchor="middle" fill="#1a6fa8" font-size="13" font-weight="600">ENCODER</text>
+      <rect x="80"  y="24"  width="300" height="32" rx="6" fill="#ffffff" stroke="#ddd5c8"/>
+      <text x="230" y="45"  text-anchor="middle" fill="#1c1510">Melody context X &nbsp; 32×5</text>
+      <line x1="230" y1="56"  x2="230" y2="70"  stroke="#1a6fa8" stroke-width="1.3" marker-end="url(#ta)"/>
+      <rect x="80"  y="70"  width="300" height="32" rx="6" fill="#ffffff" stroke="#1a6fa8"/>
+      <text x="230" y="91"  text-anchor="middle" fill="#1c1510">Feature Proj + Positional Enc</text>
+      <line x1="230" y1="102" x2="230" y2="118" stroke="#1a6fa8" stroke-width="1.3" marker-end="url(#ta)"/>
+      <rect x="74"  y="118" width="312" height="108" rx="6" fill="none" stroke="#ddd5c8" stroke-dasharray="4,3"/>
+      <text x="392" y="134" fill="#b8aa9a" font-size="10">×6</text>
+      <rect x="84"  y="124" width="292" height="30" rx="5" fill="#ffffff" stroke="#1a6fa8"/>
+      <text x="230" y="143" text-anchor="middle" fill="#1c1510">Multi Head Self Attention</text>
+      <line x1="230" y1="154" x2="230" y2="168" stroke="#1a6fa8" stroke-width="1.3" marker-end="url(#ta)"/>
+      <rect x="84"  y="168" width="292" height="30" rx="5" fill="#ffffff" stroke="#1a6fa8"/>
+      <text x="230" y="187" text-anchor="middle" fill="#1c1510">Feed Forward · Add &amp; Norm</text>
+      <line x1="230" y1="226" x2="230" y2="242" stroke="#1a6fa8" stroke-width="1.3" marker-end="url(#ta)"/>
+      <rect x="110" y="242" width="240" height="36" rx="6" fill="#edeae3" stroke="#177a3e" stroke-width="1.5"/>
+      <text x="230" y="265" text-anchor="middle" fill="#177a3e" font-weight="600">Memory Z &nbsp; 32×128</text>
+      <!-- DECODER -->
+      <text x="870" y="18" text-anchor="middle" fill="#1a6fa8" font-size="13" font-weight="600">DECODER</text>
+      <rect x="720" y="24"  width="300" height="32" rx="6" fill="#ffffff" stroke="#ddd5c8"/>
+      <text x="870" y="45"  text-anchor="middle" fill="#1c1510">Previous chord token</text>
+      <line x1="870" y1="56"  x2="870" y2="70"  stroke="#1a6fa8" stroke-width="1.3" marker-end="url(#ta)"/>
+      <rect x="720" y="70"  width="300" height="32" rx="6" fill="#ffffff" stroke="#1a6fa8"/>
+      <text x="870" y="91"  text-anchor="middle" fill="#1c1510">Chord Embedding &nbsp; 169×128</text>
+      <line x1="870" y1="102" x2="870" y2="118" stroke="#1a6fa8" stroke-width="1.3" marker-end="url(#ta)"/>
+      <rect x="714" y="118" width="312" height="142" rx="6" fill="none" stroke="#ddd5c8" stroke-dasharray="4,3"/>
+      <text x="1032" y="134" fill="#b8aa9a" font-size="10">×6</text>
+      <rect x="724" y="124" width="292" height="28" rx="5" fill="#ffffff" stroke="#1a6fa8"/>
+      <text x="870" y="142" text-anchor="middle" fill="#1c1510">Masked Self Attention</text>
+      <line x1="870" y1="152" x2="870" y2="166" stroke="#1a6fa8" stroke-width="1.3" marker-end="url(#ta)"/>
+      <rect x="724" y="166" width="292" height="28" rx="5" fill="#edeae3" stroke="#177a3e" stroke-width="1.5"/>
+      <text x="870" y="184" text-anchor="middle" fill="#177a3e">Cross Attention ← Z</text>
+      <line x1="870" y1="194" x2="870" y2="208" stroke="#1a6fa8" stroke-width="1.3" marker-end="url(#ta)"/>
+      <rect x="724" y="208" width="292" height="28" rx="5" fill="#ffffff" stroke="#1a6fa8"/>
+      <text x="870" y="226" text-anchor="middle" fill="#1c1510">Feed Forward · Add &amp; Norm</text>
+      <path d="M350 260 Q560 330 724 184" fill="none" stroke="#177a3e" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#tg)"/>
+      <line x1="870" y1="260" x2="870" y2="276" stroke="#1a6fa8" stroke-width="1.3" marker-end="url(#ta)"/>
+      <rect x="720" y="276" width="300" height="36" rx="6" fill="#edeae3" stroke="#177a3e" stroke-width="1.5"/>
+      <text x="870" y="299" text-anchor="middle" fill="#177a3e" font-weight="600">Chord logits · 169 classes</text>
+    </svg>
+  </div>
+  <div class="slide-num">10 / 15</div>
+  <div class="timer">1:00</div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════
+     SLIDE 8  TRANSFORMER RESULTS
+═══════════════════════════════════════════════════════════ -->
+<section class="slide slide-surface" id="s7">
+  <p class="eyebrow c-blue">Stage 2 · Model B · Results</p>
+  <h2 class="sh2">Transformer Chord Inference Results</h2>
+  <div class="g2" style="gap:clamp(20px,3vw,40px);">
+    <div style="display:flex; align-items:center; justify-content:center; min-height:0; overflow:hidden;">
+      <table class="rt" style="font-size:clamp(14px,1.5vw,20px);">
+        <tr><th style="padding:12px 22px;">Metric</th><th style="padding:12px 22px;">Train</th><th style="padding:12px 22px;">Test</th></tr>
+        <tr><td style="padding:12px 22px;">Top 1 Accuracy</td><td style="padding:12px 22px;">27.36%</td><td style="padding:12px 22px;">15.50%</td></tr>
+        <tr><td style="padding:12px 22px;">Norm Emb Distance</td><td style="padding:12px 22px;">0.509</td><td style="padding:12px 22px;" class="c-good">0.763</td></tr>
+      </table>
+    </div>
+    <div class="img-box">
+      <img src="figures/transformer_loss.png" alt="Transformer training and test loss"/>
+    </div>
+  </div>
+  <div class="slide-num">11 / 15</div>
+  <div class="timer">0:50</div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════
+     SLIDE 9  EMERGENT CYCLE OF FIFTHS
+═══════════════════════════════════════════════════════════ -->
+<section class="slide" id="s8">
+  <p class="eyebrow c-amber">Key Finding</p>
+  <h2 class="sh2">Emergent Cycle of Fifths</h2>
+  <div class="g2">
+    <div class="img-box">
+      <img src="figures/transformer_pca.png" alt="Transformer PCA"/>
+    </div>
+    <div class="img-box">
+      <img src="figures/transformer_pca_pc23.png" alt="PCA PC2 PC3"/>
+    </div>
+  </div>
+  <div class="slide-num">12 / 15</div>
+  <div class="timer">1:00</div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════
+     SLIDE 10  ATTENTION MAPS
+═══════════════════════════════════════════════════════════ -->
+<section class="slide slide-surface" id="s9">
+  <p class="eyebrow c-blue">Stage 2 · Interpretability</p>
+  <h2 class="sh2">Attention Maps</h2>
+  <div class="g22">
+    <div class="img-box">
+      <img src="figures/attn_enc_all.png" alt="Encoder self attention"/>
+    </div>
+    <div class="img-box">
+      <img src="figures/attn_dec_all.png" alt="Decoder self attention"/>
+    </div>
+    <div class="img-box">
+      <img src="figures/attn_cross_all.png" alt="Cross attention raw"/>
+    </div>
+    <div class="img-box">
+      <img src="figures/attn_cross_dc.png" alt="Cross attention debiased"/>
+    </div>
+  </div>
+  <div class="slide-num">13 / 15</div>
+  <div class="timer">0:35</div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════
+     SLIDE 11  ARRANGEMENT
+═══════════════════════════════════════════════════════════ -->
+<section class="slide" id="s10">
+  <p class="eyebrow c-green">Stage 3</p>
+  <h2 class="sh2">Groove Retrieval and Chord Snapping</h2>
+  <div class="g2">
+    <div class="img-box">
+      <img src="figures/groove_pca.png" alt="Groove feature PCA"/>
+    </div>
+    <div class="img-box">
+      <img src="figures/chord_snapping_example.png" alt="Chord snapping I V vi IV"/>
+    </div>
+  </div>
+  <div class="slide-num">14 / 15</div>
+  <div class="timer">0:30</div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════
+     SLIDE 12  LATENCY
+═══════════════════════════════════════════════════════════ -->
+<section class="slide slide-surface" id="s11">
+  <p class="eyebrow c-amber">End to End Latency</p>
+  <h2 class="sh2">Real Time Latency</h2>
+  <!-- Prediction timing diagram -->
+  <div style="flex:0 0 auto; display:flex; justify-content:center; margin-bottom:clamp(8px,1.2vh,14px);">
+    <svg viewBox="0 -14 820 154" style="width:100%; max-height:200px; font-family:'DM Sans',sans-serif; display:block;">
+      <defs>
+        <marker id="arr"  markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#b06a08"/></marker>
+      </defs>
+
+      <!-- row labels -->
+      <text x="4"  y="38" font-size="11" fill="#1c1510" font-weight="600">Musician</text>
+      <text x="4"  y="100" font-size="11" fill="#1c1510" font-weight="600">System</text>
+
+      <!-- "1 beat (4 × 16th note)" bracket -->
+      <line x1="90" y1="8" x2="450" y2="8" stroke="#1a6fa8" stroke-width="1.2"/>
+      <line x1="90"  y1="5" x2="90"  y2="12" stroke="#1a6fa8" stroke-width="1.2"/>
+      <line x1="450" y1="5" x2="450" y2="12" stroke="#1a6fa8" stroke-width="1.2"/>
+      <text x="270" y="7" font-size="10" text-anchor="middle" fill="#1a6fa8" dominant-baseline="text-after-edge">1 beat  (4 × 16th note)</text>
+
+      <!-- 16th note boxes — 90px wide each, 8px gap -->
+      <rect x="90"  y="14" width="86" height="30" rx="4" fill="#dde8f5" stroke="#1a6fa8" stroke-width="1.5"/>
+      <text x="133" y="24" font-size="9" text-anchor="middle" fill="#6699bb">16th note</text>
+      <text x="133" y="37" font-size="11" text-anchor="middle" fill="#1a6fa8" font-weight="700">1</text>
+
+      <rect x="182" y="14" width="86" height="30" rx="4" fill="#dde8f5" stroke="#1a6fa8" stroke-width="1.5"/>
+      <text x="225" y="24" font-size="9" text-anchor="middle" fill="#6699bb">16th note</text>
+      <text x="225" y="37" font-size="11" text-anchor="middle" fill="#1a6fa8" font-weight="700">2</text>
+
+      <rect x="274" y="14" width="86" height="30" rx="4" fill="#dde8f5" stroke="#1a6fa8" stroke-width="1.5"/>
+      <text x="317" y="24" font-size="9" text-anchor="middle" fill="#6699bb">16th note</text>
+      <text x="317" y="37" font-size="11" text-anchor="middle" fill="#1a6fa8" font-weight="700">3</text>
+
+      <rect x="366" y="14" width="86" height="30" rx="4" fill="#dde8f5" stroke="#1a6fa8" stroke-width="1.5"/>
+      <text x="409" y="24" font-size="9" text-anchor="middle" fill="#6699bb">16th note</text>
+      <text x="409" y="37" font-size="11" text-anchor="middle" fill="#1a6fa8" font-weight="700">4</text>
+
+      <!-- next beat faded -->
+      <rect x="458" y="14" width="100" height="30" rx="4" fill="#f0ece6" stroke="#b8aa9a" stroke-width="1.4" stroke-dasharray="5,3"/>
+      <text x="508" y="33" font-size="10" text-anchor="middle" fill="#b8aa9a">next beat…</text>
+
+      <!-- sync boundary -->
+      <line x1="452" y1="5" x2="452" y2="138" stroke="#177a3e" stroke-width="1.6" stroke-dasharray="6,3"/>
+      <text x="455" y="54" font-size="9.5" fill="#177a3e" font-weight="600">sync</text>
+      <text x="455" y="65" font-size="9.5" fill="#177a3e" font-weight="600">point</text>
+
+      <!-- prediction window — reads only 1.5 × 16th notes -->
+      <rect x="90" y="76" width="129" height="30" rx="4" fill="#fdf0dd" stroke="#b06a08" stroke-width="1.5"/>
+      <text x="155" y="88" font-size="9"  text-anchor="middle" fill="#c07a20">reads some 16th notes</text>
+      <text x="155" y="100" font-size="10" text-anchor="middle" fill="#b06a08" font-weight="600">predict chord</text>
+
+      <!-- output-ready arrow to sync point -->
+      <line x1="219" y1="91" x2="447" y2="91" stroke="#b06a08" stroke-width="1.8" marker-end="url(#arr)"/>
+      <text x="333" y="85" font-size="9" fill="#b06a08" text-anchor="middle">runtime</text>
+
+      <!-- harmoniser plays box -->
+      <rect x="456" y="76" width="110" height="30" rx="4" fill="#d4edd9" stroke="#177a3e" stroke-width="1.5"/>
+      <text x="511" y="88"  font-size="9"  text-anchor="middle" fill="#177a3e">harmoniser</text>
+      <text x="511" y="100" font-size="10" text-anchor="middle" fill="#177a3e" font-weight="700">plays in sync</text>
+
+
+    </svg>
+  </div>
+
+  <div class="img-box" style="flex:1;">
+    <img src="figures/latency_extension.png" alt="Latency extension plot"
+         style="max-width:860px; margin:0 auto;"/>
+  </div>
+  <div class="slide-num">15 / 15</div>
+  <div class="timer">0:25</div>
+</section>
+
+<script>
+const slides = Array.from(document.querySelectorAll('.slide'));
+const dots   = Array.from(document.querySelectorAll('.nav-dot'));
+
+/* scroll to slide */
+function goTo(i) {
+  if (i < 0 || i >= slides.length) return;
+  slides[i].scrollIntoView({ behavior: 'smooth' });
+}
+
+/* dot click */
+dots.forEach(d => d.addEventListener('click', () => goTo(+d.dataset.i)));
+
+/* keyboard */
+let cur = 0;
+document.addEventListener('keydown', e => {
+  if (['ArrowRight','ArrowDown','Space',' '].includes(e.key)) { e.preventDefault(); goTo(cur + 1); }
+  if (['ArrowLeft', 'ArrowUp'].includes(e.key))              { e.preventDefault(); goTo(cur - 1); }
+});
+
+/* ── COUNTDOWN TIMER ── */
+let timerInterval = null;
+
+function parseSeconds(text) {
+  const [m, s] = text.trim().split(':').map(Number);
+  return m * 60 + s;
+}
+
+function fmt(secs) {
+  const m = Math.floor(secs / 60);
+  const s = secs % 60;
+  return m + ':' + String(s).padStart(2, '0');
+}
+
+function startTimer(slide) {
+  const el = slide.querySelector('.timer');
+  if (!el) return;
+
+  if (!el.dataset.allotted) el.dataset.allotted = el.textContent.trim();
+
+  clearInterval(timerInterval);
+  el.style.color = '';
+  el.style.animation = '';
+
+  let remaining = parseSeconds(el.dataset.allotted);
+  el.textContent = fmt(remaining);
+
+  timerInterval = setInterval(() => {
+    remaining--;
+    if (remaining >= 0) {
+      el.textContent = fmt(remaining);
+      el.style.color = '';
+      el.style.animation = '';
+    } else {
+      /* over time: count up showing how far over, red + flash */
+      el.textContent = '+' + fmt(-remaining);
+      el.style.color = '#e03030';
+      el.style.animation = 'timerFlash 0.8s ease-in-out infinite';
+    }
+  }, 1000);
+}
+
+/* active dot + timer via IntersectionObserver */
+const obs = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      cur = slides.indexOf(e.target);
+      dots.forEach((d, i) => d.classList.toggle('active', i === cur));
+      startTimer(e.target);
+    }
+  });
+}, { threshold: 0.5 });
+
+slides.forEach(s => obs.observe(s));
+
+/* ── CLICK IMAGE TO OPEN IN NEW TAB ── */
+document.querySelectorAll('.img-box img').forEach(img => {
+  img.style.cursor = 'pointer';
+  img.addEventListener('click', () => window.open(img.src, '_blank'));
+});
+</script>
+</body>
+</html>

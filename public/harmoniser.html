@@ -267,7 +267,8 @@ let stepBuffer = [];   // accumulates notes since last beat fired
 // FIX 5: loops returned by API at bar-start are used for accompaniment
 let currentLoops = null;   // { guitar, piano, bass, drums } — arrays from API
 let pendingLoops = null;   // next bar's loops (mirrors piano.html pendingLoops pattern)
-let prevVoicing  = { guitar: null, piano: null, bass: null };
+let prevVoicing   = { guitar: null, piano: null, bass: null };
+let prevStepNotes = { guitar: new Set(), piano: new Set(), bass: new Set() };
 
 // Soundfont players (sf, sfReady, loadSoundfonts, updateSfStatus) → shared.js
 
@@ -812,28 +813,50 @@ function playInstrumentBeat(chordName, loop, beatInBar, instrument, startTime) {
   const stepDuration = beatDuration / STEPS_PER_BEAT;
   const startStep    = beatInBar * STEPS_PER_BEAT;
 
+  // Pre-compute notes for every sub-step so we can look ahead for run lengths
+  const stepNotes = [];
+  for (let sub = 0; sub < STEPS_PER_BEAT; sub++) {
+    const step = startStep + sub;
+    const notesNow = new Set();
+    if (step < loop.length) {
+      for (const interval of loop[step]) {
+        if (interval < 0) continue;
+        const target = chord[0] + interval;
+        const midi   = snapToChord(target, chord, VOICE_RANGES[instrument]);
+        if (midi !== null) notesNow.add(midi);
+      }
+    }
+    stepNotes.push(notesNow);
+  }
+
+  const sfDurFactor = { guitar: 1.8, piano: 1.4, bass: 2.2 }[instrument];
+  const sfGain      = { guitar: 0.7, piano: 2.2, bass: 0.9 }[instrument];
+
   for (let sub = 0; sub < STEPS_PER_BEAT; sub++) {
     const step = startStep + sub;
     if (step >= loop.length) break;
 
     const stepStart = startTime + sub * stepDuration;
-    const notesNow  = new Set();
+    const notesNow  = stepNotes[sub];
+    const prevNotes = sub === 0 ? prevStepNotes[instrument] : stepNotes[sub - 1];
 
-    for (const interval of loop[step]) {
-      if (interval < 0) continue;                        // -1 = silence
-      const target = chord[0] + interval;
-      const midi   = snapToChord(target, chord, VOICE_RANGES[instrument]);
-      if (midi !== null) notesNow.add(midi);
-    }
-
-    // Use soundfont if loaded; fall back to Web Audio oscillator while loading
-    const sfDur  = stepDuration * { guitar: 1.8, piano: 1.4, bass: 2.2 }[instrument];
-    const sfGain = { guitar: 1.4, piano: 1.2, bass: 1.8 }[instrument];
     notesNow.forEach(midi => {
+      if (prevNotes.has(midi)) return; // already sounding — skip re-attack
+
+      // Extend duration to cover consecutive steps with the same note
+      let runSteps = 1;
+      for (let k = sub + 1; k < STEPS_PER_BEAT; k++) {
+        if (stepNotes[k].has(midi)) runSteps++;
+        else break;
+      }
+
+      const sfDur = stepDuration * runSteps * sfDurFactor;
       if (sf[instrument]) sfPlay(instrument, midi, stepStart, sfDur, sfGain);
-      else                playNote(midi, instrument, stepStart, stepDuration);
+      else                playNote(midi, instrument, stepStart, stepDuration * runSteps);
     });
   }
+
+  prevStepNotes[instrument] = stepNotes[STEPS_PER_BEAT - 1] ?? new Set();
 }
 
 // Play all harmonic instruments + drums for the current beat
@@ -938,7 +961,7 @@ function _noiseNode(duration, filtType, filtFreq, filtQ, gainVal, t) {
 
 function playDrumNote(group, velocity, t) {
   if (!audioContext || !masterGain) return;
-  const vel = (velocity / 127) * 0.9;
+  const vel = (velocity / 127) * 0.45;
   const pt  = Math.max(audioContext.currentTime + 0.003, t);
 
   if (group === 'kick') {
@@ -1147,6 +1170,7 @@ function stopMic() {
   currentLoops   = null;
   pendingLoops   = null;
   prevVoicing    = { guitar: null, piano: null, bass: null };
+  prevStepNotes  = { guitar: new Set(), piano: new Set(), bass: new Set() };
   stepBuffer     = [];
   beatHistory    = '';
   prevDrumLoop   = '';

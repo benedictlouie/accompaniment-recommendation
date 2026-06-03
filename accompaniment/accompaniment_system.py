@@ -299,7 +299,7 @@ class HarmonyPlayer:
         chord = list(CHORD_TO_TETRAD[chord_name])  # copy so we don't mutate the dict
 
         channel = {"guitar":0, "piano":1, "bass":2}[instrument]
-        velocity = {"guitar":85, "piano":100, "bass":127}[instrument]
+        velocity = {"guitar":60, "piano":120, "bass":80}[instrument]
 
         if instrument == "piano":
             chord = self.extend_chord(chord_name)
