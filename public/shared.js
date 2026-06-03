@@ -11,11 +11,12 @@
 // CONSTANTS  (mirrors utils/constants.py)
 // =============================================================
 
-const ROOTS          = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
-const BASE_OCTAVE    = 36;   // C2 — matches Python CHORD_TO_TETRAD
-const API_BASE       = '/api';
-const BEATS_PER_BAR  = 4;
-const STEPS_PER_BEAT = 4;    // MELODY_NOTES_PER_BEAT
+const ROOTS                = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+const BASE_OCTAVE          = 36;   // C2 — matches Python CHORD_TO_TETRAD
+const API_BASE             = '/api';
+const BEATS_PER_BAR        = 4;
+const STEPS_PER_BEAT       = 4;    // MELODY_NOTES_PER_BEAT
+const LATENCY_COMPENSATION = 3;    // 16th-note steps to fire AR prediction early (0.75 of a beat)
 
 // Interval offsets per quality (mirrors Python CHORD_TO_TETRAD / QUALITIES_ALL).
 // Used by piano.html (chordMidis) and harmoniser.html (CHORD_TETRAD).

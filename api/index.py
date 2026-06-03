@@ -278,6 +278,28 @@ def predict_chord():
 
     # ── Transformer engine branch (default) ───────────────────────────────────
     history  = _decode_history(history_b64)
+
+    # Early-fire peek: predict using history[-29:] + 3 copies of row 29 (strong_flag=0).
+    # Does NOT update history — client calls again at the beat boundary for that.
+    early_fire   = bool(data.get("early_fire", False))
+    latency_comp = int(data.get("latency_compensation", 0))
+    if early_fire and latency_comp > 0:
+        if len(history) == 0:
+            empty_row = np.concatenate([np.zeros(1), -np.ones(STEPS_PER_BEAT)]).astype(np.float32)
+            history = np.tile(empty_row, MEMORY).reshape(MEMORY, INPUT_DIM)
+        n_real   = max(0, MEMORY - latency_comp)
+        real     = history[-n_real:]
+        last_row = real[-1].copy() if len(real) > 0 else np.concatenate([np.zeros(1), -np.ones(STEPS_PER_BEAT)]).astype(np.float32)
+        last_row[0] = 0.0  # clear downbeat flag for padding rows
+        padding  = np.tile(last_row, latency_comp).reshape(latency_comp, INPUT_DIM)
+        peek_h   = np.vstack([real, padding]) if len(real) > 0 else padding
+        chord    = "N"
+        try:
+            chord = _engine().predict(peek_h.astype(np.float32))
+        except Exception:
+            traceback.print_exc()
+        return jsonify({"chord": chord})
+
     new_beat = _build_beat(notes_played, beat_start, step_dur, beat_index)
 
     if len(history) == 0:
