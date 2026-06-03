@@ -251,9 +251,12 @@ let lastNote       = '–';
 
 // FIX 2: history round-trip — API is stateless, history is base64-encoded
 // and must be sent back each call so the engine has context.
-let beatHistory   = '';
-let prevDrumLoop  = '';  // base64 drum loop round-tripped for quality fallback
-let apiCallId     = 0;   // incremented each beat; stale responses are dropped
+let beatHistory    = '';
+let prevDrumLoop   = '';  // base64 drum loop round-tripped for quality fallback
+let apiCallId      = 0;   // incremented each beat; stale responses are dropped
+
+let pendingArChord = null;   // chord pre-computed by AR early-fire
+let earlyApiCallId = 0;      // prevents stale early-fire responses
 
 // Python: beat_audio_buffer fills between beat N-1 and beat N firing, then
 // capture_beat_4_16ths() reads it and CLEARS it.  We mirror this with one buffer:
@@ -467,8 +470,30 @@ function loop() {
       }
     });
 
-    if (processedNotes.length > 0) {
-      predictChordFromAPI(processedNotes, prevBeatStart, prevBeat, beatFireMs);
+    if (selectedEngine === 'transformer') {
+      // Apply early-predicted chord before playLoopBeat uses predictedChord
+      if (pendingArChord !== null) {
+        predictedChord = pendingArChord;
+        document.getElementById('chord-display').textContent = pendingArChord;
+        pendingArChord = null;
+      }
+      // Update history without logging chord (early fire already handled that)
+      if (processedNotes.length > 0) {
+        predictChordFromAPI(processedNotes, prevBeatStart, prevBeat, beatFireMs, true);
+      }
+      // Schedule early fire for the next beat from the actual beat time
+      const _nextBeatTime = beatStart + beatDuration;
+      const _nextBeat     = currentBeat;   // before advance = what next beat's prevBeat will be
+      const earlyDelay    = Math.max(0, (beatDuration - LATENCY_COMPENSATION * stepDuration) * 1000);
+      setTimeout(() => {
+        if (selectedEngine === 'transformer' && running) {
+          predictChordEarlyAR(_nextBeat, _nextBeatTime, beatDuration, performance.now());
+        }
+      }, earlyDelay);
+    } else {
+      if (processedNotes.length > 0) {
+        predictChordFromAPI(processedNotes, prevBeatStart, prevBeat, beatFireMs);
+      }
     }
 
     // 0-indexed position within the bar: beat 1 → 0, beat 2 → 1, …, beat 4 → 3.
@@ -551,7 +576,40 @@ function loop() {
 // CHORD PREDICTION  (stateless API — history round-tripped as base64)
 // =============================================================
 
-async function predictChordFromAPI(notes, beatStart, beatIndex, beatFireMs = performance.now()) {
+async function predictChordEarlyAR(beat, beatTime, beatDur, beatFireMs) {
+  const callId = ++earlyApiCallId;
+  try {
+    const fetchStart = performance.now();
+    const res = await fetch(`${API_BASE}/predict-chord`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        notes: [],
+        beat_start:           beatTime - beatDur,
+        beat_index:           beat,
+        tempo,
+        engine:               'transformer',
+        history:              beatHistory,
+        prev_drum_loop:       prevDrumLoop,
+        early_fire:           true,
+        latency_compensation: LATENCY_COMPENSATION,
+      }),
+    });
+    const data = await res.json();
+    const serverMs = (performance.now() - fetchStart).toFixed(0);
+    const totalMs  = (performance.now() - beatFireMs).toFixed(0);
+
+    if (callId !== earlyApiCallId) return;
+
+    if (data.chord) {
+      pendingArChord = data.chord;
+      predictedChord = data.chord;
+      document.getElementById('chord-display').textContent = data.chord;
+      console.log(`[CHORD] beat=${beat}  chord=${data.chord}  total=${totalMs}ms  server=${serverMs}ms`);
+    }
+  } catch (e) {}
+}
+
+async function predictChordFromAPI(notes, beatStart, beatIndex, beatFireMs = performance.now(), historyOnly = false) {
   const callId = ++apiCallId;
   try {
     const body = {
@@ -601,7 +659,7 @@ async function predictChordFromAPI(notes, beatStart, beatIndex, beatFireMs = per
       }
     } else {
       if (data.history) beatHistory = data.history;
-      if (data.chord) {
+      if (!historyOnly && data.chord) {
         predictedChord = data.chord;
         console.log(`[CHORD] beat=${beatIndex}  chord=${data.chord}  total=${(performance.now()-beatFireMs).toFixed(0)}ms  (pre-fetch=${preMs}ms  server=${serverMs}ms)`);
         document.getElementById('chord-display').textContent = data.chord;
@@ -1093,6 +1151,8 @@ function stopMic() {
   beatHistory    = '';
   prevDrumLoop   = '';
   apiCallId      = 0;
+  earlyApiCallId = 0;
+  pendingArChord = null;
   predictedChord = '–';
   lastNote       = '–';
   currentBeat    = 1;
@@ -1173,13 +1233,14 @@ async function checkAPI() {
 
 // FIX 6: reset ALL local state, not just the server-side history
 async function resetEngineHistory() {
-  beatHistory  = '';
+  beatHistory    = '';
   resetCRFState();
-  prevDrumLoop = '';
-  currentLoops = null;
-  pendingLoops = null;
-  prevVoicing  = { guitar: null, piano: null, bass: null };
-  stepBuffer = [];
+  prevDrumLoop   = '';
+  currentLoops   = null;
+  pendingLoops   = null;
+  prevVoicing    = { guitar: null, piano: null, bass: null };
+  stepBuffer     = [];
+  pendingArChord = null;
   try {
     const res = await fetch(`${API_BASE}/reset`, {
       method: 'POST',

@@ -69,4 +69,19 @@ class BaseChordEngine(ABC):
         grid = -np.ones(INPUT_DIM)
         grid[0] = 0
         return grid
+
+    def _padded_history_for_early(self, compensation: int) -> np.ndarray:
+        """history[-29:] + `compensation` copies of last row (strong_flag cleared)."""
+        if len(self.history) == 0:
+            return np.tile(self._empty_beat(), MEMORY).reshape(MEMORY, INPUT_DIM)
+        n_real  = max(0, MEMORY - compensation)
+        real    = self.history[-n_real:] if len(self.history) >= n_real else self.history
+        last    = real[-1].copy()
+        last[0] = 0.0   # clear downbeat flag for padding rows
+        padding = np.tile(last, compensation).reshape(compensation, INPUT_DIM)
+        out     = np.vstack([real, padding]) if len(real) > 0 else padding
+        if len(out) < MEMORY:
+            front = np.tile(self._empty_beat(), MEMORY - len(out)).reshape(MEMORY - len(out), INPUT_DIM)
+            out = np.vstack([front, out])
+        return out[-MEMORY:]
     

@@ -69,14 +69,24 @@ class ONNXChordEngine(_Base):
     """
 
     def __init__(self, tempo):
+        import threading
         super().__init__(tempo)
         self._onnx = ONNXTransformerEngine()
+        self._lock = threading.Lock()
 
     def reset(self):
         self.history = np.zeros((0, INPUT_DIM))
 
+    def predict_early(self, compensation: int) -> str:
+        """Peek prediction: history[-29:] + padded rows, no history update."""
+        with self._lock:
+            padded = self._padded_history_for_early(compensation)
+        return self._onnx.predict(padded.astype(np.float32))
+
     def process_beat(self, notes_played, beat_start_time, beat_index):
-        padded = self.build_history(notes_played, beat_start_time, beat_index)
+        with self._lock:
+            padded = self.build_history(notes_played, beat_start_time, beat_index)
         chord_name = self._onnx.predict(padded.astype(np.float32))
-        self.history = padded[-MEMORY:]
+        with self._lock:
+            self.history = padded[-MEMORY:]
         return chord_name, self.beat_duration

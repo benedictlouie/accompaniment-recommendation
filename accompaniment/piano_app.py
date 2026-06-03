@@ -1,9 +1,10 @@
 import pygame
 import pygame.midi
 import time
+import threading
 
 from engines.factory import create_engine
-from utils.constants import SAMPLE_RATE, NOTE_FREQS, ROOTS, FONT_BIG, FONT_MED, FONT_SMALL, BLACK, GRAY, BLUE, DARK_GRAY, WHITE, BLACK_KEYS, WHITE_KEYS, KEYBOARD_LABELS, KEYBOARD_MAP
+from utils.constants import SAMPLE_RATE, NOTE_FREQS, ROOTS, FONT_BIG, FONT_MED, FONT_SMALL, BLACK, GRAY, BLUE, DARK_GRAY, WHITE, BLACK_KEYS, WHITE_KEYS, KEYBOARD_LABELS, KEYBOARD_MAP, LATENCY_COMPENSATION, STEPS_PER_BEAT
 from accompaniment.accompaniment_system import AccompanimentSystem, SoundGenerator
 from utils.metronome import Metronome
 
@@ -93,6 +94,13 @@ notes_played = []
 predicted_chord_display = "-"
 
 # --------------------------------------------------
+# AR EARLY-FIRE STATE
+# --------------------------------------------------
+ar_pending_chord = None
+ar_pending_lock  = threading.Lock()
+ar_early_fired   = False
+
+# --------------------------------------------------
 # MAIN LOOP
 # --------------------------------------------------
 running = True
@@ -119,9 +127,27 @@ while running:
                     NOTE_CHANNELS[note].stop()
                     play_top_note()
 
+    # ---------------- AR EARLY-FIRE ----------------
+    if not ar_early_fired:
+        step_duration = metronome.beat_duration / STEPS_PER_BEAT
+        early_threshold = metronome.beat_duration - LATENCY_COMPENSATION * step_duration
+        if current_time - metronome.last_beat_time >= early_threshold:
+            ar_early_fired = True
+            fire_time = current_time
+
+            def _run_early(ft=fire_time, beat=metronome.current_beat):
+                global ar_pending_chord
+                chord = engine.predict_early(LATENCY_COMPENSATION)
+                with ar_pending_lock:
+                    ar_pending_chord = chord
+                print(f"[CHORD] beat={beat}  chord={chord}  latency={1000*(time.time()-ft):.0f}ms")
+
+            threading.Thread(target=_run_early, daemon=True).start()
+
     # ---------------- METRONOME CLOCK ----------------
     beat_trigger, beat_start_time = metronome.update()
     if beat_trigger:
+        ar_early_fired = False
         current_beat = metronome.current_beat
         beat_fire_time = time.time()
         print(f"[BEAT] beat={current_beat}")
@@ -131,9 +157,19 @@ while running:
             for note, start_time in notes_pressed.items()
             if start_time <= beat_start_time
         ]
+
+        # Always call process_beat to update history
         chord, duration = engine.process_beat(notes_played + active_notes, beat_start_time, current_beat)
-        print(f"[CHORD] beat={current_beat}  chord={chord}  latency={1000*(time.time()-beat_fire_time):.0f}ms")
-        
+
+        with ar_pending_lock:
+            early_chord = ar_pending_chord
+            ar_pending_chord = None
+
+        if early_chord is not None:
+            chord = early_chord
+        else:
+            print(f"[CHORD] beat={current_beat}  chord={chord}  latency={1000*(time.time()-beat_fire_time):.0f}ms")
+
         # mute if chord == "N"
         metronome.mute(chord != "N")
         metronome.click()

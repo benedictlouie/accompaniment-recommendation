@@ -6,7 +6,7 @@ from transcribe.transcriber import Transcriber
 from transcribe.transcriber_visualiser import TranscriberVisualiser
 from engines.factory import create_engine
 from accompaniment.accompaniment_system import AccompanimentSystem
-from utils.constants import FONT_BIG, FONT_MED, FONT_SMALL, BLACK, WHITE, GRAY, BLUE, GREEN, SAMPLE_RATE, BEATS_PER_BAR
+from utils.constants import FONT_BIG, FONT_MED, FONT_SMALL, BLACK, WHITE, GRAY, BLUE, GREEN, SAMPLE_RATE, BEATS_PER_BAR, LATENCY_COMPENSATION
 from utils.metronome import Metronome
 
 # ==========================================================
@@ -56,6 +56,10 @@ beat_queue = queue.Queue()
 
 predicted_chord = "-"
 
+ar_pending_chord = None
+ar_pending_lock  = threading.Lock()
+ar_early_fired   = False
+
 
 def beat_worker():
 
@@ -68,14 +72,20 @@ def beat_worker():
         if item is None:
             break
 
-        processed_notes, prev_beat_start, prev_beat, current_beat, beat_fire_time = item
+        processed_notes, prev_beat_start, prev_beat, current_beat, beat_fire_time, early_chord = item
 
+        # Always update history via process_beat
         chord, duration = engine.process_beat(
             processed_notes,
             prev_beat_start,
             prev_beat,
         )
-        print(f"[CHORD] beat={prev_beat}  chord={chord}  latency={1000*(time.time()-beat_fire_time):.0f}ms")
+
+        # Use early-predicted chord for AR; log only if no early chord arrived
+        if early_chord is not None:
+            chord = early_chord
+        else:
+            print(f"[CHORD] beat={prev_beat}  chord={chord}  latency={1000*(time.time()-beat_fire_time):.0f}ms")
 
         melody = engine.last_bar
 
@@ -128,12 +138,32 @@ while running:
     beat_happened = False
 
     # ----------------------------------
+    # AR early-fire: predict LATENCY_COMPENSATION steps before beat fires
+    # ----------------------------------
+
+    if not ar_early_fired:
+        early_threshold = engine.beat_duration - LATENCY_COMPENSATION * engine.step_duration
+        if now - last_beat_time >= early_threshold:
+            ar_early_fired = True
+            fire_time = now
+
+            def _run_early(ft=fire_time, beat=current_beat):
+                global ar_pending_chord
+                chord = engine.predict_early(LATENCY_COMPENSATION)
+                with ar_pending_lock:
+                    ar_pending_chord = chord
+                print(f"[CHORD] beat={beat}  chord={chord}  latency={1000*(time.time()-ft):.0f}ms")
+
+            threading.Thread(target=_run_early, daemon=True).start()
+
+    # ----------------------------------
     # beat timing
     # ----------------------------------
 
     if now - last_beat_time >= engine.beat_duration:
 
         beat_happened = True
+        ar_early_fired = False
 
         beat_start = last_beat_time
         last_beat_time += engine.beat_duration
@@ -159,12 +189,16 @@ while running:
                     (note, slice_start, slice_end)
                 )
 
+        with ar_pending_lock:
+            early_chord = ar_pending_chord
+            ar_pending_chord = None
+
         # send heavy work to background thread
         # prev_beat_start / prev_beat: tell the engine which beat's audio this is
         # current_beat: tells play_beat which loop step to play right now
         print(f"[BEAT] beat={current_beat}")
         beat_queue.put(
-            (processed_notes, prev_beat_start, prev_beat, current_beat, now)
+            (processed_notes, prev_beat_start, prev_beat, current_beat, now, early_chord)
         )
 
         metronome.mute(predicted_chord not in ['-', 'N'])
