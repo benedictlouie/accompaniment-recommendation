@@ -64,6 +64,14 @@ function resetCRFState() {
   crfLoopHistory = ''; crfPendingChord = '';
 }
 
+// Shared API / accompaniment state
+let engineHistory  = '';    // base64 history round-tripped with the transformer engine
+let prevDrumLoop   = '';    // base64 drum loop round-tripped for quality fallback
+let pendingArChord = null;  // chord pre-computed by AR early-fire
+let earlyApiCallId = 0;     // prevents stale early-fire responses
+let predictedChord = '–';   // last chord returned by the prediction API
+let pendingLoops   = null;  // next bar's loops (set by API response, promoted at beat 1)
+
 // Per-instrument on/off flags — toggled by the UI buttons below.
 const instrumentOn = { piano: true, guitar: true, bass: true, drums: true, metronome: true };
 
@@ -106,6 +114,59 @@ function updateBeatDots(beat) {
   document.querySelectorAll('.beat-dot').forEach(dot => {
     dot.classList.toggle('active', parseInt(dot.dataset.beat) === beat);
   });
+}
+
+// =============================================================
+// SHARED API HELPERS
+// =============================================================
+
+/**
+ * Fire AR prediction early (LATENCY_COMPENSATION 16th-note steps before the beat).
+ * Sends empty notes so the server peeks using history alone; stores the result in
+ * pendingArChord so the beat handler can apply it synchronously when the beat fires.
+ */
+async function predictChordEarlyAR(beat, beatTime, beatDur, beatFireMs) {
+  const callId = ++earlyApiCallId;
+  try {
+    const fetchStart = performance.now();
+    const res = await fetch(`${API_BASE}/predict-chord`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        notes: [],
+        beat_start:           beatTime - beatDur,
+        beat_index:           beat,
+        tempo,
+        engine:               'transformer',
+        history:              engineHistory,
+        prev_drum_loop:       prevDrumLoop,
+        early_fire:           true,
+        latency_compensation: LATENCY_COMPENSATION,
+      }),
+    });
+    const data = await res.json();
+    const serverMs = (performance.now() - fetchStart).toFixed(0);
+    const totalMs  = (performance.now() - beatFireMs).toFixed(0);
+
+    if (callId !== earlyApiCallId) return;  // superseded by a newer early-fire call
+
+    if (data.chord) {
+      pendingArChord = data.chord;
+      // Do NOT set predictedChord here — that only changes at beat boundaries when
+      // pendingArChord is applied.  Setting it early would cause scheduleBeats/playLoopBeat
+      // to play the next beat's chord 3 semiquavers before the beat.
+      document.getElementById('chord-display').textContent = data.chord;
+      console.log(`[CHORD] beat=${beat}  chord=${data.chord}  total=${totalMs}ms  server=${serverMs}ms`);
+    }
+  } catch (e) {}
+}
+
+/** Apply CRF round-trip state returned by the predict-chord API response. */
+function updateCRFFromResponse(data) {
+  crfDelta       = data.crf_delta        ?? crfDelta;
+  crfBarHistory  = data.crf_bar_history  ?? crfBarHistory;
+  crfBarPitch    = data.crf_bar_pitch    ?? crfBarPitch;
+  crfBeatCount   = data.crf_beat_count   ?? crfBeatCount;
+  crfLoopHistory = data.crf_loop_history ?? crfLoopHistory;
 }
 
 // =============================================================

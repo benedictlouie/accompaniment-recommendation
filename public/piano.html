@@ -217,17 +217,13 @@ const OCTAVE_MIN = -2, OCTAVE_MAX = 1;
 
 let notesPressed  = {};
 let notesPlayed   = [];
-let predictedChord = '–';
+// predictedChord, engineHistory, prevDrumLoop, pendingArChord, earlyApiCallId,
+// pendingLoops → shared.js
 let currentBeat   = 1;
 
-let engineHistory  = '';
-let prevDrumLoop   = '';
 let currentLoops   = {};
-let pendingLoops   = {};
 const accEnabled   = true;
-
-let pendingArChord = null;   // chord pre-computed by AR early-fire
-let earlyApiCallId = 0;      // prevents stale early-fire responses
+let prevStepNotes  = { guitar: new Set(), piano: new Set(), bass: new Set() };
 
 // instrumentOn → shared.js
 
@@ -432,54 +428,48 @@ function playLoopBeat(chord, beatIndex, beatTime, beatDur) {
   const midis     = chordMidis(chord);
   const rootMidi  = midis[0];
 
-  // ── guitar ────────────────────────────────────────────────────────────────
-  const gl = loops.guitar;
-  if (gl && instrumentOn.guitar) {
+  // Helper: pre-compute MIDI notes at each sub-step, then play only new ones
+  // (mirrors Python play_harmony_nn: only note_on for notes_now - active).
+  function playInstrument(loop, inst, lo, hi, rootOffset, midiSet, durFactor, gain) {
+    if (!loop || !instrumentOn[inst]) return;
+    const pianoMidis = midiSet || midis;
+
+    // Pre-compute stepNotes for all sub-steps
+    const stepNotes = [];
     for (let sub = 0; sub < STEPS_PER_BEAT; sub++) {
       const step = beatStart + sub;
-      if (step >= gl.length) continue;
-      const t = beatTime + sub * stepDur;
-      for (const iv of gl[step]) {
-        if (iv < 0) continue;
-        const midi = snapToChordInRange(rootMidi + iv, midis, 36, 84); // C2–C6
-        assertChordTone(midi, chord);
-        sfPlay('guitar', midi, t, stepDur * 1.8, 0.7);
+      const notesNow = new Set();
+      if (step < loop.length) {
+        for (const iv of loop[step]) {
+          if (iv < 0) continue;
+          const midi = snapToChordInRange(rootMidi + rootOffset + iv, pianoMidis, lo, hi);
+          assertChordTone(midi, chord);
+          notesNow.add(midi);
+        }
       }
+      stepNotes.push(notesNow);
     }
+
+    // Play only notes not already sounding; extend duration across tied steps
+    for (let sub = 0; sub < STEPS_PER_BEAT; sub++) {
+      const t         = beatTime + sub * stepDur;
+      const notesNow  = stepNotes[sub];
+      const prevNotes = sub === 0 ? prevStepNotes[inst] : stepNotes[sub - 1];
+      notesNow.forEach(midi => {
+        if (prevNotes.has(midi)) return;   // already sounding — skip re-attack
+        let runSteps = 1;
+        for (let k = sub + 1; k < STEPS_PER_BEAT; k++) {
+          if (stepNotes[k].has(midi)) runSteps++; else break;
+        }
+        sfPlay(inst, midi, t, stepDur * runSteps * durFactor, gain);
+      });
+    }
+    prevStepNotes[inst] = stepNotes[STEPS_PER_BEAT - 1] ?? new Set();
   }
 
-  // ── piano ─────────────────────────────────────────────────────────────────
-  const pl = loops.piano;
-  if (pl && instrumentOn.piano) {
-    const pianoMidis = midis.map(m => m + 12);
-    for (let sub = 0; sub < STEPS_PER_BEAT; sub++) {
-      const step = beatStart + sub;
-      if (step >= pl.length) continue;
-      const t = beatTime + sub * stepDur;
-      for (const iv of pl[step]) {
-        if (iv < 0) continue;
-        const midi = snapToChordInRange(rootMidi + 12 + iv, pianoMidis, 36, 96); // C2–C7
-        assertChordTone(midi, chord);
-        sfPlay('piano', midi, t, stepDur * 1.4, 2.2);
-      }
-    }
-  }
-
-  // ── bass ──────────────────────────────────────────────────────────────────
-  const bl = loops.bass;
-  if (bl && instrumentOn.bass) {
-    for (let sub = 0; sub < STEPS_PER_BEAT; sub++) {
-      const step = beatStart + sub;
-      if (step >= bl.length) continue;
-      const t = beatTime + sub * stepDur;
-      for (const iv of bl[step]) {
-        if (iv < 0) continue;
-        const midi = snapToChordInRange(rootMidi + iv, midis, 24, 55); // C1–G3
-        assertChordTone(midi, chord);
-        sfPlay('bass', midi, t, stepDur * 2.2, 0.9);
-      }
-    }
-  }
+  playInstrument(loops.guitar, 'guitar', 36, 84,  0,  null,                      1.8, 0.7);
+  playInstrument(loops.piano,  'piano',  36, 96,  12, midis.map(m => m + 12),    1.4, 2.2);
+  playInstrument(loops.bass,   'bass',   24, 55,  0,  null,                      2.2, 0.9);
 
   // ── drums (Web Audio — reliable, no CDN needed) ───────────────────────────
   const dl = loops.drums;
@@ -510,9 +500,10 @@ function scheduleBeats() {
     const beatDur  = 60 / tempo;
 
     if (beat === 1) {
-      if (Object.keys(pendingLoops).length > 0) {
+      if (pendingLoops && Object.keys(pendingLoops).length > 0) {
         currentLoops = pendingLoops;
-        pendingLoops = {};
+        pendingLoops = null;
+        prevStepNotes = { guitar: new Set(), piano: new Set(), bass: new Set() };
       }
       if (selectedEngine === 'crf' && crfPendingChord) {
         document.getElementById('chord-display').textContent = crfPendingChord;
@@ -524,7 +515,10 @@ function scheduleBeats() {
       playClick(beatTime, strong);
     }
 
-    playLoopBeat(predictedChord, beat, beatTime, beatDur);
+    // Use the pre-predicted chord if available; fall back to the current chord.
+    // predictedChord only changes at beat boundaries (when pendingArChord is applied
+    // in onBeat), so this is the only place that looks ahead to pendingArChord.
+    playLoopBeat(pendingArChord ?? predictedChord, beat, beatTime, beatDur);
 
     const msUntil = (beatTime - audioContext.currentTime) * 1000;
     setTimeout(() => onBeat(beat, beatTime, beatDur), Math.max(0, msUntil));
@@ -577,42 +571,8 @@ function onBeat(beat, beatTime, beatDur) {
 
 // =============================================================
 // API
+// predictChordEarlyAR() → shared.js
 // =============================================================
-
-// Fire AR prediction 3 16th-note steps early: peek using history[-29:] + 3 copies of
-// row 29 (strong_flag cleared). Chord arrives before the beat fires → [CHORD] before [BEAT].
-async function predictChordEarlyAR(beat, beatTime, beatDur, beatFireMs) {
-  const callId = ++earlyApiCallId;
-  try {
-    const fetchStart = performance.now();
-    const res = await fetch(`${API_BASE}/predict-chord`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        notes: [],
-        beat_start:          beatTime - beatDur,
-        beat_index:          beat,
-        tempo,
-        engine:              'transformer',
-        history:             engineHistory,
-        prev_drum_loop:      prevDrumLoop,
-        early_fire:          true,
-        latency_compensation: LATENCY_COMPENSATION,
-      }),
-    });
-    const data = await res.json();
-    const serverMs = (performance.now() - fetchStart).toFixed(0);
-    const totalMs  = (performance.now() - beatFireMs).toFixed(0);
-
-    if (callId !== earlyApiCallId) return;  // superseded by a newer early-fire call
-
-    if (data.chord) {
-      pendingArChord = data.chord;
-      predictedChord = data.chord;
-      document.getElementById('chord-display').textContent = data.chord;
-      console.log(`[CHORD] beat=${beat}  chord=${data.chord}  total=${totalMs}ms  server=${serverMs}ms`);
-    }
-  } catch (e) {}
-}
 
 async function predictChordFromAPI(notes, beatStart, beatIndex, beatDur, beatFireMs = performance.now(), historyOnly = false) {
   try {
@@ -638,11 +598,7 @@ async function predictChordFromAPI(notes, beatStart, beatIndex, beatDur, beatFir
     });
     const data = await res.json();
     if (selectedEngine === 'crf') {
-      crfDelta       = data.crf_delta        ?? crfDelta;
-      crfBarHistory  = data.crf_bar_history  ?? crfBarHistory;
-      crfBarPitch    = data.crf_bar_pitch    ?? crfBarPitch;
-      crfBeatCount   = data.crf_beat_count   ?? crfBeatCount;
-      crfLoopHistory = data.crf_loop_history ?? crfLoopHistory;
+      updateCRFFromResponse(data);
       if (data.chord) {
         predictedChord  = data.chord;  // audio: immediate so next scheduleBeats pick-up uses it
         crfPendingChord = data.chord;
@@ -691,7 +647,7 @@ async function resetEngineHistory() {
   engineHistory  = '';
   resetCRFState();
   currentLoops   = {};
-  pendingLoops   = {};
+  pendingLoops   = null;
   predictedChord = '–';
   pendingArChord = null;
   document.getElementById('chord-display').textContent = '–';
@@ -899,7 +855,8 @@ function stopAudio() {
   notesPlayed    = [];
   notesPressed   = {};
   currentLoops   = {};
-  pendingLoops   = {};
+  pendingLoops   = null;
+  prevStepNotes  = { guitar: new Set(), piano: new Set(), bass: new Set() };
   currentBeat    = 1;
   nextBeatTime   = 0;
   engineHistory  = '';
