@@ -11,6 +11,7 @@
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
   onload="renderMathInElement(document.body, {delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}], throwOnError:false});"></script>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
 <style>
 /* ── TOKENS ────────────────────────────────────────────────── */
 :root {
@@ -84,7 +85,7 @@ body {
 
 .hero-h1 {
   font-family: 'DM Serif Display', Georgia, serif;
-  font-size: clamp(40px, 5.5vw, 76px);
+  font-size: clamp(40px, 6vw, 132px);
   font-weight: 400;
   line-height: 1.1;
   background: linear-gradient(135deg, var(--text) 0%, var(--blue) 100%);
@@ -107,6 +108,20 @@ body {
   line-height: 1.15;
   flex-shrink: 0;
   margin-bottom: 3px;
+}
+.cof-link {
+  cursor: pointer;
+  color: var(--blue);
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 4px;
+  text-decoration-color: rgba(26,111,168,0.5);
+  transition: text-decoration-color .2s, color .2s;
+}
+.cof-link:hover {
+  color: #0d4f7a;
+  text-decoration-style: solid;
+  text-decoration-color: #0d4f7a;
 }
 .ssub {
   font-size: clamp(13px, 1.4vw, 18px);
@@ -252,6 +267,39 @@ body {
   min-height: 0;
   overflow: hidden;
 }
+.img-box-labeled {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  min-height: 0;
+  overflow: hidden;
+  gap: 4px;
+}
+.img-box-labeled img {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 6px;
+  display: block;
+}
+.attn-label {
+  font-size: clamp(20px, 2vw, 28px);
+  color: var(--muted);
+  white-space: normal;
+  width: 10em;
+  flex-shrink: 0;
+  text-align: right;
+  line-height: 1.3;
+}
+.attn-label::after {
+  content: " →";
+  color: var(--blue);
+}
+.svg-btn { cursor: pointer; }
+.svg-btn:hover > rect { fill: #eef4fb !important; }
 .img-box img {
   flex: 1;
   min-height: 0;
@@ -380,22 +428,21 @@ body {
 <!-- NAV DOTS -->
 <nav id="nav-dots">
   <button class="nav-dot active" data-i="0"  title="Title"></button>
-  <button class="nav-dot"        data-i="1"  title="Contents"></button>
-  <button class="nav-dot"        data-i="2"  title="Problem"></button>
-  <button class="nav-dot"        data-i="3"  title="Pipeline"></button>
-  <button class="nav-dot"        data-i="4"  title="Demo"></button>
-  <button class="nav-dot"        data-i="5"  title="Transcription"></button>
-  <button class="nav-dot"        data-i="6"  title="Problem Formulation"></button>
-  <button class="nav-dot"        data-i="7"  title="CRF Architecture"></button>
-  <button class="nav-dot"        data-i="8"  title="CRF Results"></button>
-  <button class="nav-dot"        data-i="9"  title="Transformer Architecture"></button>
-  <button class="nav-dot"        data-i="10" title="Transformer Results"></button>
-  <button class="nav-dot"        data-i="11" title="Cycle of Fifths"></button>
-  <button class="nav-dot"        data-i="12" title="Attention Maps"></button>
-  <button class="nav-dot"        data-i="13" title="Arrangement"></button>
-  <button class="nav-dot"        data-i="14" title="Latency"></button>
-  <button class="nav-dot"        data-i="15" title="Further Research"></button>
-  <button class="nav-dot"        data-i="16" title="Q&A"></button>
+  <button class="nav-dot"        data-i="1"  title="Problem"></button>
+  <button class="nav-dot"        data-i="2"  title="Pipeline"></button>
+  <button class="nav-dot"        data-i="3"  title="Demo"></button>
+  <button class="nav-dot"        data-i="4"  title="Transcription"></button>
+  <button class="nav-dot"        data-i="5"  title="Problem Formulation"></button>
+  <button class="nav-dot"        data-i="6"  title="CRF Architecture"></button>
+  <button class="nav-dot"        data-i="7"  title="CRF Results"></button>
+  <button class="nav-dot"        data-i="8"  title="Transformer Architecture"></button>
+  <button class="nav-dot"        data-i="9"  title="Transformer Results"></button>
+  <button class="nav-dot"        data-i="10" title="Cycle of Fifths"></button>
+  <button class="nav-dot"        data-i="11" title="Attention Maps"></button>
+  <button class="nav-dot"        data-i="12" title="Arrangement"></button>
+  <button class="nav-dot"        data-i="13" title="Latency"></button>
+  <button class="nav-dot"        data-i="14" title="Further Research"></button>
+  <button class="nav-dot"        data-i="15" title="Q&A"></button>
 </nav>
 
 <!-- ═══════════════════════════════════════════════════════════
@@ -410,7 +457,7 @@ body {
     </h1>
     <div class="divider"></div>
     <p class="hero-sub">
-      A three stage real time pipeline that listens, infers harmony,
+      A 3-stage real-time pipeline that listens, infers harmony,
       and generates a full band accompaniment.
     </p>
     <div class="hero-meta">
@@ -421,33 +468,12 @@ body {
       <span>Assessor: Prof Simon Godsill</span>
     </div>
   </div>
-  <div class="slide-num">1 / 17</div>
-  <div class="timer">0:25</div>
+  <div class="slide-num">1 / 16</div>
+  <div class="timer">0:20</div>
 </section>
 
 <!-- ═══════════════════════════════════════════════════════════
-     SLIDE 2  CONTENTS
-═══════════════════════════════════════════════════════════ -->
-<section class="slide slide-surface" id="s-contents">
-  <div style="flex:1; display:flex; flex-direction:column; justify-content:center; max-width:800px; margin:0 auto; width:100%; gap:clamp(14px,2.5vh,28px);">
-    <p class="eyebrow c-amber">Agenda</p>
-    <div style="display:flex; flex-direction:column; gap:clamp(12px,2.2vh,26px);">
-      <div style="font-size:clamp(20px,2.5vw,36px);">Problem</div>
-      <div style="font-size:clamp(20px,2.5vw,36px);">Pipeline</div>
-      <div style="font-size:clamp(20px,2.5vw,36px);">Demo</div>
-      <div style="font-size:clamp(20px,2.5vw,36px);">Transcription</div>
-      <div style="font-size:clamp(20px,2.5vw,36px);">Chord Inference: CRF or Transformer</div>
-      <div style="font-size:clamp(20px,2.5vw,36px);">Arrangement</div>
-      <div style="font-size:clamp(20px,2.5vw,36px);">Latency</div>
-      <div style="font-size:clamp(20px,2.5vw,36px);">Further Research</div>
-    </div>
-  </div>
-  <div class="slide-num">2 / 17</div>
-  <div class="timer">0:25</div>
-</section>
-
-<!-- ═══════════════════════════════════════════════════════════
-     SLIDE 3  PROBLEM
+     SLIDE 2  PROBLEM
 ═══════════════════════════════════════════════════════════ -->
 <section class="slide" id="s1">
   <div class="hero-center" style="align-items:flex-start; text-align:left; gap:clamp(18px,3vh,38px); max-width:940px; margin:0 auto; width:100%;">
@@ -459,7 +485,7 @@ body {
       </div>
       <div style="display:flex; gap:clamp(16px,2vw,28px); align-items:baseline;">
         <span style="font-family:'DM Serif Display',serif; font-size:clamp(22px,3vw,44px); color:var(--faint); flex-shrink:0; line-height:1;">2</span>
-        <span style="font-size:clamp(22px,3vw,44px); color:var(--text); line-height:1.4;">Amateurs who cannot harmonise their own humming</span>
+        <span style="font-size:clamp(22px,3vw,44px); color:var(--text); line-height:1.4;">Amateurs who cannot harmonise themselves</span>
       </div>
       <div style="display:flex; gap:clamp(16px,2vw,28px); align-items:baseline;">
         <span style="font-family:'DM Serif Display',serif; font-size:clamp(22px,3vw,44px); color:var(--faint); flex-shrink:0; line-height:1;">3</span>
@@ -470,53 +496,61 @@ body {
       Current systems are not adaptive or end-to-end.
     </p>
   </div>
-  <div class="slide-num">3 / 17</div>
-  <div class="timer">0:25</div>
+  <div class="slide-num">2 / 16</div>
+  <div class="timer">0:20</div>
 </section>
 
 <!-- ═══════════════════════════════════════════════════════════
-     SLIDE 3  PIPELINE
+     SLIDE 4  PIPELINE
 ═══════════════════════════════════════════════════════════ -->
 <section class="slide slide-surface" id="s2">
   <p class="eyebrow c-green">System Overview</p>
-  <h2 class="sh2">Three stage end-to-end real time pipeline</h2>
+  <h2 class="sh2">3-stage end-to-end real-time pipeline</h2>
   <div style="flex:1; display:flex; align-items:center; justify-content:center; min-height:0;">
-    <svg viewBox="0 0 1100 388" style="width:100%; max-height:84vh;" font-family="'DM Sans',sans-serif" preserveAspectRatio="xMidYMid meet">
+    <svg viewBox="0 0 1100 510" style="width:100%; max-height:84vh;" font-family="'DM Sans',sans-serif" preserveAspectRatio="xMidYMid meet">
       <defs>
         <marker id="pa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
           <path d="M0 0 L10 5 L0 10z" fill="#1a6fa8"/>
         </marker>
       </defs>
-      <rect x="380" y="10"  width="240" height="42" rx="8" fill="#ffffff" stroke="#ddd5c8" stroke-width="1.5"/>
-      <text x="500" y="36"  text-anchor="middle" fill="#1c1510" font-size="14">🎙 Microphone</text>
-      <line x1="500" y1="52"  x2="500" y2="70"  stroke="#1a6fa8" stroke-width="1.5" marker-end="url(#pa)"/>
-      <rect x="350" y="70"  width="300" height="50" rx="8" fill="#ffffff" stroke="#1a6fa8" stroke-width="1.5"/>
-      <text x="500" y="91"  text-anchor="middle" fill="#1c1510" font-size="14" font-weight="600">🎵 pYIN Transcription</text>
-      <text x="500" y="109" text-anchor="middle" fill="#1c1510" font-size="11">16th note grid</text>
-      <line x1="420" y1="120" x2="235" y2="168" stroke="#1a6fa8" stroke-width="1.5" marker-end="url(#pa)"/>
-      <line x1="580" y1="120" x2="765" y2="168" stroke="#1a6fa8" stroke-width="1.5" marker-end="url(#pa)"/>
-      <rect x="60"  y="168" width="350" height="58" rx="8" fill="#ffffff" stroke="#177a3e" stroke-width="1.5"/>
-      <text x="235" y="192" text-anchor="middle" fill="#1c1510" font-size="14" font-weight="600">🧠 Chord Inferrer</text>
-      <text x="235" y="212" text-anchor="middle" fill="#177a3e"  font-size="11">CRF or AR Transformer</text>
-      <rect x="690" y="168" width="350" height="58" rx="8" fill="#ffffff" stroke="#177a3e" stroke-width="1.5"/>
-      <text x="865" y="192" text-anchor="middle" fill="#1c1510" font-size="14" font-weight="600">🥁 k-NN Loop Retrieval</text>
-      <text x="865" y="212" text-anchor="middle" fill="#177a3e"  font-size="11">from the LPD 5 Dataset</text>
-      <line x1="235" y1="226" x2="415" y2="276" stroke="#1a6fa8" stroke-width="1.5" marker-end="url(#pa)"/>
-      <line x1="865" y1="226" x2="585" y2="276" stroke="#1a6fa8" stroke-width="1.5" marker-end="url(#pa)"/>
-      <rect x="320" y="276" width="360" height="50" rx="8" fill="#ffffff" stroke="#1a6fa8" stroke-width="1.5"/>
-      <text x="500" y="297" text-anchor="middle" fill="#1c1510" font-size="14" font-weight="600">🎼 Chord Snapping + Voice Leading</text>
-      <text x="500" y="315" text-anchor="middle" fill="#1c1510" font-size="11">transposes loop intervals to predicted chord</text>
-      <line x1="500" y1="326" x2="500" y2="344" stroke="#1a6fa8" stroke-width="1.5" marker-end="url(#pa)"/>
-      <rect x="360" y="344" width="280" height="36" rx="8" fill="#ffffff" stroke="#b06a08" stroke-width="1.5"/>
-      <text x="500" y="367" text-anchor="middle" fill="#b06a08" font-size="13" font-weight="600">🔊 MIDI Synthesiser Output</text>
+      <!-- Microphone: w=340 h=60 centered at x=500 -->
+      <rect x="330" y="8"  width="340" height="60" rx="8" fill="#ffffff" stroke="#ddd5c8" stroke-width="1.5"/>
+      <text x="500" y="44" text-anchor="middle" fill="#1c1510" font-size="32">🎙 Microphone</text>
+      <line x1="500" y1="68" x2="500" y2="85" stroke="#1a6fa8" stroke-width="1.5" marker-end="url(#pa)"/>
+      <!-- pYIN: w=430 h=72 centered at x=500 -->
+      <rect x="285" y="85" width="430" height="72" rx="8" fill="#ffffff" stroke="#1a6fa8" stroke-width="1.5"/>
+      <text x="500" y="114" text-anchor="middle" fill="#1c1510" font-size="32" font-weight="600">🎵 pYIN Transcription</text>
+      <text x="500" y="145" text-anchor="middle" fill="#1c1510" font-size="26">16th note grid</text>
+      <!-- split lines: y=160 → left (225,215) and right (875,215) -->
+      <line x1="415" y1="160" x2="225" y2="215" stroke="#1a6fa8" stroke-width="1.5" marker-end="url(#pa)"/>
+      <line x1="585" y1="160" x2="875" y2="215" stroke="#1a6fa8" stroke-width="1.5" marker-end="url(#pa)"/>
+      <!-- Chord Inferrer: w=430 h=80 centered at x=225 -->
+      <rect x="10"  y="215" width="430" height="80" rx="8" fill="#ffffff" stroke="#177a3e" stroke-width="1.5"/>
+      <text x="225" y="248" text-anchor="middle" fill="#1c1510" font-size="32" font-weight="600">🧠 Chord Inferrer</text>
+      <text x="225" y="279" text-anchor="middle" fill="#177a3e"  font-size="26">CRF or AR Transformer</text>
+      <!-- kNN Loop: w=430 h=80 centered at x=875 -->
+      <rect x="660" y="215" width="430" height="80" rx="8" fill="#ffffff" stroke="#177a3e" stroke-width="1.5"/>
+      <text x="875" y="248" text-anchor="middle" fill="#1c1510" font-size="32" font-weight="600">🥁 k-NN Loop Retrieval</text>
+      <text x="875" y="279" text-anchor="middle" fill="#177a3e"  font-size="26">from the LPD 5 Dataset</text>
+      <!-- converge lines → Chord Snapping -->
+      <line x1="225" y1="295" x2="390" y2="355" stroke="#1a6fa8" stroke-width="1.5" marker-end="url(#pa)"/>
+      <line x1="875" y1="295" x2="610" y2="355" stroke="#1a6fa8" stroke-width="1.5" marker-end="url(#pa)"/>
+      <!-- Chord Snapping: w=460 h=72 centered at x=500 -->
+      <rect x="230" y="355" width="550" height="72" rx="8" fill="#ffffff" stroke="#1a6fa8" stroke-width="1.5"/>
+      <text x="500" y="386" text-anchor="middle" fill="#1c1510" font-size="32" font-weight="600">🎼 Chord Snapping</text>
+      <text x="500" y="417" text-anchor="middle" fill="#1c1510" font-size="26">transposes loop intervals to predicted chord</text>
+      <line x1="500" y1="432" x2="500" y2="452" stroke="#1a6fa8" stroke-width="1.5" marker-end="url(#pa)"/>
+      <!-- MIDI Output: w=380 h=54 centered at x=500 -->
+      <rect x="310" y="452" width="380" height="54" rx="8" fill="#ffffff" stroke="#b06a08" stroke-width="1.5"/>
+      <text x="500" y="484" text-anchor="middle" fill="#b06a08" font-size="30" font-weight="600">🔊 MIDI Synthesiser Output</text>
     </svg>
   </div>
-  <div class="slide-num">4 / 17</div>
-  <div class="timer">0:25</div>
+  <div class="slide-num">3 / 16</div>
+  <div class="timer">0:20</div>
 </section>
 
 <!-- ═══════════════════════════════════════════════════════════
-     SLIDE 4  DEMO
+     SLIDE 5  DEMO
 ═══════════════════════════════════════════════════════════ -->
 <section class="slide slide-demo" id="s3">
   <div class="hero-center" style="gap:clamp(18px,3vh,40px);">
@@ -530,12 +564,12 @@ body {
       <a href="https://accompaniment-recommendation.vercel.app/harmoniser" target="_blank" class="btn-outline"  style="font-size:clamp(18px,2.2vw,30px); padding:clamp(14px,2vh,22px) clamp(28px,4vw,52px);">🎤 Harmoniser</a>
     </div>
   </div>
-  <div class="slide-num">5 / 17</div>
+  <div class="slide-num">4 / 16</div>
   <div class="timer">2:00</div>
 </section>
 
 <!-- ═══════════════════════════════════════════════════════════
-     SLIDE 5  TRANSCRIPTION
+     SLIDE 6  TRANSCRIPTION
 ═══════════════════════════════════════════════════════════ -->
 <section class="slide" id="s4">
   <p class="eyebrow c-blue">Stage 1</p>
@@ -566,8 +600,8 @@ body {
       </table>
     </div>
   </div>
-  <div class="slide-num">6 / 17</div>
-  <div class="timer">0:25</div>
+  <div class="slide-num">5 / 16</div>
+  <div class="timer">0:20</div>
 </section>
 
 <!-- ═══ SLIDE 7  PROBLEM FORMULATION ═══ -->
@@ -577,27 +611,27 @@ body {
   <div style="flex:1; display:flex; flex-direction:column; justify-content:center; gap:clamp(20px,4vh,48px); min-height:0;">
     <!-- row 1: joint -->
     <div style="display:flex; align-items:center; gap:clamp(24px,4vw,60px);">
-      <div style="flex:1; font-size:clamp(28px,4vw,54px); text-align:center;">
+      <div style="flex:1; font-size:clamp(42px,6vw,81px); text-align:center;">
         $$P(C_{\leq t} \mid M_{&lt;t})$$
       </div>
       <div style="width:1.5px; align-self:stretch; background:linear-gradient(to bottom, transparent, var(--border), transparent); flex-shrink:0;"></div>
-      <p style="flex:1; font-size:clamp(16px,1.6vw,22px); color:var(--muted); line-height:1.7;">
+      <p style="flex:1; font-size:clamp(24px,2.4vw,33px); color:var(--muted); line-height:1.7;">
         The <em>joint</em> probability of the full chord sequence given the melody. What we ultimately want to maximise.
       </p>
     </div>
     <!-- row 2: per-step -->
     <div style="display:flex; align-items:center; gap:clamp(24px,4vw,60px);">
-      <div style="flex:1; font-size:clamp(28px,4vw,54px); text-align:center;">
+      <div style="flex:1; font-size:clamp(42px,6vw,81px); text-align:center;">
         $$P(C_t \mid M_{&lt;t},\, C_{&lt;t})$$
       </div>
       <div style="width:1.5px; align-self:stretch; background:linear-gradient(to bottom, transparent, var(--border), transparent); flex-shrink:0;"></div>
-      <p style="flex:1; font-size:clamp(16px,1.6vw,22px); color:var(--muted); line-height:1.7;">
-        The <em>per-step</em> prediction. Chord at beat <em>t</em> given all melody and prior chords. Models this directly.
+      <p style="flex:1; font-size:clamp(24px,2.4vw,33px); color:var(--muted); line-height:1.7;">
+        The <em>per-step</em> prediction. Chord at beat <em>t</em> given all melody and prior chords.
       </p>
     </div>
   </div>
-  <div class="slide-num">7 / 17</div>
-  <div class="timer">0:40</div>
+  <div class="slide-num">6 / 16</div>
+  <div class="timer">0:30</div>
 </section>
 
 <!-- ═══ SLIDE 8  CRF ARCHITECTURE + DATA REP ═══ -->
@@ -605,12 +639,12 @@ body {
   <p class="eyebrow c-green">Stage 2 · Model 1</p>
   <h2 class="sh2">Conditional Random Field (CRF)</h2>
   <div style="display:flex; gap:clamp(20px,3vw,40px); flex-shrink:0; margin-bottom:clamp(10px,1.5vh,18px);">
-    <div><span style="font-size:clamp(10px,0.9vw,12px); font-weight:700; text-transform:uppercase; letter-spacing:1.5px; color:var(--amber);">Input</span>&nbsp;&nbsp;<span style="font-size:clamp(13px,1.3vw,18px); font-family:'DM Serif Display',serif;">ℝ<sup style="font-size:0.65em;">13</sup></span></div>
-    <div><span style="font-size:clamp(10px,0.9vw,12px); font-weight:700; text-transform:uppercase; letter-spacing:1.5px; color:var(--green);">Output</span>&nbsp;&nbsp;<span style="font-size:clamp(13px,1.3vw,18px); font-family:'DM Serif Display',serif;">ℝ<sup style="font-size:0.65em;">25</sup></span></div>
+    <div><span style="font-size:clamp(23px,2vw,27px); font-weight:700; text-transform:uppercase; letter-spacing:1.5px; color:var(--amber);">Input</span>&nbsp;&nbsp;<span style="font-size:clamp(29px,2.9vw,41px); font-family:'DM Serif Display',serif;">ℝ<sup style="font-size:0.65em;">13</sup></span></div>
+    <div><span style="font-size:clamp(23px,2vw,27px); font-weight:700; text-transform:uppercase; letter-spacing:1.5px; color:var(--green);">Output</span>&nbsp;&nbsp;<span style="font-size:clamp(29px,2.9vw,41px); font-family:'DM Serif Display',serif;">ℝ<sup style="font-size:0.65em;">25</sup></span></div>
   </div>
   <!-- CRF joint probability equation -->
-  <div style="font-size: clamp(13px, 1.5vw, 20px); text-align:center; flex-shrink:0; margin-bottom:clamp(16px,3vh,32px); overflow-x:auto;">
-    $$P(\textcolor{#177a3e}{C}_{\textcolor{#177a3e}{\leq b}} \mid \textcolor{#1a6fa8}{M}_{\textcolor{#1a6fa8}{&lt;b}}) = \exp\!\left(f(\textcolor{#177a3e}{C_b},\, \textcolor{#177a3e}{C_{b-1}})\right) \cdot \exp \sum_{i=1}^{b-1}\!\left(f(\textcolor{#177a3e}{C_i}, \textcolor{#177a3e}{C_{i-1}}) + g(\textcolor{#177a3e}{C_i}, \textcolor{#1a6fa8}{M_i}) + h(\textcolor{#177a3e}{C_i}, \textcolor{#1a6fa8}{M_{i-L:i-1}})\right)$$
+  <div style="font-size: clamp(19px, 2vw, 30px); text-align:center; flex-shrink:0; margin-bottom:clamp(16px,3vh,32px); overflow-x:auto;">
+    $$\log P(\textcolor{#177a3e}{C}_{\textcolor{#177a3e}{\leq b}} \mid \textcolor{#1a6fa8}{M}_{\textcolor{#1a6fa8}{&lt;b}}) = \!f(\textcolor{#177a3e}{C_b},\, \textcolor{#177a3e}{C_{b-1}}) + \sum_{i=1}^{b-1}\!\left(f(\textcolor{#177a3e}{C_i}, \textcolor{#177a3e}{C_{i-1}}) + g(\textcolor{#177a3e}{C_i}, \textcolor{#1a6fa8}{M_i}) + h(\textcolor{#177a3e}{C_i}, \textcolor{#1a6fa8}{M_{i-L:i-1}})\right)$$
   </div>
 
   <div style="flex:1; display:flex; align-items:center; justify-content:center; min-height:0;">
@@ -654,125 +688,111 @@ body {
       <text x="268" y="123" fill="#1c1510" font-size="9">g</text>
     </svg>
   </div>
-  <div class="slide-num">8 / 17</div>
-  <div class="timer">0:40</div>
+  <div class="slide-num">7 / 16</div>
+  <div class="timer">0:50</div>
 </section>
 
-<!-- ═══ SLIDE 8  CRF RESULTS ═══ -->
+<!-- ═══ SLIDE 9  CRF RESULTS ═══ -->
 <section class="slide" id="s5b">
   <p class="eyebrow c-green">Stage 2 · Model 1 · Results</p>
   <h2 class="sh2">CRF Results</h2>
-  <div style="display:grid; grid-template-columns:1fr 1fr; grid-template-rows:1fr 1fr; gap:clamp(10px,1.2vw,16px); flex:1; min-height:0;">
-    <div style="display:flex; align-items:center; justify-content:center; min-height:0; overflow:hidden;">
-      <table class="rt" style="font-size:clamp(13px,1.3vw,18px);">
-        <tr><th style="padding:10px 16px;">Metric</th><th style="padding:10px 16px;">Train</th><th style="padding:10px 16px;">Test</th></tr>
-        <tr><td style="padding:10px 16px;">Top 1 Accuracy</td><td style="padding:10px 16px;">28.23%</td><td style="padding:10px 16px;">25.56%</td></tr>
-        <tr><td style="padding:10px 16px;">Norm Cycle of Fifths Dist</td><td style="padding:10px 16px;">0.825</td><td style="padding:10px 16px;">0.849</td></tr>
-      </table>
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:clamp(10px,1.2vw,16px); flex:1; min-height:0;">
+    <div style="display:flex; flex-direction:column; gap:clamp(10px,1.2vw,16px); min-height:0;">
+      <div style="display:flex; align-items:center; justify-content:center; min-height:0; overflow:hidden; flex:0 0 auto;">
+        <table class="rt" style="font-size:clamp(13px,1.3vw,18px);">
+          <tr><th style="padding:10px 16px;">Metric</th><th style="padding:10px 16px;">Train</th><th style="padding:10px 16px;">Test</th></tr>
+          <tr><td style="padding:10px 16px;">Top 1 Accuracy</td><td style="padding:10px 16px;">28.23%</td><td style="padding:10px 16px;">25.56%</td></tr>
+          <tr><td style="padding:10px 16px;cursor:pointer;" onclick="document.getElementById('modal-cof').style.display='block'" title="Click to view Cycle of Fifths">Norm <span class="cof-link">Cycle of Fifths</span> Dist</td><td style="padding:10px 16px;">0.825</td><td style="padding:10px 16px;">0.849</td></tr>
+        </table>
+      </div>
+      <div class="img-box" style="flex:1;"><img src="figures/crf_accuracy.png" alt="CRF accuracy"/></div>
     </div>
-    <div class="img-box"><img src="figures/transition_matrix.png" alt="Transition matrix"/></div>
-    <div class="img-box"><img src="figures/crf_accuracy.png" alt="CRF accuracy"/></div>
-    <div class="img-box"><img src="figures/small_model.png" alt="Emission model"/></div>
+    <div class="img-box"><img src="figures/small_model.png" alt="Confusion matrix"/></div>
   </div>
-  <div class="slide-num">9 / 17</div>
-  <div class="timer">0:40</div>
+  <div class="slide-num">8 / 16</div>
+  <div class="timer">0:50</div>
 </section>
 
-<!-- ═══ SLIDE 9  TRANSFORMER ARCHITECTURE + DATA REP ═══ -->
+<!-- ═══ SLIDE 10  TRANSFORMER ARCHITECTURE + DATA REP ═══ -->
 <section class="slide" id="s6">
   <p class="eyebrow c-blue">Stage 2 · Model 2</p>
   <h2 class="sh2">Autoregressive Transformer</h2>
   <div style="display:flex; gap:clamp(20px,3vw,40px); flex-shrink:0; margin-bottom:clamp(6px,1vh,10px);">
-    <div><span style="font-size:clamp(10px,0.9vw,12px); font-weight:700; text-transform:uppercase; letter-spacing:1.5px; color:var(--amber);">Input</span>&nbsp;&nbsp;<span style="font-size:clamp(13px,1.3vw,18px); font-family:'DM Serif Display',serif;">ℝ<sup style="font-size:0.65em;">32×5</sup></span></div>
-    <div><span style="font-size:clamp(10px,0.9vw,12px); font-weight:700; text-transform:uppercase; letter-spacing:1.5px; color:var(--green);">Output</span>&nbsp;&nbsp;<span style="font-size:clamp(13px,1.3vw,18px); font-family:'DM Serif Display',serif;">ℝ<sup style="font-size:0.65em;">33×169</sup></span></div>
+    <div><span style="font-size:clamp(23px,2vw,27px); font-weight:700; text-transform:uppercase; letter-spacing:1.5px; color:var(--amber);">Input</span>&nbsp;&nbsp;<span style="font-size:clamp(29px,2.9vw,41px); font-family:'DM Serif Display',serif;">ℝ<sup style="font-size:0.65em;">32×5</sup></span></div>
+    <div><span style="font-size:clamp(23px,2vw,27px); font-weight:700; text-transform:uppercase; letter-spacing:1.5px; color:var(--green);">Output</span>&nbsp;&nbsp;<span style="font-size:clamp(29px,2.9vw,41px); font-family:'DM Serif Display',serif;">ℝ<sup style="font-size:0.65em;">33×169</sup></span></div>
   </div>
-  <!-- Beat vector diagram -->
-  <div style="display:flex; justify-content:center; flex-shrink:0; margin-bottom:clamp(4px,0.8vh,8px);">
-    <svg viewBox="0 0 480 68" style="width:86%; max-height:88px;" font-family="'DM Sans',sans-serif" preserveAspectRatio="xMidYMid meet">
-      <!-- bracket label -->
-      <text x="240" y="10" text-anchor="middle" fill="#b8aa9a" font-size="8.5" font-style="italic">x&#x209C; &#x2208; &#x2124;&#x2075; &nbsp;(one beat)</text>
-      <!-- cell 1: strong-beat flag -->
-      <rect x="10"  y="16" width="72" height="34" rx="5" fill="#fff8ee" stroke="#b06a08" stroke-width="1.5"/>
-      <text x="46"  y="36" text-anchor="middle" fill="#b06a08" font-size="13" font-family="'DM Serif Display',serif">s&#x209C;</text>
-      <text x="46"  y="57" text-anchor="middle" fill="#b06a08" font-size="8">strong-beat flag</text>
-      <!-- cells 2-5: 16th note pitches -->
-      <rect x="92"  y="16" width="88" height="34" rx="5" fill="#eef4fb" stroke="#1a6fa8" stroke-width="1.5"/>
-      <text x="136" y="36" text-anchor="middle" fill="#1a6fa8" font-size="13" font-family="'DM Serif Display',serif">n&#x209C;&#x2081;</text>
-      <rect x="190" y="16" width="88" height="34" rx="5" fill="#eef4fb" stroke="#1a6fa8" stroke-width="1.5"/>
-      <text x="234" y="36" text-anchor="middle" fill="#1a6fa8" font-size="13" font-family="'DM Serif Display',serif">n&#x209C;&#x2082;</text>
-      <rect x="288" y="16" width="88" height="34" rx="5" fill="#eef4fb" stroke="#1a6fa8" stroke-width="1.5"/>
-      <text x="332" y="36" text-anchor="middle" fill="#1a6fa8" font-size="13" font-family="'DM Serif Display',serif">n&#x209C;&#x2083;</text>
-      <rect x="386" y="16" width="88" height="34" rx="5" fill="#eef4fb" stroke="#1a6fa8" stroke-width="1.5"/>
-      <text x="430" y="36" text-anchor="middle" fill="#1a6fa8" font-size="13" font-family="'DM Serif Display',serif">n&#x209C;&#x2084;</text>
-      <!-- shared label for n cells -->
-      <text x="311" y="57" text-anchor="middle" fill="#1a6fa8" font-size="8">MIDI pitch per 16th-note slot  (&#x2212;1 = silence)</text>
-      <!-- brace under n cells -->
-      <line x1="92" y1="52" x2="474" y2="52" stroke="#1a6fa8" stroke-width="0.8"/>
-      <line x1="92" y1="52" x2="92"  y2="56" stroke="#1a6fa8" stroke-width="0.8"/>
-      <line x1="474" y1="52" x2="474" y2="56" stroke="#1a6fa8" stroke-width="0.8"/>
-    </svg>
-  </div>
-  <div style="flex:1; display:flex; align-items:center; justify-content:center; min-height:0;">
-    <svg viewBox="0 0 1160 420" style="width:100%; max-height:70vh;" font-family="'DM Sans',sans-serif" font-size="11.5" preserveAspectRatio="xMidYMid meet">
+  <div style="flex:1; min-height:0; overflow:hidden;">
+    <svg viewBox="0 0 1360 490" style="width:100%; height:100%;" font-family="'DM Sans',sans-serif" font-size="26" preserveAspectRatio="xMidYMid meet">
       <defs>
         <marker id="ta" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="#1a6fa8"/></marker>
         <marker id="tg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="#177a3e"/></marker>
         <marker id="tb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="#b06a08"/></marker>
       </defs>
-      <!-- ENCODER -->
-      <text x="230" y="18" text-anchor="middle" fill="#1a6fa8" font-size="13" font-weight="600">ENCODER</text>
-      <rect x="80"  y="24"  width="300" height="32" rx="6" fill="#ffffff" stroke="#ddd5c8"/>
-      <text x="230" y="45"  text-anchor="middle" fill="#1c1510">Melody context X &nbsp; 32×5</text>
-      <line x1="230" y1="56"  x2="230" y2="70"  stroke="#1a6fa8" stroke-width="1.3" marker-end="url(#ta)"/>
-      <rect x="80"  y="70"  width="300" height="32" rx="6" fill="#ffffff" stroke="#1a6fa8"/>
-      <text x="230" y="91"  text-anchor="middle" fill="#1c1510">Feature Proj + Positional Enc</text>
-      <line x1="230" y1="102" x2="230" y2="118" stroke="#1a6fa8" stroke-width="1.3" marker-end="url(#ta)"/>
-      <rect x="74"  y="118" width="312" height="108" rx="6" fill="none" stroke="#ddd5c8" stroke-dasharray="4,3"/>
-      <text x="392" y="160" fill="#b8aa9a" font-size="10">×6</text>
-      <rect x="84"  y="124" width="292" height="30" rx="5" fill="#ffffff" stroke="#1a6fa8"/>
-      <text x="230" y="143" text-anchor="middle" fill="#1c1510">Multi Head Self Attention</text>
-      <line x1="230" y1="154" x2="230" y2="168" stroke="#1a6fa8" stroke-width="1.3" marker-end="url(#ta)"/>
-      <rect x="84"  y="168" width="292" height="30" rx="5" fill="#ffffff" stroke="#1a6fa8"/>
-      <text x="230" y="187" text-anchor="middle" fill="#1c1510">Feed Forward · Add &amp; Norm</text>
-      <line x1="230" y1="226" x2="230" y2="242" stroke="#1a6fa8" stroke-width="1.3" marker-end="url(#ta)"/>
-      <rect x="110" y="242" width="240" height="36" rx="6" fill="#edeae3" stroke="#177a3e" stroke-width="1.5"/>
-      <text x="230" y="265" text-anchor="middle" fill="#177a3e" font-weight="600">Memory Z &nbsp; 32×128</text>
-      <!-- DECODER -->
-      <text x="870" y="18" text-anchor="middle" fill="#1a6fa8" font-size="13" font-weight="600">DECODER</text>
-      <rect x="720" y="24"  width="300" height="32" rx="6" fill="#ffffff" stroke="#ddd5c8"/>
-      <text x="870" y="45"  text-anchor="middle" fill="#1c1510">Start chord token</text>
-      <line x1="870" y1="56"  x2="870" y2="70"  stroke="#1a6fa8" stroke-width="1.3" marker-end="url(#ta)"/>
-      <rect x="720" y="70"  width="300" height="32" rx="6" fill="#ffffff" stroke="#1a6fa8"/>
-      <text x="870" y="91"  text-anchor="middle" fill="#1c1510">Chord Embedding &nbsp; 169×128</text>
-      <line x1="870" y1="102" x2="870" y2="118" stroke="#1a6fa8" stroke-width="1.3" marker-end="url(#ta)"/>
-      <rect x="714" y="118" width="312" height="142" rx="6" fill="none" stroke="#ddd5c8" stroke-dasharray="4,3"/>
-      <text x="1032" y="160" fill="#b8aa9a" font-size="10">×6</text>
-      <rect x="724" y="124" width="292" height="28" rx="5" fill="#ffffff" stroke="#1a6fa8"/>
-      <text x="870" y="142" text-anchor="middle" fill="#1c1510">Masked Self Attention</text>
-      <line x1="870" y1="152" x2="870" y2="166" stroke="#1a6fa8" stroke-width="1.3" marker-end="url(#ta)"/>
-      <rect x="724" y="166" width="292" height="28" rx="5" fill="#edeae3" stroke="#177a3e" stroke-width="1.5"/>
-      <text x="870" y="184" text-anchor="middle" fill="#177a3e">Cross Attention ← Z</text>
-      <line x1="870" y1="194" x2="870" y2="208" stroke="#1a6fa8" stroke-width="1.3" marker-end="url(#ta)"/>
-      <rect x="724" y="208" width="292" height="28" rx="5" fill="#ffffff" stroke="#1a6fa8"/>
-      <text x="870" y="226" text-anchor="middle" fill="#1c1510">Feed Forward · Add &amp; Norm</text>
-      <path d="M350 260 Q560 330 724 184" fill="none" stroke="#177a3e" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#tg)"/>
-      <line x1="870" y1="260" x2="870" y2="276" stroke="#1a6fa8" stroke-width="1.3" marker-end="url(#ta)"/>
-      <rect x="720" y="276" width="300" height="36" rx="6" fill="#edeae3" stroke="#177a3e" stroke-width="1.5"/>
-      <text x="870" y="299" text-anchor="middle" fill="#177a3e" font-weight="600">Chord logits · 169 classes</text>
+
+      <!-- ── ENCODER  (center x=240, boxes x=20→460) ── -->
+      <text x="240" y="24" text-anchor="middle" fill="#1a6fa8" font-size="30" font-weight="600">ENCODER</text>
+      <g class="svg-btn" onclick="document.getElementById('modal-32x5').style.display='flex'">
+        <rect x="20"  y="32"  width="440" height="44" rx="6" fill="#ffffff" stroke="#ddd5c8"/>
+        <text x="240" y="59" text-anchor="middle" fill="#1c1510">Melody context X &nbsp; 32×5</text>
+      </g>
+      <line x1="240" y1="76"  x2="240" y2="96"  stroke="#1a6fa8" stroke-width="1.3" marker-end="url(#ta)"/>
+      <rect x="20"  y="96"  width="440" height="44" rx="6" fill="#ffffff" stroke="#1a6fa8"/>
+      <text x="240" y="123" text-anchor="middle" fill="#1c1510">Feature Proj + Positional Enc</text>
+      <line x1="240" y1="140" x2="240" y2="162" stroke="#1a6fa8" stroke-width="1.3" marker-end="url(#ta)"/>
+      <!-- encoder dashed block (2 layers) -->
+      <rect x="12"  y="162" width="456" height="150" rx="6" fill="none" stroke="#ddd5c8" stroke-dasharray="4,3"/>
+      <text x="474" y="247" fill="#b8aa9a" font-size="23">×6</text>
+      <rect x="22"  y="170" width="436" height="40" rx="5" fill="#ffffff" stroke="#1a6fa8"/>
+      <text x="240" y="195" text-anchor="middle" fill="#1c1510">Multi Head Self Attention</text>
+      <line x1="240" y1="210" x2="240" y2="232" stroke="#1a6fa8" stroke-width="1.3" marker-end="url(#ta)"/>
+      <rect x="22"  y="232" width="436" height="40" rx="5" fill="#ffffff" stroke="#1a6fa8"/>
+      <text x="240" y="257" text-anchor="middle" fill="#1c1510">Feed Forward · Add &amp; Norm</text>
+      <!-- encoder: line + Memory Z -->
+      <line x1="240" y1="312" x2="240" y2="334" stroke="#1a6fa8" stroke-width="1.3" marker-end="url(#ta)"/>
+      <rect x="80"  y="334" width="320" height="48" rx="6" fill="#edeae3" stroke="#177a3e" stroke-width="1.5"/>
+      <text x="240" y="363" text-anchor="middle" fill="#177a3e" font-weight="600">Memory Z &nbsp; 32×128</text>
+
+      <!-- ── DECODER  (center x=860, boxes x=640→1080) ── -->
+      <text x="860" y="24" text-anchor="middle" fill="#1a6fa8" font-size="30" font-weight="600">DECODER</text>
+      <rect x="640"  y="32"  width="440" height="44" rx="6" fill="#ffffff" stroke="#ddd5c8"/>
+      <text x="860" y="59" text-anchor="middle" fill="#1c1510">Start chord token</text>
+      <line x1="860" y1="76"  x2="860" y2="96"  stroke="#1a6fa8" stroke-width="1.3" marker-end="url(#ta)"/>
+      <g class="svg-btn" onclick="document.getElementById('modal-169x128').style.display='block'">
+        <rect x="640"  y="96"  width="440" height="44" rx="6" fill="#ffffff" stroke="#1a6fa8"/>
+        <text x="860" y="123" text-anchor="middle" fill="#1c1510">Chord Embedding &nbsp; 169×128</text>
+      </g>
+      <line x1="860" y1="140" x2="860" y2="162" stroke="#1a6fa8" stroke-width="1.3" marker-end="url(#ta)"/>
+      <!-- decoder dashed block (3 layers) -->
+      <rect x="632"  y="162" width="456" height="202" rx="6" fill="none" stroke="#ddd5c8" stroke-dasharray="4,3"/>
+      <text x="1094" y="270" fill="#b8aa9a" font-size="23">×6</text>
+      <rect x="642"  y="170" width="436" height="40" rx="5" fill="#ffffff" stroke="#1a6fa8"/>
+      <text x="860" y="195" text-anchor="middle" fill="#1c1510">Masked Self Attention</text>
+      <line x1="860" y1="210" x2="860" y2="232" stroke="#1a6fa8" stroke-width="1.3" marker-end="url(#ta)"/>
+      <rect x="642"  y="232" width="436" height="40" rx="5" fill="#edeae3" stroke="#177a3e" stroke-width="1.5"/>
+      <text x="860" y="257" text-anchor="middle" fill="#177a3e">Cross Attention ← Z</text>
+      <line x1="860" y1="272" x2="860" y2="294" stroke="#1a6fa8" stroke-width="1.3" marker-end="url(#ta)"/>
+      <rect x="642"  y="294" width="436" height="40" rx="5" fill="#ffffff" stroke="#1a6fa8"/>
+      <text x="860" y="319" text-anchor="middle" fill="#1c1510">Feed Forward · Add &amp; Norm</text>
+      <!-- cross-attention arrow: Memory Z right → Cross Attn box left -->
+      <path d="M400 358 Q516 420 632 252" fill="none" stroke="#177a3e" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#tg)"/>
+      <!-- decoder: line + output box -->
+      <line x1="860" y1="364" x2="860" y2="386" stroke="#1a6fa8" stroke-width="1.3" marker-end="url(#ta)"/>
+      <rect x="640"  y="386" width="440" height="48" rx="6" fill="#edeae3" stroke="#177a3e" stroke-width="1.5"/>
+      <text x="860" y="415" text-anchor="middle" fill="#177a3e" font-weight="600">Chord logits · 169 classes</text>
       <!-- Sample arrow + label -->
-      <line x1="870" y1="312" x2="870" y2="345" stroke="#b06a08" stroke-width="1.3" marker-end="url(#tb)"/>
-      <text x="880" y="333" font-size="9" fill="#b06a08">Sample</text>
-      <!-- AR feedback: sampled chord → Chord Embedding -->
-      <path d="M1020 294 Q1130 218 1020 86" fill="none" stroke="#b06a08" stroke-width="1.3" stroke-dasharray="5,3" marker-end="url(#tb)"/>
-      <text x="1100" y="220" font-size="9" fill="#b06a08" text-anchor="middle">AR × 33</text>
+      <line x1="860" y1="434" x2="860" y2="466" stroke="#b06a08" stroke-width="1.3" marker-end="url(#tb)"/>
+      <text x="872" y="453" font-size="21" fill="#b06a08">Sample</text>
+      <!-- AR feedback: wide square path — right → up → left (←) into embed box -->
+      <polyline points="1080,410 1200,410 1200,118 1080,118" fill="none" stroke="#b06a08" stroke-width="1.3" stroke-dasharray="5,3" marker-end="url(#tb)"/>
+      <text x="1214" y="268" font-size="21" fill="#b06a08" text-anchor="start">AR × 33</text>
     </svg>
   </div>
-  <div class="slide-num">10 / 17</div>
-  <div class="timer">0:40</div>
+  <div class="slide-num">9 / 16</div>
+  <div class="timer">0:50</div>
 </section>
 
 <!-- ═══════════════════════════════════════════════════════════
-     SLIDE 8  TRANSFORMER RESULTS
+     SLIDE 11  TRANSFORMER RESULTS
 ═══════════════════════════════════════════════════════════ -->
 <section class="slide slide-surface" id="s7">
   <p class="eyebrow c-blue">Stage 2 · Model 2 · Results</p>
@@ -782,160 +802,231 @@ body {
       <table class="rt" style="font-size:clamp(16px,1.8vw,24px);">
         <tr><th style="padding:14px 26px;">Metric</th><th style="padding:14px 26px;">Train</th><th style="padding:14px 26px;">Test</th></tr>
         <tr><td style="padding:14px 26px;">Top 1 Accuracy</td><td style="padding:14px 26px;">27.36%</td><td style="padding:14px 26px;">15.50%</td></tr>
-        <tr><td style="padding:14px 26px;">Norm Emb Distance</td><td style="padding:14px 26px;">0.509</td><td style="padding:14px 26px;">0.763</td></tr>
+        <tr><td style="padding:14px 26px;">Norm 128D Emb Distance</td><td style="padding:14px 26px;">0.509</td><td style="padding:14px 26px;">0.763</td></tr>
       </table>
     </div>
     <div class="img-box">
       <img src="figures/transformer_loss.png" alt="Transformer training and test loss"/>
     </div>
   </div>
-  <div class="slide-num">11 / 17</div>
-  <div class="timer">0:40</div>
+  <div class="slide-num">10 / 16</div>
+  <div class="timer">0:50</div>
 </section>
 
 <!-- ═══════════════════════════════════════════════════════════
-     SLIDE 9  EMERGENT CYCLE OF FIFTHS
+     SLIDE 12  EMERGENT CYCLE OF FIFTHS
 ═══════════════════════════════════════════════════════════ -->
+
 <section class="slide" id="s8">
   <p class="eyebrow c-blue">Stage 2 · Model 2 · Key Finding</p>
-  <h2 class="sh2">Emergent Cycle of Fifths</h2>
-  <!-- horizontal cylinder with rings -->
-  <div style="display:flex; justify-content:center; flex-shrink:0; margin-bottom:clamp(6px,1vh,12px);">
-    <svg viewBox="0 0 420 54" style="width:min(560px,85%); height:auto;" font-family="'DM Sans',sans-serif" preserveAspectRatio="xMidYMid meet">
-      <!-- cylinder body -->
-      <rect x="20" y="8" width="380" height="38" rx="0" fill="#edeae3" stroke="none"/>
-      <!-- left cap ellipse -->
-      <ellipse cx="20" cy="27" rx="12" ry="19" fill="#ddd5c8" stroke="#b8aa9a" stroke-width="1.2"/>
-      <!-- right cap ellipse -->
-      <ellipse cx="400" cy="27" rx="12" ry="19" fill="#f7f4ef" stroke="#b8aa9a" stroke-width="1.2"/>
-      <!-- top + bottom edges -->
-      <line x1="20" y1="8"  x2="400" y2="8"  stroke="#b8aa9a" stroke-width="1.2"/>
-      <line x1="20" y1="46" x2="400" y2="46" stroke="#b8aa9a" stroke-width="1.2"/>
-      <!-- rings -->
-      <ellipse cx="105" cy="27" rx="10" ry="19" fill="none" stroke="rgba(26,111,168,0.35)" stroke-width="1.4"/>
-      <ellipse cx="190" cy="27" rx="10" ry="19" fill="none" stroke="rgba(26,111,168,0.35)" stroke-width="1.4"/>
-      <ellipse cx="275" cy="27" rx="10" ry="19" fill="none" stroke="rgba(26,111,168,0.35)" stroke-width="1.4"/>
-      <ellipse cx="358" cy="27" rx="10" ry="19" fill="none" stroke="rgba(26,111,168,0.35)" stroke-width="1.4"/>
-      <!-- axis label -->
-      <text x="210" y="30" text-anchor="middle" fill="#b8aa9a" font-size="9" letter-spacing="1">PC1 axis  →  harmonic cycle</text>
-    </svg>
-  </div>
-  <div class="g2">
-    <div class="img-box">
-      <img src="figures/transformer_pca.png" alt="Transformer PCA"/>
-    </div>
-    <div class="img-box">
-      <img src="figures/transformer_pca_pc23.png" alt="PCA PC2 PC3"/>
-    </div>
-  </div>
-  <div class="slide-num">12 / 17</div>
-  <div class="timer">0:40</div>
+  <h2 class="sh2" onclick="document.getElementById('modal-cof').style.display='block'" style="cursor:pointer;" title="Click to view Cycle of Fifths">Emergent <span class="cof-link">Cycle of Fifths</span></h2>
+  <div id="pca3d-plot" style="width:100%;flex:1;min-height:0;"></div>
+  <script>
+  (function(){
+    var TAB20 = {0:'#1f77b4',1:'#d62728',2:'#2ca02c',3:'#ff7f0e',8:'#9467bd',9:'#17becf'};
+    var NAMES = {0:'maj',1:'min',2:'maj7',3:'min7',8:'sus4',9:'7'};
+    var data = {"points":[{"label":"C:maj","quality":"maj","qi":0,"root_idx":0,"x":-1.4946399927139282,"y":-0.6825564503669739,"z":-3.3343217372894287},{"label":"C:min","quality":"min","qi":1,"root_idx":0,"x":-1.9390361309051514,"y":-3.9438655376434326,"z":0.3065512478351593},{"label":"C:maj7","quality":"maj7","qi":2,"root_idx":0,"x":0.9480612277984619,"y":-0.3721245229244232,"z":-3.673203945159912},{"label":"C:min7","quality":"min7","qi":3,"root_idx":0,"x":0.8934919834136963,"y":-3.2854888439178467,"z":1.2705780267715454},{"label":"C:sus4","quality":"sus4","qi":8,"root_idx":0,"x":-3.6033942699432373,"y":-3.2915396690368652,"z":-1.5061206817626953},{"label":"C:7","quality":"7","qi":9,"root_idx":0,"x":2.167869806289673,"y":-2.092278242111206,"z":-1.0001728534698486},{"label":"C#:maj","quality":"maj","qi":0,"root_idx":1,"x":-2.7349183559417725,"y":-0.0012036703992635012,"z":1.18763267993927},{"label":"C#:min","quality":"min","qi":1,"root_idx":1,"x":-2.81026291847229,"y":2.635922431945801,"z":2.0353145599365234},{"label":"C#:maj7","quality":"maj7","qi":2,"root_idx":1,"x":0.1341785341501236,"y":-1.0746458768844604,"z":1.7257943153381348},{"label":"C#:min7","quality":"min7","qi":3,"root_idx":1,"x":0.816362202167511,"y":2.993316650390625,"z":1.0683856010437012},{"label":"C#:sus4","quality":"sus4","qi":8,"root_idx":1,"x":-4.906809329986572,"y":1.9703090190887451,"z":2.3594255447387695},{"label":"C#:7","quality":"7","qi":9,"root_idx":1,"x":1.1192511320114136,"y":1.3091460466384888,"z":2.230623245239258},{"label":"D:maj","quality":"maj","qi":0,"root_idx":2,"x":-1.5371501445770264,"y":2.104365587234497,"z":-3.227365016937256},{"label":"D:min","quality":"min","qi":1,"root_idx":2,"x":-1.1447224617004395,"y":-0.8830893635749817,"z":-3.0568227767944336},{"label":"D:maj7","quality":"maj7","qi":2,"root_idx":2,"x":0.38150206208229065,"y":1.421212911605835,"z":-1.4268085956573486},{"label":"D:min7","quality":"min7","qi":3,"root_idx":2,"x":1.15152108669281,"y":-1.9904464483261108,"z":-2.3743388652801514},{"label":"D:sus4","quality":"sus4","qi":8,"root_idx":2,"x":-2.7118043899536133,"y":-0.8119461536407471,"z":-4.7082743644714355},{"label":"D:7","quality":"7","qi":9,"root_idx":2,"x":1.946099877357483,"y":-0.5974913239479065,"z":-1.324781060218811},{"label":"D#:maj","quality":"maj","qi":0,"root_idx":3,"x":-1.9633387327194214,"y":-2.5362424850463867,"z":1.6299643516540527},{"label":"D#:min","quality":"min","qi":1,"root_idx":3,"x":-2.5311825275421143,"y":0.4257965385913849,"z":2.6531155109405518},{"label":"D#:maj7","quality":"maj7","qi":2,"root_idx":3,"x":0.5428676009178162,"y":-3.5073812007904053,"z":1.3096455335617065},{"label":"D#:min7","quality":"min7","qi":3,"root_idx":3,"x":0.10459913313388824,"y":0.28056585788726807,"z":3.9025397300720215},{"label":"D#:sus4","quality":"sus4","qi":8,"root_idx":3,"x":-4.475429534912109,"y":-1.4755418300628662,"z":2.596891403198242},{"label":"D#:7","quality":"7","qi":9,"root_idx":3,"x":1.4119369983673096,"y":-1.3974343538284302,"z":1.9890333414077759},{"label":"E:maj","quality":"maj","qi":0,"root_idx":4,"x":-2.230257511138916,"y":3.506490468978882,"z":-0.13449689745903015},{"label":"E:min","quality":"min","qi":1,"root_idx":4,"x":-1.6216485500335693,"y":1.4467064142227173,"z":-3.192523241043091},{"label":"E:maj7","quality":"maj7","qi":2,"root_idx":4,"x":0.11425532400608063,"y":2.7195873260498047,"z":1.3611140251159668},{"label":"E:min7","quality":"min7","qi":3,"root_idx":4,"x":1.1025114059448242,"y":0.3071322739124298,"z":-2.358807325363159},{"label":"E:sus4","quality":"sus4","qi":8,"root_idx":4,"x":-2.821333408355713,"y":1.794663906097412,"z":-3.6922435760498047},{"label":"E:7","quality":"7","qi":9,"root_idx":4,"x":3.2652108669281006,"y":1.0856655836105347,"z":-1.826345682144165},{"label":"F:maj","quality":"maj","qi":0,"root_idx":5,"x":-1.2881852388381958,"y":-1.9167479276657104,"z":-3.2488017082214355},{"label":"F:min","quality":"min","qi":1,"root_idx":5,"x":-1.8514317274093628,"y":-2.5912981033325195,"z":0.8107298016548157},{"label":"F:maj7","quality":"maj7","qi":2,"root_idx":5,"x":1.5169780254364014,"y":-1.6863640546798706,"z":-1.6904386281967163},{"label":"F:min7","quality":"min7","qi":3,"root_idx":5,"x":1.3048789501190186,"y":-2.1010377407073975,"z":2.8617143630981445},{"label":"F:sus4","quality":"sus4","qi":8,"root_idx":5,"x":-4.0834736824035645,"y":-2.9223742485046387,"z":-0.3250174820423126},{"label":"F:7","quality":"7","qi":9,"root_idx":5,"x":2.048795461654663,"y":-1.841288685798645,"z":0.5633846521377563},{"label":"F#:maj","quality":"maj","qi":0,"root_idx":6,"x":-2.710175037384033,"y":1.342288613319397,"z":1.1637440919876099},{"label":"F#:min","quality":"min","qi":1,"root_idx":6,"x":-2.679533004760742,"y":2.9448604583740234,"z":-1.2480517625808716},{"label":"F#:maj7","quality":"maj7","qi":2,"root_idx":6,"x":-0.3076278865337372,"y":-0.3541066348552704,"z":2.7284011840820312},{"label":"F#:min7","quality":"min7","qi":3,"root_idx":6,"x":1.82473623752594,"y":2.3796770572662354,"z":-0.8926764726638794},{"label":"F#:sus4","quality":"sus4","qi":8,"root_idx":6,"x":-4.371258735656738,"y":2.3446223735809326,"z":0.23062333464622498},{"label":"F#:7","quality":"7","qi":9,"root_idx":6,"x":0.9606117606163025,"y":2.5697896480560303,"z":1.0445438623428345},{"label":"G:maj","quality":"maj","qi":0,"root_idx":7,"x":-1.0973643064498901,"y":0.7994149327278137,"z":-2.9421119689941406},{"label":"G:min","quality":"min","qi":1,"root_idx":7,"x":-1.849645972251892,"y":-2.2036681175231934,"z":-2.399292469024658},{"label":"G:maj7","quality":"maj7","qi":2,"root_idx":7,"x":-0.07817872613668442,"y":0.6542448401451111,"z":-0.5288057327270508},{"label":"G:min7","quality":"min7","qi":3,"root_idx":7,"x":0.9306025505065918,"y":-3.808436632156372,"z":-0.2650436758995056},{"label":"G:sus4","quality":"sus4","qi":8,"root_idx":7,"x":-3.2094058990478516,"y":-3.1760952472686768,"z":-4.048342227935791},{"label":"G:7","quality":"7","qi":9,"root_idx":7,"x":2.1304540634155273,"y":-1.0663083791732788,"z":-1.149824619293213},{"label":"G#:maj","quality":"maj","qi":0,"root_idx":8,"x":-2.845952272415161,"y":-0.9610418081283569,"z":1.6037836074829102},{"label":"G#:min","quality":"min","qi":1,"root_idx":8,"x":-3.442300796508789,"y":0.9973148703575134,"z":1.792104721069336},{"label":"G#:maj7","quality":"maj7","qi":2,"root_idx":8,"x":0.6748566031455994,"y":-2.912358045578003,"z":1.9096819162368774},{"label":"G#:min7","quality":"min7","qi":3,"root_idx":8,"x":0.729220449924469,"y":2.4177072048187256,"z":2.2943644523620605},{"label":"G#:sus4","quality":"sus4","qi":8,"root_idx":8,"x":-4.8240180015563965,"y":-0.14077281951904297,"z":2.93581223487854},{"label":"G#:7","quality":"7","qi":9,"root_idx":8,"x":1.0191289186477661,"y":0.5203080773353577,"z":1.908618450164795},{"label":"A:maj","quality":"maj","qi":0,"root_idx":9,"x":-1.6980679035186768,"y":2.466790199279785,"z":-2.1683247089385986},{"label":"A:min","quality":"min","qi":1,"root_idx":9,"x":-1.6042078733444214,"y":0.07083005458116531,"z":-2.960552453994751},{"label":"A:maj7","quality":"maj7","qi":2,"root_idx":9,"x":-0.05160263553261757,"y":2.636491537094116,"z":-0.07186220586299896},{"label":"A:min7","quality":"min7","qi":3,"root_idx":9,"x":1.5853686332702637,"y":-0.6217344999313354,"z":-2.397368907928467},{"label":"A:sus4","quality":"sus4","qi":8,"root_idx":9,"x":-2.288810968399048,"y":-0.48667973279953003,"z":-3.7338643074035645},{"label":"A:7","quality":"7","qi":9,"root_idx":9,"x":1.9855942726135254,"y":0.8486529588699341,"z":-1.3317278623580933},{"label":"A#:maj","quality":"maj","qi":0,"root_idx":10,"x":-2.0341556072235107,"y":-2.560004949569702,"z":-0.8923214673995972},{"label":"A#:min","quality":"min","qi":1,"root_idx":10,"x":-2.914128065109253,"y":-1.8514361381530762,"z":1.2533838748931885},{"label":"A#:maj7","quality":"maj7","qi":2,"root_idx":10,"x":0.7698114514350891,"y":-3.3837125301361084,"z":-0.896560788154602},{"label":"A#:min7","quality":"min7","qi":3,"root_idx":10,"x":1.0248907804489136,"y":-1.6604607105255127,"z":2.439598321914673},{"label":"A#:sus4","quality":"sus4","qi":8,"root_idx":10,"x":-4.270978927612305,"y":-4.123325824737549,"z":1.848918080329895},{"label":"A#:7","quality":"7","qi":9,"root_idx":10,"x":1.469985008239746,"y":-2.3682382106781006,"z":2.5465238094329834},{"label":"B:maj","quality":"maj","qi":0,"root_idx":11,"x":-2.0944972038269043,"y":2.3855392932891846,"z":0.7545509934425354},{"label":"B:min","quality":"min","qi":1,"root_idx":11,"x":-1.1398465633392334,"y":1.6911606788635254,"z":-3.2071588039398193},{"label":"B:maj7","quality":"maj7","qi":2,"root_idx":11,"x":0.35687199234962463,"y":0.8356472849845886,"z":2.097330331802368},{"label":"B:min7","quality":"min7","qi":3,"root_idx":11,"x":1.5155497789382935,"y":1.5925649404525757,"z":-0.7410644888877869},{"label":"B:sus4","quality":"sus4","qi":8,"root_idx":11,"x":-3.6017799377441406,"y":2.7360472679138184,"z":-2.3884034156799316},{"label":"B:7","quality":"7","qi":9,"root_idx":11,"x":2.384777545928955,"y":2.1400821208953857,"z":-1.0692516565322876}],"edges":[{"qi":0,"quality":"maj","ax":-1.4946399927139282,"ay":-0.6825564503669739,"az":-3.3343217372894287,"bx":-1.0973643064498901,"by":0.7994149327278137,"bz":-2.9421119689941406},{"qi":0,"quality":"maj","ax":-1.0973643064498901,"ay":0.7994149327278137,"az":-2.9421119689941406,"bx":-1.5371501445770264,"by":2.104365587234497,"bz":-3.227365016937256},{"qi":0,"quality":"maj","ax":-1.5371501445770264,"ay":2.104365587234497,"az":-3.227365016937256,"bx":-1.6980679035186768,"by":2.466790199279785,"bz":-2.1683247089385986},{"qi":0,"quality":"maj","ax":-1.6980679035186768,"ay":2.466790199279785,"az":-2.1683247089385986,"bx":-2.230257511138916,"by":3.506490468978882,"bz":-0.13449689745903015},{"qi":0,"quality":"maj","ax":-2.230257511138916,"ay":3.506490468978882,"az":-0.13449689745903015,"bx":-2.0944972038269043,"by":2.3855392932891846,"bz":0.7545509934425354},{"qi":0,"quality":"maj","ax":-2.0944972038269043,"ay":2.3855392932891846,"az":0.7545509934425354,"bx":-2.710175037384033,"by":1.342288613319397,"bz":1.1637440919876099},{"qi":0,"quality":"maj","ax":-2.710175037384033,"ay":1.342288613319397,"az":1.1637440919876099,"bx":-2.7349183559417725,"by":-0.0012036703992635012,"bz":1.18763267993927},{"qi":0,"quality":"maj","ax":-2.7349183559417725,"ay":-0.0012036703992635012,"az":1.18763267993927,"bx":-2.845952272415161,"by":-0.9610418081283569,"bz":1.6037836074829102},{"qi":0,"quality":"maj","ax":-2.845952272415161,"ay":-0.9610418081283569,"az":1.6037836074829102,"bx":-1.9633387327194214,"by":-2.5362424850463867,"bz":1.6299643516540527},{"qi":0,"quality":"maj","ax":-1.9633387327194214,"ay":-2.5362424850463867,"az":1.6299643516540527,"bx":-2.0341556072235107,"by":-2.560004949569702,"bz":-0.8923214673995972},{"qi":0,"quality":"maj","ax":-2.0341556072235107,"ay":-2.560004949569702,"az":-0.8923214673995972,"bx":-1.2881852388381958,"by":-1.9167479276657104,"bz":-3.2488017082214355},{"qi":0,"quality":"maj","ax":-1.2881852388381958,"ay":-1.9167479276657104,"az":-3.2488017082214355,"bx":-1.4946399927139282,"by":-0.6825564503669739,"bz":-3.3343217372894287},{"qi":1,"quality":"min","ax":-1.9390361309051514,"ay":-3.9438655376434326,"az":0.3065512478351593,"bx":-1.849645972251892,"by":-2.2036681175231934,"bz":-2.399292469024658},{"qi":1,"quality":"min","ax":-1.849645972251892,"ay":-2.2036681175231934,"az":-2.399292469024658,"bx":-1.1447224617004395,"by":-0.8830893635749817,"bz":-3.0568227767944336},{"qi":1,"quality":"min","ax":-1.1447224617004395,"ay":-0.8830893635749817,"az":-3.0568227767944336,"bx":-1.6042078733444214,"by":0.07083005458116531,"bz":-2.960552453994751},{"qi":1,"quality":"min","ax":-1.6042078733444214,"ay":0.07083005458116531,"az":-2.960552453994751,"bx":-1.6216485500335693,"by":1.4467064142227173,"bz":-3.192523241043091},{"qi":1,"quality":"min","ax":-1.6216485500335693,"ay":1.4467064142227173,"az":-3.192523241043091,"bx":-1.1398465633392334,"by":1.6911606788635254,"bz":-3.2071588039398193},{"qi":1,"quality":"min","ax":-1.1398465633392334,"ay":1.6911606788635254,"az":-3.2071588039398193,"bx":-2.679533004760742,"by":2.9448604583740234,"bz":-1.2480517625808716},{"qi":1,"quality":"min","ax":-2.679533004760742,"ay":2.9448604583740234,"az":-1.2480517625808716,"bx":-2.81026291847229,"by":2.635922431945801,"bz":2.0353145599365234},{"qi":1,"quality":"min","ax":-2.81026291847229,"ay":2.635922431945801,"az":2.0353145599365234,"bx":-3.442300796508789,"by":0.9973148703575134,"bz":1.792104721069336},{"qi":1,"quality":"min","ax":-3.442300796508789,"ay":0.9973148703575134,"az":1.792104721069336,"bx":-2.5311825275421143,"by":0.4257965385913849,"bz":2.6531155109405518},{"qi":1,"quality":"min","ax":-2.5311825275421143,"ay":0.4257965385913849,"az":2.6531155109405518,"bx":-2.914128065109253,"by":-1.8514361381530762,"bz":1.2533838748931885},{"qi":1,"quality":"min","ax":-2.914128065109253,"ay":-1.8514361381530762,"az":1.2533838748931885,"bx":-1.8514317274093628,"by":-2.5912981033325195,"bz":0.8107298016548157},{"qi":1,"quality":"min","ax":-1.8514317274093628,"ay":-2.5912981033325195,"az":0.8107298016548157,"bx":-1.9390361309051514,"by":-3.9438655376434326,"bz":0.3065512478351593},{"qi":2,"quality":"maj7","ax":0.9480612277984619,"ay":-0.3721245229244232,"az":-3.673203945159912,"bx":-0.07817872613668442,"by":0.6542448401451111,"bz":-0.5288057327270508},{"qi":2,"quality":"maj7","ax":-0.07817872613668442,"ay":0.6542448401451111,"az":-0.5288057327270508,"bx":0.38150206208229065,"by":1.421212911605835,"bz":-1.4268085956573486},{"qi":2,"quality":"maj7","ax":0.38150206208229065,"ay":1.421212911605835,"az":-1.4268085956573486,"bx":-0.05160263553261757,"by":2.636491537094116,"bz":-0.07186220586299896},{"qi":2,"quality":"maj7","ax":-0.05160263553261757,"ay":2.636491537094116,"az":-0.07186220586299896,"bx":0.11425532400608063,"by":2.7195873260498047,"bz":1.3611140251159668},{"qi":2,"quality":"maj7","ax":0.11425532400608063,"ay":2.7195873260498047,"az":1.3611140251159668,"bx":0.35687199234962463,"by":0.8356472849845886,"bz":2.097330331802368},{"qi":2,"quality":"maj7","ax":0.35687199234962463,"ay":0.8356472849845886,"az":2.097330331802368,"bx":-0.3076278865337372,"by":-0.3541066348552704,"bz":2.7284011840820312},{"qi":2,"quality":"maj7","ax":-0.3076278865337372,"ay":-0.3541066348552704,"az":2.7284011840820312,"bx":0.1341785341501236,"by":-1.0746458768844604,"bz":1.7257943153381348},{"qi":2,"quality":"maj7","ax":0.1341785341501236,"ay":-1.0746458768844604,"az":1.7257943153381348,"bx":0.6748566031455994,"by":-2.912358045578003,"bz":1.9096819162368774},{"qi":2,"quality":"maj7","ax":0.6748566031455994,"ay":-2.912358045578003,"az":1.9096819162368774,"bx":0.5428676009178162,"by":-3.5073812007904053,"bz":1.3096455335617065},{"qi":2,"quality":"maj7","ax":0.5428676009178162,"ay":-3.5073812007904053,"az":1.3096455335617065,"bx":0.7698114514350891,"by":-3.3837125301361084,"bz":-0.896560788154602},{"qi":2,"quality":"maj7","ax":0.7698114514350891,"ay":-3.3837125301361084,"az":-0.896560788154602,"bx":1.5169780254364014,"by":-1.6863640546798706,"bz":-1.6904386281967163},{"qi":2,"quality":"maj7","ax":1.5169780254364014,"ay":-1.6863640546798706,"az":-1.6904386281967163,"bx":0.9480612277984619,"by":-0.3721245229244232,"bz":-3.673203945159912},{"qi":3,"quality":"min7","ax":0.8934919834136963,"ay":-3.2854888439178467,"az":1.2705780267715454,"bx":0.9306025505065918,"by":-3.808436632156372,"bz":-0.2650436758995056},{"qi":3,"quality":"min7","ax":0.9306025505065918,"ay":-3.808436632156372,"az":-0.2650436758995056,"bx":1.15152108669281,"by":-1.9904464483261108,"bz":-2.3743388652801514},{"qi":3,"quality":"min7","ax":1.15152108669281,"ay":-1.9904464483261108,"az":-2.3743388652801514,"bx":1.5853686332702637,"by":-0.6217344999313354,"bz":-2.397368907928467},{"qi":3,"quality":"min7","ax":1.5853686332702637,"ay":-0.6217344999313354,"az":-2.397368907928467,"bx":1.1025114059448242,"by":0.3071322739124298,"bz":-2.358807325363159},{"qi":3,"quality":"min7","ax":1.1025114059448242,"ay":0.3071322739124298,"az":-2.358807325363159,"bx":1.5155497789382935,"by":1.5925649404525757,"bz":-0.7410644888877869},{"qi":3,"quality":"min7","ax":1.5155497789382935,"ay":1.5925649404525757,"az":-0.7410644888877869,"bx":1.82473623752594,"by":2.3796770572662354,"bz":-0.8926764726638794},{"qi":3,"quality":"min7","ax":1.82473623752594,"ay":2.3796770572662354,"az":-0.8926764726638794,"bx":0.816362202167511,"by":2.993316650390625,"bz":1.0683856010437012},{"qi":3,"quality":"min7","ax":0.816362202167511,"ay":2.993316650390625,"az":1.0683856010437012,"bx":0.729220449924469,"by":2.4177072048187256,"bz":2.2943644523620605},{"qi":3,"quality":"min7","ax":0.729220449924469,"ay":2.4177072048187256,"az":2.2943644523620605,"bx":0.10459913313388824,"by":0.28056585788726807,"bz":3.9025397300720215},{"qi":3,"quality":"min7","ax":0.10459913313388824,"ay":0.28056585788726807,"az":3.9025397300720215,"bx":1.0248907804489136,"by":-1.6604607105255127,"bz":2.439598321914673},{"qi":3,"quality":"min7","ax":1.0248907804489136,"ay":-1.6604607105255127,"az":2.439598321914673,"bx":1.3048789501190186,"by":-2.1010377407073975,"bz":2.8617143630981445},{"qi":3,"quality":"min7","ax":1.3048789501190186,"ay":-2.1010377407073975,"az":2.8617143630981445,"bx":0.8934919834136963,"by":-3.2854888439178467,"bz":1.2705780267715454},{"qi":8,"quality":"sus4","ax":-3.6033942699432373,"ay":-3.2915396690368652,"az":-1.5061206817626953,"bx":-3.2094058990478516,"by":-3.1760952472686768,"bz":-4.048342227935791},{"qi":8,"quality":"sus4","ax":-3.2094058990478516,"ay":-3.1760952472686768,"az":-4.048342227935791,"bx":-2.7118043899536133,"by":-0.8119461536407471,"bz":-4.7082743644714355},{"qi":8,"quality":"sus4","ax":-2.7118043899536133,"ay":-0.8119461536407471,"az":-4.7082743644714355,"bx":-2.288810968399048,"by":-0.48667973279953003,"bz":-3.7338643074035645},{"qi":8,"quality":"sus4","ax":-2.288810968399048,"ay":-0.48667973279953003,"az":-3.7338643074035645,"bx":-2.821333408355713,"by":1.794663906097412,"bz":-3.6922435760498047},{"qi":8,"quality":"sus4","ax":-2.821333408355713,"ay":1.794663906097412,"az":-3.6922435760498047,"bx":-3.6017799377441406,"by":2.7360472679138184,"bz":-2.3884034156799316},{"qi":8,"quality":"sus4","ax":-3.6017799377441406,"ay":2.7360472679138184,"az":-2.3884034156799316,"bx":-4.371258735656738,"by":2.3446223735809326,"bz":0.23062333464622498},{"qi":8,"quality":"sus4","ax":-4.371258735656738,"ay":2.3446223735809326,"az":0.23062333464622498,"bx":-4.906809329986572,"by":1.9703090190887451,"bz":2.3594255447387695},{"qi":8,"quality":"sus4","ax":-4.906809329986572,"ay":1.9703090190887451,"az":2.3594255447387695,"bx":-4.8240180015563965,"by":-0.14077281951904297,"bz":2.93581223487854},{"qi":8,"quality":"sus4","ax":-4.8240180015563965,"ay":-0.14077281951904297,"az":2.93581223487854,"bx":-4.475429534912109,"by":-1.4755418300628662,"bz":2.596891403198242},{"qi":8,"quality":"sus4","ax":-4.475429534912109,"ay":-1.4755418300628662,"az":2.596891403198242,"bx":-4.270978927612305,"by":-4.123325824737549,"bz":1.848918080329895},{"qi":8,"quality":"sus4","ax":-4.270978927612305,"ay":-4.123325824737549,"az":1.848918080329895,"bx":-4.0834736824035645,"by":-2.9223742485046387,"bz":-0.3250174820423126},{"qi":8,"quality":"sus4","ax":-4.0834736824035645,"ay":-2.9223742485046387,"az":-0.3250174820423126,"bx":-3.6033942699432373,"by":-3.2915396690368652,"bz":-1.5061206817626953},{"qi":9,"quality":"7","ax":2.167869806289673,"ay":-2.092278242111206,"az":-1.0001728534698486,"bx":2.1304540634155273,"by":-1.0663083791732788,"bz":-1.149824619293213},{"qi":9,"quality":"7","ax":2.1304540634155273,"ay":-1.0663083791732788,"az":-1.149824619293213,"bx":1.946099877357483,"by":-0.5974913239479065,"bz":-1.324781060218811},{"qi":9,"quality":"7","ax":1.946099877357483,"ay":-0.5974913239479065,"az":-1.324781060218811,"bx":1.9855942726135254,"by":0.8486529588699341,"bz":-1.3317278623580933},{"qi":9,"quality":"7","ax":1.9855942726135254,"ay":0.8486529588699341,"az":-1.3317278623580933,"bx":3.2652108669281006,"by":1.0856655836105347,"bz":-1.826345682144165},{"qi":9,"quality":"7","ax":3.2652108669281006,"ay":1.0856655836105347,"az":-1.826345682144165,"bx":2.384777545928955,"by":2.1400821208953857,"bz":-1.0692516565322876},{"qi":9,"quality":"7","ax":2.384777545928955,"ay":2.1400821208953857,"az":-1.0692516565322876,"bx":0.9606117606163025,"by":2.5697896480560303,"bz":1.0445438623428345},{"qi":9,"quality":"7","ax":0.9606117606163025,"ay":2.5697896480560303,"az":1.0445438623428345,"bx":1.1192511320114136,"by":1.3091460466384888,"bz":2.230623245239258},{"qi":9,"quality":"7","ax":1.1192511320114136,"ay":1.3091460466384888,"az":2.230623245239258,"bx":1.0191289186477661,"by":0.5203080773353577,"bz":1.908618450164795},{"qi":9,"quality":"7","ax":1.0191289186477661,"ay":0.5203080773353577,"az":1.908618450164795,"bx":1.4119369983673096,"by":-1.3974343538284302,"bz":1.9890333414077759},{"qi":9,"quality":"7","ax":1.4119369983673096,"ay":-1.3974343538284302,"az":1.9890333414077759,"bx":1.469985008239746,"by":-2.3682382106781006,"bz":2.5465238094329834},{"qi":9,"quality":"7","ax":1.469985008239746,"ay":-2.3682382106781006,"az":2.5465238094329834,"bx":2.048795461654663,"by":-1.841288685798645,"bz":0.5633846521377563},{"qi":9,"quality":"7","ax":2.048795461654663,"ay":-1.841288685798645,"az":0.5633846521377563,"bx":2.167869806289673,"by":-2.092278242111206,"bz":-1.0001728534698486}]};
+
+    var traces = [];
+
+    // one scatter3d per quality
+    // one scatter3d per quality
+    [0,1,2,3,8,9].forEach(function(qi){
+      var pts = data.points.filter(function(p){ return p.qi === qi; });
+      traces.push({
+        type: 'scatter3d', mode: 'markers+text',
+        name: NAMES[qi],
+        x: pts.map(function(p){return p.x;}),
+        y: pts.map(function(p){return p.y;}),
+        z: pts.map(function(p){return p.z;}),
+        text: pts.map(function(p){return p.label;}),
+        textposition: 'top center',
+        textfont: {size: 16, color: TAB20[qi]},
+        marker: {size: 5, color: TAB20[qi], opacity: 0.9},
+        legendgroup: NAMES[qi],
+        showlegend: true
+      });
+    });
+
+    // cycle-of-fifths edges — one line trace per quality (null-separated segments)
+    [0,1,2,3,8,9].forEach(function(qi){
+      var ex=[],ey=[],ez=[];
+      data.edges.filter(function(e){return e.qi===qi;}).forEach(function(e){
+        ex.push(e.ax,e.bx,null);
+        ey.push(e.ay,e.by,null);
+        ez.push(e.az,e.bz,null);
+      });
+      traces.push({
+        type: 'scatter3d', mode: 'lines',
+        name: NAMES[qi],
+        x: ex, y: ey, z: ez,
+        line: {color: TAB20[qi], width: 6},
+        opacity: 0.45,
+        legendgroup: NAMES[qi],
+        showlegend: false,
+        hoverinfo: 'skip'
+      });
+    });
+
+    var layout = {
+      margin: {l:0,r:0,t:0,b:0},
+      paper_bgcolor: 'rgba(0,0,0,0)',
+      plot_bgcolor:  'rgba(0,0,0,0)',
+      scene: {
+        xaxis: {title:'PC1', backgroundcolor:'rgba(0,0,0,0)', gridcolor:'#ccc'},
+        yaxis: {title:'PC2', backgroundcolor:'rgba(0,0,0,0)', gridcolor:'#ccc'},
+        zaxis: {title:'PC3', backgroundcolor:'rgba(0,0,0,0)', gridcolor:'#ccc'},
+        bgcolor: 'rgba(0,0,0,0)'
+      },
+      legend: {x:0.02, y:0.98, font:{size:36}, itemwidth:60},
+      font: {family:"'DM Sans',sans-serif"}
+    };
+
+    Plotly.newPlot('pca3d-plot', traces, layout, {responsive:true, displayModeBar:false}).then(function() {
+      // Scale up legend dot symbols
+      document.querySelectorAll('#pca3d-plot .legendpoints path').forEach(function(el) {
+        el.style.transformBox = 'fill-box';
+        el.style.transformOrigin = 'center';
+        el.style.transform = 'translateX(20px) scale(5)';
+      });
+
+      // Auto-rotate until user interacts
+      var rotating = true;
+      var angle = 0;
+      var plotEl = document.getElementById('pca3d-plot');
+
+      function rotate() {
+        if (!rotating) return;
+        angle = (angle + 0.4) % 360;
+        Plotly.relayout('pca3d-plot', {
+          'scene.camera': {
+            eye: {
+              x: 1.8 * Math.cos(angle * Math.PI / 180),
+              y: 1.8 * Math.sin(angle * Math.PI / 180),
+              z: 0.8
+            }
+          }
+        });
+        requestAnimationFrame(rotate);
+      }
+
+      // Stop on any pointer interaction with the plot
+      plotEl.addEventListener('pointerdown', function() { rotating = false; }, {once: true});
+
+      rotate();
+    });
+  })();
+  </script>
+  <div class="slide-num">11 / 16</div>
+  <div class="timer">0:50</div>
 </section>
 
+
 <!-- ═══════════════════════════════════════════════════════════
-     SLIDE 10  ATTENTION MAPS
+     SLIDE 13  ATTENTION MAPS
 ═══════════════════════════════════════════════════════════ -->
 <section class="slide slide-surface" id="s9">
   <p class="eyebrow c-blue">Stage 2 · Interpretability</p>
   <h2 class="sh2">Attention Maps</h2>
   <div class="g22">
-    <div class="img-box">
-      <img src="figures/attn_enc_all.png" alt="Encoder self attention"/>
+    <div class="img-box-labeled">
+      <span class="attn-label">encoder self-attn:<br>input vs input</span>
+      <img src="figures/attn_enc_all.png" alt="Encoder self attention" style="cursor:pointer;" onclick="window.open(this.src,'_blank')"/>
     </div>
-    <div class="img-box">
-      <img src="figures/attn_dec_all.png" alt="Decoder self attention"/>
+    <div class="img-box-labeled">
+      <span class="attn-label">decoder self-attn:<br>output vs output</span>
+      <img src="figures/attn_dec_all.png" alt="Decoder self attention" style="cursor:pointer;" onclick="window.open(this.src,'_blank')"/>
     </div>
-    <div class="img-box">
-      <img src="figures/attn_cross_all.png" alt="Cross attention raw"/>
+    <div class="img-box-labeled">
+      <span class="attn-label">cross-attn:<br>output vs input</span>
+      <img src="figures/attn_cross_all.png" alt="Cross attention raw" style="cursor:pointer;" onclick="window.open(this.src,'_blank')"/>
     </div>
-    <div class="img-box">
-      <img src="figures/attn_cross_dc.png" alt="Cross attention debiased"/>
+    <div class="img-box-labeled">
+      <span class="attn-label">cross-attn<br>(double-centred):<br>output vs input</span>
+      <img src="figures/attn_cross_dc.png" alt="Cross attention debiased" style="cursor:pointer;" onclick="window.open(this.src,'_blank')"/>
     </div>
   </div>
-  <div class="slide-num">13 / 17</div>
-  <div class="timer">0:40</div>
+  <div class="slide-num">12 / 16</div>
+  <div class="timer">0:50</div>
 </section>
 
 <!-- ═══════════════════════════════════════════════════════════
-     SLIDE 11  ARRANGEMENT
+     SLIDE 14  ARRANGEMENT
 ═══════════════════════════════════════════════════════════ -->
 <section class="slide" id="s10">
   <p class="eyebrow c-green">Stage 3</p>
   <h2 class="sh2">Groove Retrieval and Chord Snapping</h2>
-  <div class="g2">
-    <div class="img-box">
+  <div style="flex:1; display:flex; align-items:center; justify-content:center; min-height:0; overflow:hidden;">
+    <div class="img-box" style="max-width:80%; max-height:100%;">
       <img src="figures/groove_pca.png" alt="Groove feature PCA"/>
     </div>
-    <div class="img-box">
-      <img src="figures/chord_snapping_example.png" alt="Chord snapping I V vi IV"/>
-    </div>
   </div>
-  <div class="slide-num">14 / 17</div>
-  <div class="timer">0:25</div>
+  <div class="slide-num">13 / 16</div>
+  <div class="timer">0:20</div>
 </section>
 
 <!-- ═══════════════════════════════════════════════════════════
-     SLIDE 12  LATENCY
+     SLIDE 15  LATENCY
 ═══════════════════════════════════════════════════════════ -->
 <section class="slide slide-surface" id="s11">
   <p class="eyebrow c-amber">End-to-End Latency</p>
-  <h2 class="sh2">Real Time Latency</h2>
+  <h2 class="sh2">Real-time Latency</h2>
   <!-- Prediction timing diagram -->
   <div style="flex:0 0 auto; display:flex; justify-content:center; margin-bottom:clamp(8px,1.2vh,14px);">
-    <svg viewBox="0 -14 820 154" style="width:100%; max-height:250px; font-family:'DM Sans',sans-serif; display:block;">
+    <svg viewBox="0 -14 760 154" style="width:100%; max-height:340px; font-family:'DM Sans',sans-serif; display:block;">
       <defs>
         <marker id="arr"  markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#b06a08"/></marker>
       </defs>
 
       <!-- row labels -->
-      <text x="4"  y="38" font-size="11" fill="#1c1510" font-weight="600">Musician</text>
-      <text x="4"  y="100" font-size="11" fill="#1c1510" font-weight="600">System</text>
+      <text x="4"  y="38" font-size="17" fill="#1c1510" font-weight="600">Musician</text>
+      <text x="4"  y="100" font-size="17" fill="#1c1510" font-weight="600">System</text>
 
-      <!-- "1 beat (4 × 16th note)" bracket -->
-      <line x1="90" y1="8" x2="450" y2="8" stroke="#1a6fa8" stroke-width="1.2"/>
+      <!-- "1 beat (4 × 16th note)" bracket — spans x=90 to x=540 -->
+      <line x1="90" y1="8" x2="540" y2="8" stroke="#1a6fa8" stroke-width="1.2"/>
       <line x1="90"  y1="5" x2="90"  y2="12" stroke="#1a6fa8" stroke-width="1.2"/>
-      <line x1="450" y1="5" x2="450" y2="12" stroke="#1a6fa8" stroke-width="1.2"/>
-      <text x="270" y="7" font-size="10" text-anchor="middle" fill="#1a6fa8" dominant-baseline="text-after-edge">1 beat  (4 × 16th note)</text>
+      <line x1="540" y1="5" x2="540" y2="12" stroke="#1a6fa8" stroke-width="1.2"/>
+      <text x="315" y="7" font-size="15" text-anchor="middle" fill="#1a6fa8" dominant-baseline="text-after-edge">1 beat  (4 × 16th note)</text>
 
-      <!-- 16th note boxes — 90px wide each, 8px gap -->
-      <rect x="90"  y="14" width="86" height="30" rx="4" fill="#dde8f5" stroke="#1a6fa8" stroke-width="1.5"/>
-      <text x="133" y="24" font-size="9" text-anchor="middle" fill="#6699bb">16th note</text>
-      <text x="133" y="37" font-size="11" text-anchor="middle" fill="#1a6fa8" font-weight="700">1</text>
+      <!-- 16th note boxes — 108px wide each, 6px gap -->
+      <rect x="90"  y="14" width="108" height="30" rx="4" fill="#dde8f5" stroke="#1a6fa8" stroke-width="1.5"/>
+      <text x="144" y="24" font-size="14" text-anchor="middle" fill="#6699bb">16th note</text>
+      <text x="144" y="37" font-size="17" text-anchor="middle" fill="#1a6fa8" font-weight="700">1</text>
 
-      <rect x="182" y="14" width="86" height="30" rx="4" fill="#dde8f5" stroke="#1a6fa8" stroke-width="1.5"/>
-      <text x="225" y="24" font-size="9" text-anchor="middle" fill="#6699bb">16th note</text>
-      <text x="225" y="37" font-size="11" text-anchor="middle" fill="#1a6fa8" font-weight="700">2</text>
+      <rect x="204" y="14" width="108" height="30" rx="4" fill="#dde8f5" stroke="#1a6fa8" stroke-width="1.5"/>
+      <text x="258" y="24" font-size="14" text-anchor="middle" fill="#6699bb">16th note</text>
+      <text x="258" y="37" font-size="17" text-anchor="middle" fill="#1a6fa8" font-weight="700">2</text>
 
-      <rect x="274" y="14" width="86" height="30" rx="4" fill="#dde8f5" stroke="#1a6fa8" stroke-width="1.5"/>
-      <text x="317" y="24" font-size="9" text-anchor="middle" fill="#6699bb">16th note</text>
-      <text x="317" y="37" font-size="11" text-anchor="middle" fill="#1a6fa8" font-weight="700">3</text>
+      <rect x="318" y="14" width="108" height="30" rx="4" fill="#dde8f5" stroke="#1a6fa8" stroke-width="1.5"/>
+      <text x="372" y="24" font-size="14" text-anchor="middle" fill="#6699bb">16th note</text>
+      <text x="372" y="37" font-size="17" text-anchor="middle" fill="#1a6fa8" font-weight="700">3</text>
 
-      <rect x="366" y="14" width="86" height="30" rx="4" fill="#dde8f5" stroke="#1a6fa8" stroke-width="1.5"/>
-      <text x="409" y="24" font-size="9" text-anchor="middle" fill="#6699bb">16th note</text>
-      <text x="409" y="37" font-size="11" text-anchor="middle" fill="#1a6fa8" font-weight="700">4</text>
+      <rect x="432" y="14" width="108" height="30" rx="4" fill="#dde8f5" stroke="#1a6fa8" stroke-width="1.5"/>
+      <text x="486" y="24" font-size="14" text-anchor="middle" fill="#6699bb">16th note</text>
+      <text x="486" y="37" font-size="17" text-anchor="middle" fill="#1a6fa8" font-weight="700">4</text>
 
-      <!-- next beat faded -->
-      <rect x="458" y="14" width="100" height="30" rx="4" fill="#f0ece6" stroke="#b8aa9a" stroke-width="1.4" stroke-dasharray="5,3"/>
-      <text x="508" y="33" font-size="10" text-anchor="middle" fill="#b8aa9a">next beat…</text>
+      <!-- next beat faded — 125px wide -->
+      <rect x="546" y="14" width="125" height="30" rx="4" fill="#f0ece6" stroke="#b8aa9a" stroke-width="1.4" stroke-dasharray="5,3"/>
+      <text x="608" y="33" font-size="15" text-anchor="middle" fill="#b8aa9a">next beat…</text>
 
-      <!-- sync boundary -->
-      <line x1="452" y1="5" x2="452" y2="138" stroke="#177a3e" stroke-width="1.6" stroke-dasharray="6,3"/>
-      <text x="455" y="54" font-size="9.5" fill="#177a3e" font-weight="600">sync</text>
-      <text x="455" y="65" font-size="9.5" fill="#177a3e" font-weight="600">point</text>
+      <!-- sync boundary at x=540 -->
+      <line x1="540" y1="5" x2="540" y2="138" stroke="#177a3e" stroke-width="1.6" stroke-dasharray="6,3"/>
+      <text x="543" y="54" font-size="14" fill="#177a3e" font-weight="600">sync</text>
+      <text x="543" y="65" font-size="14" fill="#177a3e" font-weight="600">point</text>
 
-      <!-- prediction window — reads only 1.5 × 16th notes -->
-      <rect x="90" y="76" width="129" height="30" rx="4" fill="#fdf0dd" stroke="#b06a08" stroke-width="1.5"/>
-      <text x="155" y="88" font-size="9"  text-anchor="middle" fill="#c07a20">reads some 16th notes</text>
-      <text x="155" y="100" font-size="10" text-anchor="middle" fill="#b06a08" font-weight="600">predict chord</text>
+      <!-- prediction window — 161px wide -->
+      <rect x="90" y="76" width="161" height="30" rx="4" fill="#fdf0dd" stroke="#b06a08" stroke-width="1.5"/>
+      <text x="171" y="88" font-size="14"  text-anchor="middle" fill="#c07a20">read a few 16th notes</text>
+      <text x="171" y="100" font-size="15" text-anchor="middle" fill="#b06a08" font-weight="600">predict chord</text>
 
       <!-- output-ready arrow to sync point -->
-      <line x1="219" y1="91" x2="447" y2="91" stroke="#b06a08" stroke-width="1.8" marker-end="url(#arr)"/>
-      <text x="333" y="85" font-size="9" fill="#b06a08" text-anchor="middle">runtime</text>
+      <line x1="251" y1="91" x2="535" y2="91" stroke="#b06a08" stroke-width="1.8" marker-end="url(#arr)"/>
+      <text x="393" y="85" font-size="14" fill="#b06a08" text-anchor="middle">runtime</text>
 
-      <!-- harmoniser plays box -->
-      <rect x="456" y="76" width="110" height="30" rx="4" fill="#d4edd9" stroke="#177a3e" stroke-width="1.5"/>
-      <text x="511" y="88"  font-size="9"  text-anchor="middle" fill="#177a3e">harmoniser</text>
-      <text x="511" y="100" font-size="10" text-anchor="middle" fill="#177a3e" font-weight="700">plays in sync</text>
+      <!-- harmoniser plays box — 138px wide -->
+      <rect x="544" y="76" width="138" height="30" rx="4" fill="#d4edd9" stroke="#177a3e" stroke-width="1.5"/>
+      <text x="613" y="88"  font-size="14"  text-anchor="middle" fill="#177a3e">harmoniser</text>
+      <text x="613" y="100" font-size="15" text-anchor="middle" fill="#177a3e" font-weight="700">plays in sync</text>
 
 
     </svg>
@@ -945,25 +1036,45 @@ body {
     <img src="figures/latency_extension.png" alt="Latency extension plot"
          style="max-width:860px; margin:0 auto;"/>
   </div>
-  <div class="slide-num">15 / 17</div>
-  <div class="timer">0:25</div>
+  <div class="slide-num">14 / 16</div>
+  <div class="timer">0:20</div>
 </section>
 
 <!-- ═══════════════════════════════════════════════════════════
      SLIDE 16  FURTHER RESEARCH DIRECTIONS
 ═══════════════════════════════════════════════════════════ -->
 <section class="slide slide-surface" id="s12">
-  <p class="eyebrow c-amber">Further Research</p>
-  <h2 class="sh2">Future Directions</h2>
-  <div style="flex:1; display:flex; flex-direction:column; justify-content:center; gap:clamp(14px,2.5vh,30px);">
-    <div class="feat-title" style="font-size:clamp(22px,2.8vw,40px);">Octave Awareness</div>
-    <div class="feat-title" style="font-size:clamp(22px,2.8vw,40px);">Varying Time Signatures</div>
-    <div class="feat-title" style="font-size:clamp(22px,2.8vw,40px);">Polyphonic Input</div>
-    <div class="feat-title" style="font-size:clamp(22px,2.8vw,40px);">Genre Adaptation</div>
-    <div class="feat-title" style="font-size:clamp(22px,2.8vw,40px);">End-to-End Training</div>
+  <div style="flex:1; display:grid; grid-template-columns:1fr 1px 1fr; gap:0 clamp(28px,4vw,56px); min-height:0;">
+    <!-- LEFT: Conclusions -->
+    <div style="display:flex; flex-direction:column; justify-content:center; gap:clamp(14px,2.5vh,30px);">
+      <div>
+        <p class="eyebrow c-green" style="margin-bottom:clamp(10px,1.5vh,18px);">Conclusions</p>
+        <div style="display:flex; flex-direction:column; gap:clamp(14px,2.5vh,30px);">
+          <div style="display:flex; gap:clamp(14px,2vw,24px); align-items:baseline;">
+            <span style="font-family:'DM Serif Display',serif; font-size:clamp(22px,2.8vw,40px); color:var(--faint); flex-shrink:0; line-height:1;">1</span>
+            <span style="font-size:clamp(22px,2.8vw,40px); line-height:1.3;">End-to-end real-time pipeline</span>
+          </div>
+          <div style="display:flex; gap:clamp(14px,2vw,24px); align-items:baseline;">
+            <span style="font-family:'DM Serif Display',serif; font-size:clamp(22px,2.8vw,40px); color:var(--faint); flex-shrink:0; line-height:1;">2</span>
+            <span style="font-size:clamp(22px,2.8vw,40px); line-height:1.3;">Emergent <span class="cof-link" style="cursor:pointer;" onclick="document.getElementById('modal-cof').style.display='block'">Cycle of Fifths</span> from PCA of the chord embeddings</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- DIVIDER -->
+    <div style="background:linear-gradient(to bottom, transparent, var(--border), transparent); align-self:stretch;"></div>
+    <!-- RIGHT: Future Directions -->
+    <div style="display:flex; flex-direction:column; justify-content:center; gap:clamp(14px,2.5vh,30px);">
+      <p class="eyebrow c-amber" style="margin-bottom:clamp(10px,1.5vh,18px);">Future Directions</p>
+      <div class="feat-title" style="font-size:clamp(22px,2.8vw,40px);">Octave Awareness</div>
+      <div class="feat-title" style="font-size:clamp(22px,2.8vw,40px);">Varying Time Signatures</div>
+      <div class="feat-title" style="font-size:clamp(22px,2.8vw,40px);">Polyphonic Input</div>
+      <div class="feat-title" style="font-size:clamp(22px,2.8vw,40px);">Genre Adaptation</div>
+      <div class="feat-title" style="font-size:clamp(22px,2.8vw,40px);">End-to-End Training</div>
+    </div>
   </div>
-  <div class="slide-num">16 / 17</div>
-  <div class="timer">0:25</div>
+  <div class="slide-num">15 / 16</div>
+  <div class="timer">0:20</div>
 </section>
 
 <!-- ═══════════════════════════════════════════════════════════
@@ -971,9 +1082,9 @@ body {
 ═══════════════════════════════════════════════════════════ -->
 <section class="slide slide-hero" id="s-qa">
   <div class="hero-center">
-    <h1 class="hero-h1">Q&amp;A</h1>
+    <h1 class="hero-h1" style="font-size:clamp(52px,8vw,110px);">Q&amp;A</h1>
   </div>
-  <div class="slide-num">17 / 17</div>
+  <div class="slide-num">16 / 16</div>
 </section>
 
 <script>
@@ -1051,11 +1162,340 @@ const obs = new IntersectionObserver(entries => {
 
 slides.forEach(s => obs.observe(s));
 
+/* ── CLOSE MODALS ON ESCAPE ── */
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    document.getElementById('modal-32x5').style.display = 'none';
+    document.getElementById('modal-169x128').style.display = 'none';
+    document.getElementById('modal-cof').style.display = 'none';  // also close CoF
+  }
+});
+
 /* ── CLICK IMAGE TO OPEN IN NEW TAB ── */
 document.querySelectorAll('.img-box img').forEach(img => {
   img.style.cursor = 'pointer';
   img.addEventListener('click', () => window.open(img.src, '_blank'));
 });
 </script>
+
+<!-- ══════════════════════════════════════════════
+     MODAL: 32×5 input representation
+══════════════════════════════════════════════ -->
+<div id="modal-32x5" onclick="if(event.target===this)this.style.display='none'" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(28,21,16,0.45);z-index:3000;">
+  <div style="position:absolute;top:10vh;left:10vw;width:80vw;height:80vh;background:#faf9f7;border-radius:12px;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,0.3);display:flex;flex-direction:column;">
+    <button onclick="document.getElementById('modal-32x5').style.display='none'" style="position:absolute;top:10px;right:14px;background:none;border:none;font-size:22px;cursor:pointer;color:#888;line-height:1;z-index:1;">✕</button>
+    <div style="display:grid;grid-template-columns:1fr 1fr;flex:1;min-height:0;">
+      <!-- Piano roll -->
+      <div style="overflow:hidden;border-right:1px solid #e0d8cf;padding:16px;">
+        <svg viewBox="0 0 330 108" style="width:100%;height:100%;max-height:none;" font-family="'DM Sans',sans-serif" font-size="8.5">
+          <!-- Beat backgrounds -->
+          <rect x="26" y="12" width="38" height="84" fill="#fff8ee"/><!-- beat 1 strong -->
+          <rect x="64" y="12" width="38" height="84" fill="#ffffff"/>
+          <rect x="102" y="12" width="38" height="84" fill="#f8f6f3"/>
+          <rect x="140" y="12" width="38" height="84" fill="#ffffff"/>
+          <rect x="178" y="12" width="38" height="84" fill="#fff8ee"/><!-- beat 5 strong -->
+          <rect x="216" y="12" width="38" height="84" fill="#ffffff"/>
+          <rect x="254" y="12" width="38" height="84" fill="#f8f6f3"/>
+          <rect x="292" y="12" width="38" height="84" fill="#ffffff"/>
+          <!-- Horizontal pitch-row lines -->
+          <line x1="26" y1="12"  x2="330" y2="12"  stroke="#e0d8cf" stroke-width="0.6"/>
+          <line x1="26" y1="26"  x2="330" y2="26"  stroke="#e0d8cf" stroke-width="0.6"/>
+          <line x1="26" y1="40"  x2="330" y2="40"  stroke="#e0d8cf" stroke-width="0.6"/>
+          <line x1="26" y1="54"  x2="330" y2="54"  stroke="#e0d8cf" stroke-width="0.6"/>
+          <line x1="26" y1="68"  x2="330" y2="68"  stroke="#e0d8cf" stroke-width="0.6"/>
+          <line x1="26" y1="82"  x2="330" y2="82"  stroke="#e0d8cf" stroke-width="0.6"/>
+          <line x1="26" y1="96"  x2="330" y2="96"  stroke="#e0d8cf" stroke-width="0.6"/>
+          <!-- Vertical beat separators -->
+          <line x1="26"  y1="12" x2="26"  y2="96" stroke="#c8bfb5" stroke-width="0.8"/>
+          <line x1="64"  y1="12" x2="64"  y2="96" stroke="#c8bfb5" stroke-width="0.6"/>
+          <line x1="102" y1="12" x2="102" y2="96" stroke="#c8bfb5" stroke-width="0.6"/>
+          <line x1="140" y1="12" x2="140" y2="96" stroke="#c8bfb5" stroke-width="0.6"/>
+          <line x1="178" y1="12" x2="178" y2="96" stroke="#c8bfb5" stroke-width="1.2"/><!-- bar line -->
+          <line x1="216" y1="12" x2="216" y2="96" stroke="#c8bfb5" stroke-width="0.6"/>
+          <line x1="254" y1="12" x2="254" y2="96" stroke="#c8bfb5" stroke-width="0.6"/>
+          <line x1="292" y1="12" x2="292" y2="96" stroke="#c8bfb5" stroke-width="0.6"/>
+          <line x1="330" y1="12" x2="330" y2="96" stroke="#c8bfb5" stroke-width="0.8"/>
+          <!-- Pitch labels -->
+          <text x="24" y="21"  text-anchor="end" fill="#888">A4</text>
+          <text x="24" y="35"  text-anchor="end" fill="#888">G4</text>
+          <text x="24" y="49"  text-anchor="end" fill="#888">F4</text>
+          <text x="24" y="63"  text-anchor="end" fill="#888">E4</text>
+          <text x="24" y="77"  text-anchor="end" fill="#888">D4</text>
+          <text x="24" y="91"  text-anchor="end" fill="#888">C4</text>
+          <!-- Beat numbers -->
+          <text x="45"  y="10" text-anchor="middle" fill="#b06a08" font-weight="700" font-size="7.5">①</text>
+          <text x="83"  y="10" text-anchor="middle" fill="#888" font-size="7.5">2</text>
+          <text x="121" y="10" text-anchor="middle" fill="#888" font-size="7.5">3</text>
+          <text x="159" y="10" text-anchor="middle" fill="#888" font-size="7.5">4</text>
+          <text x="197" y="10" text-anchor="middle" fill="#b06a08" font-weight="700" font-size="7.5">⑤</text>
+          <text x="235" y="10" text-anchor="middle" fill="#888" font-size="7.5">6</text>
+          <text x="273" y="10" text-anchor="middle" fill="#888" font-size="7.5">7</text>
+          <text x="311" y="10" text-anchor="middle" fill="#888" font-size="7.5">8</text>
+          <!-- Notes: beat 1 (strong, amber) C D E F ascending -->
+          <rect x="27"  y="83" width="8" height="12" rx="2" fill="#d4870a"/><!-- C4 -->
+          <rect x="36"  y="69" width="8" height="12" rx="2" fill="#d4870a"/><!-- D4 -->
+          <rect x="45"  y="55" width="8" height="12" rx="2" fill="#d4870a"/><!-- E4 -->
+          <rect x="54"  y="41" width="8" height="12" rx="2" fill="#d4870a"/><!-- F4 -->
+          <!-- beat 2: G F E D descending -->
+          <rect x="65"  y="27" width="8" height="12" rx="2" fill="#1a6fa8"/><!-- G4 -->
+          <rect x="74"  y="41" width="8" height="12" rx="2" fill="#1a6fa8"/><!-- F4 -->
+          <rect x="83"  y="55" width="8" height="12" rx="2" fill="#1a6fa8"/><!-- E4 -->
+          <rect x="92"  y="69" width="8" height="12" rx="2" fill="#1a6fa8"/><!-- D4 -->
+          <!-- beat 3: C alone -->
+          <rect x="103" y="83" width="8" height="12" rx="2" fill="#1a6fa8"/><!-- C4 -->
+          <!-- beat 4: E .. G . -->
+          <rect x="141" y="55" width="8" height="12" rx="2" fill="#1a6fa8"/><!-- E4 -->
+          <rect x="159" y="27" width="8" height="12" rx="2" fill="#1a6fa8"/><!-- G4 -->
+          <!-- beat 5 (strong, amber): A G F E -->
+          <rect x="179" y="13" width="8" height="12" rx="2" fill="#d4870a"/><!-- A4 -->
+          <rect x="188" y="27" width="8" height="12" rx="2" fill="#d4870a"/><!-- G4 -->
+          <rect x="197" y="41" width="8" height="12" rx="2" fill="#d4870a"/><!-- F4 -->
+          <rect x="206" y="55" width="8" height="12" rx="2" fill="#d4870a"/><!-- E4 -->
+          <!-- beat 6: D alone -->
+          <rect x="217" y="69" width="8" height="12" rx="2" fill="#1a6fa8"/><!-- D4 -->
+          <!-- beat 7: C D E F -->
+          <rect x="255" y="83" width="8" height="12" rx="2" fill="#1a6fa8"/>
+          <rect x="264" y="69" width="8" height="12" rx="2" fill="#1a6fa8"/>
+          <rect x="273" y="55" width="8" height="12" rx="2" fill="#1a6fa8"/>
+          <rect x="282" y="41" width="8" height="12" rx="2" fill="#1a6fa8"/>
+          <!-- beat 8: G . . C -->
+          <rect x="293" y="27" width="8" height="12" rx="2" fill="#1a6fa8"/><!-- G4 -->
+          <rect x="320" y="83" width="8" height="12" rx="2" fill="#1a6fa8"/><!-- C4 -->
+          <!-- Bar labels -->
+          <text x="102" y="106" text-anchor="middle" fill="#888" font-size="8">Bar 1</text>
+          <text x="254" y="106" text-anchor="middle" fill="#888" font-size="8">Bar 2</text>
+        </svg>
+      </div>
+      <!-- Matrix table -->
+      <div style="overflow-y:auto;padding:16px;">
+        <table style="border-collapse:collapse;font-size:clamp(12px,1.3vw,16px);width:100%;font-family:'DM Sans',sans-serif;">
+          <thead>
+            <tr style="background:#f0ede8;border-bottom:2px solid #d8d0c7;">
+              <th style="padding:5px 8px;text-align:center;color:#666;font-weight:600;">beat</th>
+              <th style="padding:5px 8px;text-align:center;color:var(--amber);font-weight:700;">s<sub>t</sub></th>
+              <th style="padding:5px 8px;text-align:center;color:#1a6fa8;font-weight:700;">n<sub>1</sub></th>
+              <th style="padding:5px 8px;text-align:center;color:#1a6fa8;font-weight:700;">n<sub>2</sub></th>
+              <th style="padding:5px 8px;text-align:center;color:#1a6fa8;font-weight:700;">n<sub>3</sub></th>
+              <th style="padding:5px 8px;text-align:center;color:#1a6fa8;font-weight:700;">n<sub>4</sub></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="background:#fff8ee;"><td style="padding:4px 8px;text-align:center;color:#888;">1</td><td style="padding:4px 8px;text-align:center;font-weight:700;color:var(--amber);">1</td><td style="padding:4px 8px;text-align:center;">60</td><td style="padding:4px 8px;text-align:center;">62</td><td style="padding:4px 8px;text-align:center;">64</td><td style="padding:4px 8px;text-align:center;">65</td></tr>
+            <tr><td style="padding:4px 8px;text-align:center;color:#888;">2</td><td style="padding:4px 8px;text-align:center;color:#aaa;">0</td><td style="padding:4px 8px;text-align:center;">67</td><td style="padding:4px 8px;text-align:center;">65</td><td style="padding:4px 8px;text-align:center;">64</td><td style="padding:4px 8px;text-align:center;">62</td></tr>
+            <tr style="background:#f8f6f3;"><td style="padding:4px 8px;text-align:center;color:#888;">3</td><td style="padding:4px 8px;text-align:center;color:#aaa;">0</td><td style="padding:4px 8px;text-align:center;">60</td><td style="padding:4px 8px;text-align:center;color:#bbb;">−1</td><td style="padding:4px 8px;text-align:center;color:#bbb;">−1</td><td style="padding:4px 8px;text-align:center;color:#bbb;">−1</td></tr>
+            <tr><td style="padding:4px 8px;text-align:center;color:#888;">4</td><td style="padding:4px 8px;text-align:center;color:#aaa;">0</td><td style="padding:4px 8px;text-align:center;">64</td><td style="padding:4px 8px;text-align:center;color:#bbb;">−1</td><td style="padding:4px 8px;text-align:center;">67</td><td style="padding:4px 8px;text-align:center;color:#bbb;">−1</td></tr>
+            <tr style="background:#fff8ee;"><td style="padding:4px 8px;text-align:center;color:#888;">5</td><td style="padding:4px 8px;text-align:center;font-weight:700;color:var(--amber);">1</td><td style="padding:4px 8px;text-align:center;">69</td><td style="padding:4px 8px;text-align:center;">67</td><td style="padding:4px 8px;text-align:center;">65</td><td style="padding:4px 8px;text-align:center;">64</td></tr>
+            <tr style="background:#f8f6f3;"><td style="padding:4px 8px;text-align:center;color:#888;">6</td><td style="padding:4px 8px;text-align:center;color:#aaa;">0</td><td style="padding:4px 8px;text-align:center;">62</td><td style="padding:4px 8px;text-align:center;color:#bbb;">−1</td><td style="padding:4px 8px;text-align:center;color:#bbb;">−1</td><td style="padding:4px 8px;text-align:center;color:#bbb;">−1</td></tr>
+            <tr><td style="padding:4px 8px;text-align:center;color:#888;">7</td><td style="padding:4px 8px;text-align:center;color:#aaa;">0</td><td style="padding:4px 8px;text-align:center;">60</td><td style="padding:4px 8px;text-align:center;">62</td><td style="padding:4px 8px;text-align:center;">64</td><td style="padding:4px 8px;text-align:center;">65</td></tr>
+            <tr style="background:#f8f6f3;"><td style="padding:4px 8px;text-align:center;color:#888;">8</td><td style="padding:4px 8px;text-align:center;color:#aaa;">0</td><td style="padding:4px 8px;text-align:center;">67</td><td style="padding:4px 8px;text-align:center;color:#bbb;">−1</td><td style="padding:4px 8px;text-align:center;color:#bbb;">−1</td><td style="padding:4px 8px;text-align:center;">60</td></tr>
+            <tr><td style="padding:4px 8px;text-align:center;color:#bbb;">⋮</td><td style="padding:4px 8px;text-align:center;color:#bbb;">⋮</td><td style="padding:4px 8px;text-align:center;color:#bbb;">⋮</td><td style="padding:4px 8px;text-align:center;color:#bbb;">⋮</td><td style="padding:4px 8px;text-align:center;color:#bbb;">⋮</td><td style="padding:4px 8px;text-align:center;color:#bbb;">⋮</td></tr>
+            <tr style="background:#f8f6f3;"><td style="padding:4px 8px;text-align:center;color:#888;">32</td><td style="padding:4px 8px;text-align:center;color:#aaa;">0</td><td style="padding:4px 8px;text-align:center;">60</td><td style="padding:4px 8px;text-align:center;color:#bbb;">−1</td><td style="padding:4px 8px;text-align:center;color:#bbb;">−1</td><td style="padding:4px 8px;text-align:center;color:#bbb;">−1</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     MODAL: 169×128 chord embedding
+══════════════════════════════════════════════ -->
+<div id="modal-169x128" onclick="if(event.target===this)this.style.display='none'" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(28,21,16,0.45);z-index:3000;">
+  <div style="position:absolute;top:10vh;left:10vw;width:80vw;height:80vh;background:#faf9f7;border-radius:12px;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,0.3);display:flex;flex-direction:column;">
+  <button onclick="document.getElementById('modal-169x128').style.display='none'" style="position:absolute;top:10px;right:14px;background:none;border:none;font-size:22px;cursor:pointer;color:#888;line-height:1;z-index:10;">✕</button>
+  <!-- Quality strip -->
+  <div style="padding:10px 48px 10px 20px;border-bottom:1px solid #e0d8cf;font-size:clamp(18px,1.9vw,24px);color:#177a3e;font-family:'DM Sans',sans-serif;white-space:nowrap;overflow-x:auto;font-weight:600;line-height:1.4;flex-shrink:0;">
+    maj &nbsp;·&nbsp; min &nbsp;·&nbsp; dim &nbsp;·&nbsp; aug &nbsp;·&nbsp; 7 &nbsp;·&nbsp; maj7 &nbsp;·&nbsp; min7 &nbsp;·&nbsp; dim7 &nbsp;·&nbsp; sus2 &nbsp;·&nbsp; sus4 &nbsp;·&nbsp; 6 &nbsp;·&nbsp; m6 &nbsp;·&nbsp; m7b5 &nbsp;·&nbsp; mM7 &nbsp;·&nbsp; <span style="color:#888;font-style:italic;font-weight:400;">N</span> <br />
+    <span style="color:#bbb;font-weight:400;margin-left:12px;">× 12 roots + 1 = 169 chords &nbsp;·&nbsp; 128 dims</span>
+  </div>
+  <!-- Embedding matrix with ellipses -->
+  <div style="overflow:auto;flex:1;padding:0 20px 16px 20px;">
+    <table style="border-collapse:collapse;width:100%;height:100%;font-family:'DM Mono','Fira Mono',monospace;font-size:clamp(20px,2.2vw,30px);">
+      <thead>
+        <tr style="background:#f0ede8;">
+          <th style="padding:6px 12px 6px 0;text-align:left;color:#888;font-weight:600;font-family:'DM Sans',sans-serif;white-space:nowrap;position:sticky;top:0;background:#f0ede8;">chord</th>
+          <th style="padding:6px 10px;text-align:right;color:#177a3e;position:sticky;top:0;background:#f0ede8;">d<sub>1</sub></th>
+          <th style="padding:6px 10px;text-align:right;color:#177a3e;position:sticky;top:0;background:#f0ede8;">d<sub>2</sub></th>
+          <th style="padding:6px 10px;text-align:right;color:#177a3e;position:sticky;top:0;background:#f0ede8;">d<sub>3</sub></th>
+          <th style="padding:6px 10px;text-align:right;color:#177a3e;position:sticky;top:0;background:#f0ede8;">d<sub>4</sub></th>
+          <th style="padding:6px 10px;text-align:right;color:#177a3e;position:sticky;top:0;background:#f0ede8;">d<sub>5</sub></th>
+          <th style="padding:6px 10px;text-align:center;color:#bbb;position:sticky;top:0;background:#f0ede8;">⋯</th>
+          <th style="padding:6px 10px;text-align:right;color:#177a3e;position:sticky;top:0;background:#f0ede8;">d<sub>128</sub></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td style="padding:5px 12px 5px 0;color:#177a3e;font-weight:600;font-family:'DM Sans',sans-serif;white-space:nowrap;">Cmaj</td><td style="padding:5px 10px;text-align:right;">&#x2006;0.32</td><td style="padding:5px 10px;text-align:right;">−0.15</td><td style="padding:5px 10px;text-align:right;">&#x2006;0.87</td><td style="padding:5px 10px;text-align:right;">−0.41</td><td style="padding:5px 10px;text-align:right;">&#x2006;0.63</td><td style="padding:5px 10px;text-align:center;color:#bbb;">⋯</td><td style="padding:5px 10px;text-align:right;">&#x2006;0.04</td></tr>
+        <tr style="background:#f8f6f3;"><td style="padding:5px 12px 5px 0;color:#177a3e;font-weight:600;font-family:'DM Sans',sans-serif;white-space:nowrap;">Cmin</td><td style="padding:5px 10px;text-align:right;">−0.12</td><td style="padding:5px 10px;text-align:right;">&#x2006;0.73</td><td style="padding:5px 10px;text-align:right;">−0.21</td><td style="padding:5px 10px;text-align:right;">&#x2006;0.55</td><td style="padding:5px 10px;text-align:right;">−0.34</td><td style="padding:5px 10px;text-align:center;color:#bbb;">⋯</td><td style="padding:5px 10px;text-align:right;">&#x2006;0.31</td></tr>
+        <tr><td style="padding:5px 12px 5px 0;color:#177a3e;font-weight:600;font-family:'DM Sans',sans-serif;white-space:nowrap;">Cmaj7</td><td style="padding:5px 10px;text-align:right;">−0.07</td><td style="padding:5px 10px;text-align:right;">&#x2006;0.29</td><td style="padding:5px 10px;text-align:right;">&#x2006;0.74</td><td style="padding:5px 10px;text-align:right;">−0.52</td><td style="padding:5px 10px;text-align:right;">&#x2006;0.38</td><td style="padding:5px 10px;text-align:center;color:#bbb;">⋯</td><td style="padding:5px 10px;text-align:right;">−0.33</td></tr>
+        <tr style="background:#f8f6f3;"><td style="padding:4px 12px 4px 0;color:#bbb;font-family:'DM Sans',sans-serif;text-align:center;" colspan="8">⋮</td></tr>
+        <tr style="border-top:2px solid #e0d8cf;"><td style="padding:5px 12px 5px 0;color:#888;font-style:italic;font-family:'DM Sans',sans-serif;white-space:nowrap;">N</td><td style="padding:5px 10px;text-align:right;">&#x2006;0.01</td><td style="padding:5px 10px;text-align:right;">−0.03</td><td style="padding:5px 10px;text-align:right;">&#x2006;0.05</td><td style="padding:5px 10px;text-align:right;">−0.02</td><td style="padding:5px 10px;text-align:right;">&#x2006;0.04</td><td style="padding:5px 10px;text-align:center;color:#bbb;">⋯</td><td style="padding:5px 10px;text-align:right;">−0.01</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div style="display:none;">
+    <div>
+      <table style="border-collapse:collapse;font-size:clamp(9px,0.9vw,12px);width:100%;font-family:'DM Sans',sans-serif;">
+        <thead>
+          <tr style="background:#f0ede8;position:sticky;top:0;">
+            <th style="padding:5px 6px;color:#888;font-weight:600;text-align:left;white-space:nowrap;">Quality</th>
+            <th style="padding:5px 4px;text-align:center;color:#1c1510;">C</th>
+            <th style="padding:5px 4px;text-align:center;color:#777;">C♯</th>
+            <th style="padding:5px 4px;text-align:center;color:#1c1510;">D</th>
+            <th style="padding:5px 4px;text-align:center;color:#777;">D♯</th>
+            <th style="padding:5px 4px;text-align:center;color:#1c1510;">E</th>
+            <th style="padding:5px 4px;text-align:center;color:#1c1510;">F</th>
+            <th style="padding:5px 4px;text-align:center;color:#777;">F♯</th>
+            <th style="padding:5px 4px;text-align:center;color:#1c1510;">G</th>
+            <th style="padding:5px 4px;text-align:center;color:#777;">G♯</th>
+            <th style="padding:5px 4px;text-align:center;color:#1c1510;">A</th>
+            <th style="padding:5px 4px;text-align:center;color:#777;">A♯</th>
+            <th style="padding:5px 4px;text-align:center;color:#1c1510;">B</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td style="padding:3px 6px;color:#177a3e;font-weight:600;white-space:nowrap;">maj</td><td style="padding:3px 4px;text-align:center;">C</td><td style="padding:3px 4px;text-align:center;color:#777;">C♯</td><td style="padding:3px 4px;text-align:center;">D</td><td style="padding:3px 4px;text-align:center;color:#777;">D♯</td><td style="padding:3px 4px;text-align:center;">E</td><td style="padding:3px 4px;text-align:center;">F</td><td style="padding:3px 4px;text-align:center;color:#777;">F♯</td><td style="padding:3px 4px;text-align:center;">G</td><td style="padding:3px 4px;text-align:center;color:#777;">G♯</td><td style="padding:3px 4px;text-align:center;">A</td><td style="padding:3px 4px;text-align:center;color:#777;">A♯</td><td style="padding:3px 4px;text-align:center;">B</td></tr>
+          <tr style="background:#f8f6f3;"><td style="padding:3px 6px;color:#177a3e;font-weight:600;">min</td><td style="padding:3px 4px;text-align:center;">Cm</td><td style="padding:3px 4px;text-align:center;color:#777;">C♯m</td><td style="padding:3px 4px;text-align:center;">Dm</td><td style="padding:3px 4px;text-align:center;color:#777;">D♯m</td><td style="padding:3px 4px;text-align:center;">Em</td><td style="padding:3px 4px;text-align:center;">Fm</td><td style="padding:3px 4px;text-align:center;color:#777;">F♯m</td><td style="padding:3px 4px;text-align:center;">Gm</td><td style="padding:3px 4px;text-align:center;color:#777;">G♯m</td><td style="padding:3px 4px;text-align:center;">Am</td><td style="padding:3px 4px;text-align:center;color:#777;">A♯m</td><td style="padding:3px 4px;text-align:center;">Bm</td></tr>
+          <tr><td style="padding:3px 6px;color:#177a3e;font-weight:600;">dim</td><td style="padding:3px 4px;text-align:center;">C°</td><td style="padding:3px 4px;text-align:center;color:#777;">C♯°</td><td style="padding:3px 4px;text-align:center;">D°</td><td style="padding:3px 4px;text-align:center;color:#777;">D♯°</td><td style="padding:3px 4px;text-align:center;">E°</td><td style="padding:3px 4px;text-align:center;">F°</td><td style="padding:3px 4px;text-align:center;color:#777;">F♯°</td><td style="padding:3px 4px;text-align:center;">G°</td><td style="padding:3px 4px;text-align:center;color:#777;">G♯°</td><td style="padding:3px 4px;text-align:center;">A°</td><td style="padding:3px 4px;text-align:center;color:#777;">A♯°</td><td style="padding:3px 4px;text-align:center;">B°</td></tr>
+          <tr style="background:#f8f6f3;"><td style="padding:3px 6px;color:#177a3e;font-weight:600;">aug</td><td style="padding:3px 4px;text-align:center;">C+</td><td style="padding:3px 4px;text-align:center;color:#777;">C♯+</td><td style="padding:3px 4px;text-align:center;">D+</td><td style="padding:3px 4px;text-align:center;color:#777;">D♯+</td><td style="padding:3px 4px;text-align:center;">E+</td><td style="padding:3px 4px;text-align:center;">F+</td><td style="padding:3px 4px;text-align:center;color:#777;">F♯+</td><td style="padding:3px 4px;text-align:center;">G+</td><td style="padding:3px 4px;text-align:center;color:#777;">G♯+</td><td style="padding:3px 4px;text-align:center;">A+</td><td style="padding:3px 4px;text-align:center;color:#777;">A♯+</td><td style="padding:3px 4px;text-align:center;">B+</td></tr>
+          <tr><td style="padding:3px 6px;color:#177a3e;font-weight:600;">7</td><td style="padding:3px 4px;text-align:center;">C7</td><td style="padding:3px 4px;text-align:center;color:#777;">C♯7</td><td style="padding:3px 4px;text-align:center;">D7</td><td style="padding:3px 4px;text-align:center;color:#777;">D♯7</td><td style="padding:3px 4px;text-align:center;">E7</td><td style="padding:3px 4px;text-align:center;">F7</td><td style="padding:3px 4px;text-align:center;color:#777;">F♯7</td><td style="padding:3px 4px;text-align:center;">G7</td><td style="padding:3px 4px;text-align:center;color:#777;">G♯7</td><td style="padding:3px 4px;text-align:center;">A7</td><td style="padding:3px 4px;text-align:center;color:#777;">A♯7</td><td style="padding:3px 4px;text-align:center;">B7</td></tr>
+          <tr style="background:#f8f6f3;"><td style="padding:3px 6px;color:#177a3e;font-weight:600;">maj7</td><td style="padding:3px 4px;text-align:center;">CΔ7</td><td style="padding:3px 4px;text-align:center;color:#777;">C♯Δ7</td><td style="padding:3px 4px;text-align:center;">DΔ7</td><td style="padding:3px 4px;text-align:center;color:#777;">D♯Δ7</td><td style="padding:3px 4px;text-align:center;">EΔ7</td><td style="padding:3px 4px;text-align:center;">FΔ7</td><td style="padding:3px 4px;text-align:center;color:#777;">F♯Δ7</td><td style="padding:3px 4px;text-align:center;">GΔ7</td><td style="padding:3px 4px;text-align:center;color:#777;">G♯Δ7</td><td style="padding:3px 4px;text-align:center;">AΔ7</td><td style="padding:3px 4px;text-align:center;color:#777;">A♯Δ7</td><td style="padding:3px 4px;text-align:center;">BΔ7</td></tr>
+          <tr><td style="padding:3px 6px;color:#177a3e;font-weight:600;">min7</td><td style="padding:3px 4px;text-align:center;">Cm7</td><td style="padding:3px 4px;text-align:center;color:#777;">C♯m7</td><td style="padding:3px 4px;text-align:center;">Dm7</td><td style="padding:3px 4px;text-align:center;color:#777;">D♯m7</td><td style="padding:3px 4px;text-align:center;">Em7</td><td style="padding:3px 4px;text-align:center;">Fm7</td><td style="padding:3px 4px;text-align:center;color:#777;">F♯m7</td><td style="padding:3px 4px;text-align:center;">Gm7</td><td style="padding:3px 4px;text-align:center;color:#777;">G♯m7</td><td style="padding:3px 4px;text-align:center;">Am7</td><td style="padding:3px 4px;text-align:center;color:#777;">A♯m7</td><td style="padding:3px 4px;text-align:center;">Bm7</td></tr>
+          <tr style="background:#f8f6f3;"><td style="padding:3px 6px;color:#177a3e;font-weight:600;">dim7</td><td style="padding:3px 4px;text-align:center;">C°7</td><td style="padding:3px 4px;text-align:center;color:#777;">C♯°7</td><td style="padding:3px 4px;text-align:center;">D°7</td><td style="padding:3px 4px;text-align:center;color:#777;">D♯°7</td><td style="padding:3px 4px;text-align:center;">E°7</td><td style="padding:3px 4px;text-align:center;">F°7</td><td style="padding:3px 4px;text-align:center;color:#777;">F♯°7</td><td style="padding:3px 4px;text-align:center;">G°7</td><td style="padding:3px 4px;text-align:center;color:#777;">G♯°7</td><td style="padding:3px 4px;text-align:center;">A°7</td><td style="padding:3px 4px;text-align:center;color:#777;">A♯°7</td><td style="padding:3px 4px;text-align:center;">B°7</td></tr>
+          <tr><td style="padding:3px 6px;color:#177a3e;font-weight:600;">ø7</td><td style="padding:3px 4px;text-align:center;">Cø7</td><td style="padding:3px 4px;text-align:center;color:#777;">C♯ø7</td><td style="padding:3px 4px;text-align:center;">Dø7</td><td style="padding:3px 4px;text-align:center;color:#777;">D♯ø7</td><td style="padding:3px 4px;text-align:center;">Eø7</td><td style="padding:3px 4px;text-align:center;">Fø7</td><td style="padding:3px 4px;text-align:center;color:#777;">F♯ø7</td><td style="padding:3px 4px;text-align:center;">Gø7</td><td style="padding:3px 4px;text-align:center;color:#777;">G♯ø7</td><td style="padding:3px 4px;text-align:center;">Aø7</td><td style="padding:3px 4px;text-align:center;color:#777;">A♯ø7</td><td style="padding:3px 4px;text-align:center;">Bø7</td></tr>
+          <tr style="background:#f8f6f3;"><td style="padding:3px 6px;color:#177a3e;font-weight:600;">sus2</td><td style="padding:3px 4px;text-align:center;">Csus2</td><td style="padding:3px 4px;text-align:center;color:#777;">C♯sus2</td><td style="padding:3px 4px;text-align:center;">Dsus2</td><td style="padding:3px 4px;text-align:center;color:#777;">D♯sus2</td><td style="padding:3px 4px;text-align:center;">Esus2</td><td style="padding:3px 4px;text-align:center;">Fsus2</td><td style="padding:3px 4px;text-align:center;color:#777;">F♯sus2</td><td style="padding:3px 4px;text-align:center;">Gsus2</td><td style="padding:3px 4px;text-align:center;color:#777;">G♯sus2</td><td style="padding:3px 4px;text-align:center;">Asus2</td><td style="padding:3px 4px;text-align:center;color:#777;">A♯sus2</td><td style="padding:3px 4px;text-align:center;">Bsus2</td></tr>
+          <tr><td style="padding:3px 6px;color:#177a3e;font-weight:600;">sus4</td><td style="padding:3px 4px;text-align:center;">Csus4</td><td style="padding:3px 4px;text-align:center;color:#777;">C♯sus4</td><td style="padding:3px 4px;text-align:center;">Dsus4</td><td style="padding:3px 4px;text-align:center;color:#777;">D♯sus4</td><td style="padding:3px 4px;text-align:center;">Esus4</td><td style="padding:3px 4px;text-align:center;">Fsus4</td><td style="padding:3px 4px;text-align:center;color:#777;">F♯sus4</td><td style="padding:3px 4px;text-align:center;">Gsus4</td><td style="padding:3px 4px;text-align:center;color:#777;">G♯sus4</td><td style="padding:3px 4px;text-align:center;">Asus4</td><td style="padding:3px 4px;text-align:center;color:#777;">A♯sus4</td><td style="padding:3px 4px;text-align:center;">Bsus4</td></tr>
+          <tr style="background:#f8f6f3;"><td style="padding:3px 6px;color:#177a3e;font-weight:600;">6</td><td style="padding:3px 4px;text-align:center;">C6</td><td style="padding:3px 4px;text-align:center;color:#777;">C♯6</td><td style="padding:3px 4px;text-align:center;">D6</td><td style="padding:3px 4px;text-align:center;color:#777;">D♯6</td><td style="padding:3px 4px;text-align:center;">E6</td><td style="padding:3px 4px;text-align:center;">F6</td><td style="padding:3px 4px;text-align:center;color:#777;">F♯6</td><td style="padding:3px 4px;text-align:center;">G6</td><td style="padding:3px 4px;text-align:center;color:#777;">G♯6</td><td style="padding:3px 4px;text-align:center;">A6</td><td style="padding:3px 4px;text-align:center;color:#777;">A♯6</td><td style="padding:3px 4px;text-align:center;">B6</td></tr>
+          <tr><td style="padding:3px 6px;color:#177a3e;font-weight:600;">min6</td><td style="padding:3px 4px;text-align:center;">Cm6</td><td style="padding:3px 4px;text-align:center;color:#777;">C♯m6</td><td style="padding:3px 4px;text-align:center;">Dm6</td><td style="padding:3px 4px;text-align:center;color:#777;">D♯m6</td><td style="padding:3px 4px;text-align:center;">Em6</td><td style="padding:3px 4px;text-align:center;">Fm6</td><td style="padding:3px 4px;text-align:center;color:#777;">F♯m6</td><td style="padding:3px 4px;text-align:center;">Gm6</td><td style="padding:3px 4px;text-align:center;color:#777;">G♯m6</td><td style="padding:3px 4px;text-align:center;">Am6</td><td style="padding:3px 4px;text-align:center;color:#777;">A♯m6</td><td style="padding:3px 4px;text-align:center;">Bm6</td></tr>
+          <tr style="background:#f8f6f3;"><td style="padding:3px 6px;color:#177a3e;font-weight:600;">5</td><td style="padding:3px 4px;text-align:center;">C5</td><td style="padding:3px 4px;text-align:center;color:#777;">C♯5</td><td style="padding:3px 4px;text-align:center;">D5</td><td style="padding:3px 4px;text-align:center;color:#777;">D♯5</td><td style="padding:3px 4px;text-align:center;">E5</td><td style="padding:3px 4px;text-align:center;">F5</td><td style="padding:3px 4px;text-align:center;color:#777;">F♯5</td><td style="padding:3px 4px;text-align:center;">G5</td><td style="padding:3px 4px;text-align:center;color:#777;">G♯5</td><td style="padding:3px 4px;text-align:center;">A5</td><td style="padding:3px 4px;text-align:center;color:#777;">A♯5</td><td style="padding:3px 4px;text-align:center;">B5</td></tr>
+          <tr style="border-top:2px solid #d8d0c7;"><td style="padding:4px 6px;color:#888;font-style:italic;font-weight:600;" colspan="13">∅ &nbsp; no-chord token</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <!-- Embedding matrix excerpt -->
+    <div style="overflow-y:auto;padding:16px 20px 16px 12px;">
+      <table style="border-collapse:collapse;font-size:clamp(11px,1.1vw,14px);width:100%;font-family:'DM Mono','Fira Mono',monospace;">
+        <thead>
+          <tr style="background:#f0ede8;position:sticky;top:0;">
+            <th style="padding:5px 8px;text-align:left;color:#888;font-weight:600;font-family:'DM Sans',sans-serif;">chord</th>
+            <th style="padding:5px 7px;text-align:right;color:#177a3e;">d<sub>1</sub></th>
+            <th style="padding:5px 7px;text-align:right;color:#177a3e;">d<sub>2</sub></th>
+            <th style="padding:5px 7px;text-align:right;color:#177a3e;">d<sub>3</sub></th>
+            <th style="padding:5px 7px;text-align:right;color:#177a3e;">d<sub>4</sub></th>
+            <th style="padding:5px 7px;text-align:right;color:#177a3e;">d<sub>5</sub></th>
+            <th style="padding:5px 7px;text-align:right;color:#888;">…</th>
+            <th style="padding:5px 7px;text-align:right;color:#177a3e;">d<sub>128</sub></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td style="padding:4px 8px;font-family:'DM Sans',sans-serif;color:#177a3e;font-weight:600;">C maj</td><td style="padding:4px 7px;text-align:right;">0.32</td><td style="padding:4px 7px;text-align:right;">−0.15</td><td style="padding:4px 7px;text-align:right;">0.87</td><td style="padding:4px 7px;text-align:right;">−0.41</td><td style="padding:4px 7px;text-align:right;">0.63</td><td style="padding:4px 7px;text-align:right;color:#bbb;">…</td><td style="padding:4px 7px;text-align:right;">0.04</td></tr>
+          <tr style="background:#f8f6f3;"><td style="padding:4px 8px;font-family:'DM Sans',sans-serif;color:#777;font-weight:600;">C♯ maj</td><td style="padding:4px 7px;text-align:right;">0.29</td><td style="padding:4px 7px;text-align:right;">−0.18</td><td style="padding:4px 7px;text-align:right;">0.84</td><td style="padding:4px 7px;text-align:right;">−0.39</td><td style="padding:4px 7px;text-align:right;">0.61</td><td style="padding:4px 7px;text-align:right;color:#bbb;">…</td><td style="padding:4px 7px;text-align:right;">0.06</td></tr>
+          <tr><td style="padding:4px 8px;font-family:'DM Sans',sans-serif;color:#177a3e;font-weight:600;">D maj</td><td style="padding:4px 7px;text-align:right;">0.28</td><td style="padding:4px 7px;text-align:right;">−0.19</td><td style="padding:4px 7px;text-align:right;">0.81</td><td style="padding:4px 7px;text-align:right;">−0.37</td><td style="padding:4px 7px;text-align:right;">0.58</td><td style="padding:4px 7px;text-align:right;color:#bbb;">…</td><td style="padding:4px 7px;text-align:right;">0.07</td></tr>
+          <tr style="background:#f8f6f3;"><td style="padding:4px 8px;font-family:'DM Sans',sans-serif;color:#777;font-weight:600;">D♯ maj</td><td style="padding:4px 7px;text-align:right;">0.31</td><td style="padding:4px 7px;text-align:right;">−0.14</td><td style="padding:4px 7px;text-align:right;">0.79</td><td style="padding:4px 7px;text-align:right;">−0.43</td><td style="padding:4px 7px;text-align:right;">0.60</td><td style="padding:4px 7px;text-align:right;color:#bbb;">…</td><td style="padding:4px 7px;text-align:right;">0.03</td></tr>
+          <tr><td style="padding:4px 8px;font-family:'DM Sans',sans-serif;color:#177a3e;font-weight:600;">C min</td><td style="padding:4px 7px;text-align:right;">−0.12</td><td style="padding:4px 7px;text-align:right;">0.73</td><td style="padding:4px 7px;text-align:right;">−0.21</td><td style="padding:4px 7px;text-align:right;">0.55</td><td style="padding:4px 7px;text-align:right;">−0.34</td><td style="padding:4px 7px;text-align:right;color:#bbb;">…</td><td style="padding:4px 7px;text-align:right;">0.31</td></tr>
+          <tr style="background:#f8f6f3;"><td style="padding:4px 8px;font-family:'DM Sans',sans-serif;color:#177a3e;font-weight:600;">C dim</td><td style="padding:4px 7px;text-align:right;">0.55</td><td style="padding:4px 7px;text-align:right;">0.18</td><td style="padding:4px 7px;text-align:right;">−0.62</td><td style="padding:4px 7px;text-align:right;">0.29</td><td style="padding:4px 7px;text-align:right;">−0.71</td><td style="padding:4px 7px;text-align:right;color:#bbb;">…</td><td style="padding:4px 7px;text-align:right;">−0.09</td></tr>
+          <tr><td style="padding:4px 8px;font-family:'DM Sans',sans-serif;color:#177a3e;font-weight:600;">C 7</td><td style="padding:4px 7px;text-align:right;">0.19</td><td style="padding:4px 7px;text-align:right;">0.61</td><td style="padding:4px 7px;text-align:right;">−0.08</td><td style="padding:4px 7px;text-align:right;">0.73</td><td style="padding:4px 7px;text-align:right;">0.27</td><td style="padding:4px 7px;text-align:right;color:#bbb;">…</td><td style="padding:4px 7px;text-align:right;">0.52</td></tr>
+          <tr style="background:#f8f6f3;"><td style="padding:4px 8px;font-family:'DM Sans',sans-serif;color:#177a3e;font-weight:600;">C maj7</td><td style="padding:4px 7px;text-align:right;">−0.07</td><td style="padding:4px 7px;text-align:right;">0.29</td><td style="padding:4px 7px;text-align:right;">0.74</td><td style="padding:4px 7px;text-align:right;">−0.52</td><td style="padding:4px 7px;text-align:right;">0.38</td><td style="padding:4px 7px;text-align:right;color:#bbb;">…</td><td style="padding:4px 7px;text-align:right;">−0.33</td></tr>
+          <tr><td style="padding:4px 8px;color:#bbb;font-family:'DM Sans',sans-serif;" colspan="8">⋮ &nbsp; (169 rows total)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div><!-- end inner box -->
+  </div><!-- end inner panel -->
+</div><!-- end backdrop -->
+
+<!-- ══════════════════════════════════════════════
+     MODAL: Cycle of Fifths
+══════════════════════════════════════════════ -->
+<div id="modal-cof" onclick="if(event.target===this)this.style.display='none'" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(28,21,16,0.45);z-index:3000;">
+  <div style="position:absolute;top:10vh;left:10vw;width:80vw;height:80vh;background:#faf9f7;border-radius:12px;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,0.3);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px 24px 24px;">
+    <button onclick="document.getElementById('modal-cof').style.display='none'" style="position:absolute;top:10px;right:14px;background:none;border:none;font-size:22px;cursor:pointer;color:#888;line-height:1;z-index:1;">✕</button>
+    <p style="font-size:clamp(10px,0.9vw,13px);font-weight:700;text-transform:uppercase;letter-spacing:2px;color:var(--blue);margin-bottom:10px;">Cycle of Fifths</p>
+    <svg id="cof-svg" viewBox="0 0 500 500" style="width:min(68vh,68vw);height:min(68vh,68vw);display:block;" font-family="'DM Sans',sans-serif"></svg>
+  </div>
+</div>
+<script>
+(function(){
+  var majors = ['C','G','D','A','E','B','F♯','C♯','G♯','D♯','A♯','F'];
+  var minors = ['Am','Em','Bm','F♯m','C♯m','G♯m','D♯m','A♯m','Fm','Cm','Gm','Dm'];
+  var colors = ['#4a90d9','#5ba85a','#e8a845','#d96b4a','#9b6dd6','#4ab8c1',
+                '#d94a7a','#7ab84a','#d9c44a','#4a6bd9','#c4724a','#6bd9a0'];
+  var cx = 250, cy = 250;
+  var R1o = 230, R1i = 158;
+  var R2o = 153, R2i = 98;
+  var Rc = 93;
+  var ns = 'http://www.w3.org/2000/svg';
+  var svg = document.getElementById('cof-svg');
+
+  function pt(r, deg) {
+    var rad = (deg - 90) * Math.PI / 180;
+    return [cx + r * Math.cos(rad), cy + r * Math.sin(rad)];
+  }
+
+  function sector(ro, ri, s, e, fill) {
+    var g = 1.2, a = s + g/2, b = e - g/2;
+    var p1 = pt(ri, a), p2 = pt(ro, a), p3 = pt(ro, b), p4 = pt(ri, b);
+    var lf = (b - a > 180) ? 1 : 0;
+    var d = 'M'+p1[0]+','+p1[1]+
+            ' L'+p2[0]+','+p2[1]+
+            ' A'+ro+','+ro+' 0 '+lf+',1 '+p3[0]+','+p3[1]+
+            ' L'+p4[0]+','+p4[1]+
+            ' A'+ri+','+ri+' 0 '+lf+',0 '+p1[0]+','+p1[1]+' Z';
+    var path = document.createElementNS(ns, 'path');
+    path.setAttribute('d', d);
+    path.setAttribute('fill', fill);
+    return path;
+  }
+
+  for (var i = 0; i < 12; i++) {
+    var s = i * 30, e = s + 30, mid = s + 15;
+    svg.appendChild(sector(R1o, R1i, s, e, colors[i]));
+    svg.appendChild(sector(R2o, R2i, s, e, colors[i] + 'aa'));
+
+    var mp = pt((R1o + R1i) / 2, mid);
+    var t1 = document.createElementNS(ns, 'text');
+    t1.setAttribute('x', mp[0]); t1.setAttribute('y', mp[1]);
+    t1.setAttribute('text-anchor', 'middle'); t1.setAttribute('dominant-baseline', 'central');
+    t1.setAttribute('fill', '#fff'); t1.setAttribute('font-size', '15');
+    t1.setAttribute('font-weight', '700');
+    t1.textContent = majors[i];
+    svg.appendChild(t1);
+
+    var np = pt((R2o + R2i) / 2, mid);
+    var t2 = document.createElementNS(ns, 'text');
+    t2.setAttribute('x', np[0]); t2.setAttribute('y', np[1]);
+    t2.setAttribute('text-anchor', 'middle'); t2.setAttribute('dominant-baseline', 'central');
+    t2.setAttribute('fill', '#fff'); t2.setAttribute('font-size', '11');
+    t2.setAttribute('font-weight', '600');
+    t2.textContent = minors[i];
+    svg.appendChild(t2);
+  }
+
+  var circ = document.createElementNS(ns, 'circle');
+  circ.setAttribute('cx', cx); circ.setAttribute('cy', cy);
+  circ.setAttribute('r', Rc);
+  circ.setAttribute('fill', '#edeae3');
+  circ.setAttribute('stroke', '#ddd5c8');
+  circ.setAttribute('stroke-width', '1.5');
+  svg.appendChild(circ);
+
+  var nt = document.createElementNS(ns, 'text');
+  nt.setAttribute('x', cx); nt.setAttribute('y', cy - 10);
+  nt.setAttribute('text-anchor', 'middle'); nt.setAttribute('dominant-baseline', 'central');
+  nt.setAttribute('fill', '#1c1510'); nt.setAttribute('font-size', '52');
+  nt.setAttribute('font-weight', '700');
+  nt.setAttribute('font-family', "'DM Serif Display', serif");
+  nt.textContent = 'N';
+  svg.appendChild(nt);
+
+  var sub = document.createElementNS(ns, 'text');
+  sub.setAttribute('x', cx); sub.setAttribute('y', cy + 30);
+  sub.setAttribute('text-anchor', 'middle'); sub.setAttribute('dominant-baseline', 'central');
+  sub.setAttribute('fill', '#b8aa9a'); sub.setAttribute('font-size', '11');
+  sub.textContent = 'no chord';
+  svg.appendChild(sub);
+})();
+</script>
+
+
 </body>
 </html>

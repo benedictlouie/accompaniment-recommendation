@@ -515,7 +515,10 @@ function scheduleBeats() {
       playClick(beatTime, strong);
     }
 
-    playLoopBeat(predictedChord, beat, beatTime, beatDur);
+    // Use pendingArChord if already arrived (early prediction beats the 120 ms scheduling window)
+    const chordForBeat = (selectedEngine === 'transformer' && pendingArChord !== null)
+      ? pendingArChord : predictedChord;
+    playLoopBeat(chordForBeat, beat, beatTime, beatDur);
 
     const msUntil = (beatTime - audioContext.currentTime) * 1000;
     setTimeout(() => onBeat(beat, beatTime, beatDur), Math.max(0, msUntil));

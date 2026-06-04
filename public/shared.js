@@ -151,10 +151,8 @@ async function predictChordEarlyAR(beat, beatTime, beatDur, beatFireMs) {
 
     if (data.chord) {
       pendingArChord = data.chord;
-      // Do NOT set predictedChord here — that only changes at beat boundaries when
-      // pendingArChord is applied.  Setting it early would cause scheduleBeats/playLoopBeat
-      // to play the next beat's chord 3 semiquavers before the beat.
-      document.getElementById('chord-display').textContent = data.chord;
+      // Do NOT update predictedChord or the display here — both change at beat
+      // boundaries (onBeat / harmoniser beat-check) so audio and UI stay in sync.
       console.log(`[CHORD] beat=${beat}  chord=${data.chord}  total=${totalMs}ms  server=${serverMs}ms`);
     }
   } catch (e) {}
