@@ -263,9 +263,13 @@ function startAudio() {
   audioContext = new (window.AudioContext || window.webkitAudioContext)();
   if (audioContext.state === 'suspended') audioContext.resume();
 
-  nextBeatTime = audioContext.currentTime + 0.15;
+  // Delay first beat by one full beat so the preflight API call has time to return
+  // and pendingLoops is ready before beat 1 is scheduled (120 ms before it plays).
+  nextBeatTime = audioContext.currentTime + 60 / tempo;
   scheduleBeats();
   resetEngineHistory();
+  // Pre-fetch chord + loops so they land before beat 1 is scheduled
+  predictChordFromAPI([], audioContext.currentTime, 1, 60 / tempo);
   loadSoundfonts(SOUNDFONT_INSTRUMENTS);
 
   // Switch button to stop mode

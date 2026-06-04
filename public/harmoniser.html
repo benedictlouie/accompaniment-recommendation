@@ -324,6 +324,8 @@ async function startMic() {
   pb.classList.add('playing');
 
   resetEngineHistory();
+  // Pre-fetch chord + loops so they land before beat 1 fires (lastBeatTime + beatDur)
+  predictChordFromAPI([], audioContext.currentTime, 1);
   loop();
 }
 
@@ -772,6 +774,7 @@ function playInstrumentBeat(chordName, loop, beatInBar, instrument, startTime) {
   const beatDuration = 60 / tempo;
   const stepDuration = beatDuration / STEPS_PER_BEAT;
   const startStep    = beatInBar * STEPS_PER_BEAT;
+  const beatAnchor   = Math.max(audioContext.currentTime + 0.003, startTime);
 
   // Pre-compute notes for every sub-step so we can look ahead for run lengths
   const stepNotes = [];
@@ -796,7 +799,7 @@ function playInstrumentBeat(chordName, loop, beatInBar, instrument, startTime) {
     const step = startStep + sub;
     if (step >= loop.length) break;
 
-    const stepStart = startTime + sub * stepDuration;
+    const stepStart = beatAnchor + sub * stepDuration;
     const notesNow  = stepNotes[sub];
     const prevNotes = sub === 0 ? prevStepNotes[instrument] : stepNotes[sub - 1];
 
@@ -983,11 +986,16 @@ function playDrumsBeat(drumLoop, beatInBar, startTime) {
   const beatDuration = 60 / tempo;
   const stepDuration = beatDuration / STEPS_PER_BEAT;
   const startStep    = beatInBar * STEPS_PER_BEAT;
+  // Anchor all sub-steps to the same reference so they stay evenly spaced.
+  // In the rAF-based scheduler startTime is nominally in the past; clamping here
+  // instead of inside each playDrumNote call keeps sub=1,2,3 a full stepDuration
+  // after sub=0 rather than slightly early.
+  const beatAnchor = Math.max(audioContext.currentTime + 0.003, startTime);
 
   for (let sub = 0; sub < STEPS_PER_BEAT; sub++) {
     const step = startStep + sub;
     if (step >= drumLoop.length) break;
-    const stepStart = startTime + sub * stepDuration;
+    const stepStart = beatAnchor + sub * stepDuration;
     const velocities = drumLoop[step]; // array of 128 velocity values
 
     // LPD dataset stores binary velocity (0 or 1), not 0–127.

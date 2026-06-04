@@ -279,7 +279,7 @@ def predict_chord():
     # ── Transformer engine branch (default) ───────────────────────────────────
     history  = _decode_history(history_b64)
 
-    # Early-fire peek: predict using history[-29:] + 3 copies of row 29 (strong_flag=0).
+    # Early-fire peek: predict using history[-n_real:] + latency_comp padding rows.
     # Does NOT update history — client calls again at the beat boundary for that.
     early_fire   = bool(data.get("early_fire", False))
     latency_comp = int(data.get("latency_compensation", 0))
@@ -290,8 +290,15 @@ def predict_chord():
         n_real   = max(0, MEMORY - latency_comp)
         real     = history[-n_real:]
         last_row = real[-1].copy() if len(real) > 0 else np.concatenate([np.zeros(1), -np.ones(STEPS_PER_BEAT)]).astype(np.float32)
-        last_row[0] = 0.0  # clear downbeat flag for padding rows
-        padding  = np.tile(last_row, latency_comp).reshape(latency_comp, INPUT_DIM)
+        last_row[0] = 0.0
+        # Each padding row represents one future beat starting at beat_index.
+        # Set bar_start_flag=1 for whichever rows land on beat 1.
+        padding_rows = []
+        for i in range(latency_comp):
+            row = last_row.copy()
+            row[0] = 1.0 if ((beat_index - 1 + i) % BEATS_PER_BAR == 0) else 0.0
+            padding_rows.append(row)
+        padding  = np.array(padding_rows, dtype=np.float32)
         peek_h   = np.vstack([real, padding]) if len(real) > 0 else padding
         chord    = "N"
         try:
