@@ -151,13 +151,7 @@ h2 {
 
 /* model cards */
 .model-title { font-size: clamp(15px, 1.8vw, 18px); font-weight: 600; margin-bottom: 8px; }
-.model-body  { font-size: clamp(12px, 1.3vw, 14px); color: var(--muted); margin-bottom: 16px; line-height: 1.65; }
-.badges { display: flex; flex-wrap: wrap; gap: 6px; }
-.badge {
-  font-size: 11px; padding: 4px 12px; border-radius: 20px;
-  background: rgba(116, 184, 240, 0.08); border: 1px solid rgba(116, 184, 240, 0.25);
-  color: var(--blue); font-weight: 500;
-}
+.model-body  { font-size: clamp(12px, 1.3vw, 14px); color: var(--muted); line-height: 1.65; }
 
 /* feature cards */
 .feat-row { display: flex; gap: 16px; align-items: flex-start; }
@@ -294,8 +288,9 @@ h2 {
 
 /* ── RESPONSIVE ── */
 @media (max-width: 760px) {
-  section  { padding: clamp(36px, 6vh, 64px) 18px; }
-  .inner   { gap: clamp(16px, 3vh, 28px); }
+  html { scroll-snap-type: none; }
+  section  { scroll-snap-align: none; min-height: auto; padding: 48px 18px; }
+  .inner   { gap: clamp(14px, 3vh, 24px); }
   .grid-3  { grid-template-columns: 1fr; }
   .grid-2  { grid-template-columns: 1fr; }
   #nav-dots { display: none; }
@@ -371,17 +366,17 @@ h2 {
       <div class="card">
         <div class="step-num">01</div>
         <div class="step-title">🎙 Transcription</div>
-        <div class="step-body">pYIN pitch detection converts your audio into a beat-aligned MIDI grid, note by note.</div>
+        <div class="step-body">pYIN converts your audio into a beat-aligned MIDI grid.</div>
       </div>
       <div class="card">
         <div class="step-num">02</div>
         <div class="step-title">🧠 Chord Estimation</div>
-        <div class="step-body">A CRF or Autoregressive Transformer reads your melody and predicts the most musical chord.</div>
+        <div class="step-body">Reads your melody and predicts the most musical chord.</div>
       </div>
       <div class="card">
         <div class="step-num">03</div>
         <div class="step-title">🥁 Accompaniment</div>
-        <div class="step-body">A groove is retrieved from 950 k+ real bars and snapped to the predicted chord in real time.</div>
+        <div class="step-body">A groove from 950k+ real bars, snapped to the predicted chord.</div>
       </div>
     </div>
 
@@ -438,21 +433,11 @@ h2 {
     <div class="grid-2">
       <div class="card">
         <div class="model-title">Conditional Random Field</div>
-        <div class="model-body">Uses the Krumhansl–Kessler key profile as an emission model with learned transition priors. Viterbi decoding — principled, interpretable, fast.</div>
-        <div class="badges">
-          <span class="badge">Probabilistic</span>
-          <span class="badge">Viterbi decoding</span>
-          <span class="badge">25 chords</span>
-        </div>
+        <div class="model-body">Krumhansl–Kessler key profile as emission model. Viterbi decoding — interpretable and fast.</div>
       </div>
       <div class="card">
         <div class="model-title">Autoregressive Transformer</div>
-        <div class="model-body">6-layer encoder–decoder with cross-attention over melody context. Trained on POP909, EWLD, and WJazzD — around 3,500 songs across pop, folk, and jazz.</div>
-        <div class="badges">
-          <span class="badge">Cross-attention</span>
-          <span class="badge">169 chords</span>
-          <span class="badge">3,500+ songs</span>
-        </div>
+        <div class="model-body">6-layer encoder–decoder trained on 3,500+ songs across pop, folk, and jazz.</div>
       </div>
     </div>
   </div>
@@ -471,7 +456,7 @@ h2 {
           <div class="feat-icon">🗄</div>
           <div>
             <div class="feat-title">LPD-5 Groove Index</div>
-            <div class="feat-body">957,530 bars from the Lakh Pianoroll Dataset, compressed to 16-dim onset vectors and indexed for instant lookup.</div>
+            <div class="feat-body">957,530 bars compressed to 16-dim onset vectors for instant lookup.</div>
           </div>
         </div>
       </div>
@@ -480,7 +465,7 @@ h2 {
           <div class="feat-icon">📏</div>
           <div>
             <div class="feat-title">Manhattan k-NN</div>
-            <div class="feat-body">The 10 nearest bars are sampled with temperature, giving each performance a natural variety in groove texture.</div>
+            <div class="feat-body">10 nearest bars sampled with temperature for natural groove variety.</div>
           </div>
         </div>
       </div>
@@ -489,7 +474,7 @@ h2 {
           <div class="feat-icon">🎼</div>
           <div>
             <div class="feat-title">Chord Snapping</div>
-            <div class="feat-body">Every retrieved note is remapped to the closest chord tone — so the groove always fits the harmony, exactly.</div>
+            <div class="feat-body">Every note remapped to the closest chord tone — groove always fits the harmony.</div>
           </div>
         </div>
       </div>
@@ -498,7 +483,7 @@ h2 {
           <div class="feat-icon">⚡</div>
           <div>
             <div class="feat-title">Real-Time Synthesis</div>
-            <div class="feat-body">Web Audio + MusyngKite soundfonts for piano, bass, and guitar. Drums synthesised natively. No server round-trips needed.</div>
+            <div class="feat-body">Web Audio soundfonts for piano, bass, and guitar. No server round-trips.</div>
           </div>
         </div>
       </div>
@@ -517,13 +502,13 @@ h2 {
       <a class="demo-card" href="/piano">
         <div class="dc-icon">🎹</div>
         <div class="dc-title">Piano App</div>
-        <div class="dc-body">Play notes with your computer keyboard or click the keys. A live band follows your melody.</div>
+        <div class="dc-body">Play with your keyboard. A live band follows your melody.</div>
         <div class="dc-cta">Open piano →</div>
       </a>
       <a class="demo-card" href="/harmoniser">
         <div class="dc-icon">🎤</div>
         <div class="dc-title">Harmoniser</div>
-        <div class="dc-body">Sing or hum into your microphone. The model picks up your pitch and harmonises in real time.</div>
+        <div class="dc-body">Hum into your microphone. The model harmonises in real time.</div>
         <div class="dc-cta">Open harmoniser →</div>
       </a>
     </div>
