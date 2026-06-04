@@ -270,7 +270,7 @@ fig.legend(handles=legend_elements, loc="lower center", ncol=5,
 
 plt.tight_layout(rect=[0, 0.08, 1, 1])
 
-out = "/Users/benlou/Desktop/BenLou/Year 4/FYP/fyp2/report/figures/chord_snapping_example.png"
+out = "report/figures/chord_snapping_example.png"
 plt.savefig(out, dpi=180, bbox_inches="tight", facecolor=fig.get_facecolor())
 print(f"\nSaved → {out}")
 

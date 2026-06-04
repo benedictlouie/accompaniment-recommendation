@@ -522,6 +522,19 @@ function scheduleBeats() {
     // Use pendingArChord if already arrived (early prediction beats the 120 ms scheduling window)
     const chordForBeat = (selectedEngine === 'transformer' && pendingArChord !== null)
       ? pendingArChord : predictedChord;
+    if (beat === 1 && currentLoops?.drums) {
+      const parts = [];
+      for (let step = 0; step < 16; step++) {
+        const row = currentLoops.drums[step];
+        if (!row) continue;
+        const groups = [];
+        if (row[35] || row[36]) groups.push('kick');
+        if (row[38] || row[40]) groups.push('snare');
+        if (row[42] || row[44] || row[46]) groups.push('hihat');
+        if (groups.length) parts.push(`${step}:${groups.join(',')}`);
+      }
+      console.log(`[GROOVE/DRUMS] ${parts.join(' | ')}`);
+    }
     playLoopBeat(chordForBeat, beat, beatTime, beatDur);
 
     const msUntil = (beatTime - audioContext.currentTime) * 1000;

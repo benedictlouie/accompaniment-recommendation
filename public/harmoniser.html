@@ -521,6 +521,17 @@ function loop() {
     }
 
     if (currentLoops && predictedChord !== '–' && predictedChord !== 'N') {
+      if (beatInBar === 0 && currentLoops.drums) {
+        const parts = [];
+        for (let step = 0; step < 16; step++) {
+          const row = currentLoops.drums[step];
+          if (!row) continue;
+          const groups = new Set();
+          row.forEach((vel, midi) => { if (vel) { const g = midiToDrumGroup(midi); if (g) groups.add(g); } });
+          if (groups.size) parts.push(`${step}:${[...groups].join(',')}`);
+        }
+        console.log(`[GROOVE/DRUMS] ${parts.join(' | ')}`);
+      }
       playLoopBeat(predictedChord, currentLoops, beatInBar, beatTime);
     }
 
