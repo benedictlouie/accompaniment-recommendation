@@ -515,10 +515,7 @@ function scheduleBeats() {
       playClick(beatTime, strong);
     }
 
-    // Use the pre-predicted chord if available; fall back to the current chord.
-    // predictedChord only changes at beat boundaries (when pendingArChord is applied
-    // in onBeat), so this is the only place that looks ahead to pendingArChord.
-    playLoopBeat(pendingArChord ?? predictedChord, beat, beatTime, beatDur);
+    playLoopBeat(predictedChord, beat, beatTime, beatDur);
 
     const msUntil = (beatTime - audioContext.currentTime) * 1000;
     setTimeout(() => onBeat(beat, beatTime, beatDur), Math.max(0, msUntil));
@@ -543,7 +540,8 @@ function onBeat(beat, beatTime, beatDur) {
   notesPlayed = [];
 
   if (selectedEngine === 'transformer') {
-    // Apply early-predicted chord (set by the previous beat's early-fire call)
+    // Apply early-predicted chord at the beat boundary (pendingArChord was set by
+    // the early-fire handler; predictedChord is NOT changed mid-beat by that handler).
     if (pendingArChord !== null) {
       predictedChord = pendingArChord;
       document.getElementById('chord-display').textContent = pendingArChord;

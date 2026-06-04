@@ -437,6 +437,7 @@ function loop() {
   if (now - lastBeatTime >= beatDuration) {
     const beatStart = lastBeatTime;
     lastBeatTime += beatDuration;
+    const beatTime  = lastBeatTime;   // exact audio-clock time for this beat (mirrors piano.html's nextBeatTime)
     const beatFireMs = performance.now();
 
     // Python: prev_beat_start = beat_start - engine.beat_duration
@@ -466,7 +467,8 @@ function loop() {
     });
 
     if (selectedEngine === 'transformer') {
-      // Apply early-predicted chord before playLoopBeat uses predictedChord
+      // Apply early-predicted chord at the beat boundary (pendingArChord was set by
+      // the early-fire handler; predictedChord is NOT changed mid-beat by that handler).
       if (pendingArChord !== null) {
         predictedChord = pendingArChord;
         document.getElementById('chord-display').textContent = pendingArChord;
@@ -477,7 +479,7 @@ function loop() {
         predictChordFromAPI(processedNotes, prevBeatStart, prevBeat, beatFireMs, true);
       }
       // Schedule early fire for the next beat from the actual beat time
-      const _nextBeatTime = beatStart + beatDuration;
+      const _nextBeatTime = beatTime;
       const _nextBeat     = currentBeat;   // before advance = what next beat's prevBeat will be
       const earlyDelay    = Math.max(0, (beatDuration - LATENCY_COMPENSATION * stepDuration) * 1000);
       setTimeout(() => {
@@ -510,14 +512,14 @@ function loop() {
       crfPendingChord = '';
     }
 
-    // Schedule click at the exact beat time (beatStart), not at the rAF time (now).
-    // This matches piano.html which schedules audio events against the audio clock.
+    // Schedule metronome and groove against the exact audio-clock beat time so they
+    // are sample-accurate relative to each other (mirrors piano.html's beatTime pattern).
     if (instrumentOn.metronome) {
-      playMetronomeClick(beatStart, currentBeat === 1);  // strong on beat 1
+      playMetronomeClick(beatTime, currentBeat === 1);  // strong on beat 1
     }
 
     if (currentLoops && predictedChord !== '–' && predictedChord !== 'N') {
-      playLoopBeat(predictedChord, currentLoops, beatInBar, now);
+      playLoopBeat(predictedChord, currentLoops, beatInBar, beatTime);
     }
 
     // ---- VISUALISER: mark beat/bar boundary for the real-time step clock ----
