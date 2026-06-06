@@ -47,17 +47,18 @@ body {
 /* ── SECTIONS ── */
 section {
   scroll-snap-align: start;
-  min-height: 100vh;
+  height: 100vh;
   width: 100%;
   display: flex; flex-direction: column;
   justify-content: center; align-items: center;
-  padding: clamp(48px, 7vh, 96px) clamp(24px, 6vw, 80px);
+  padding: clamp(24px, 4vh, 56px) clamp(24px, 6vw, 80px);
+  overflow: hidden;
 }
 
 .inner {
   width: 100%; max-width: 940px;
   display: flex; flex-direction: column;
-  align-items: center; gap: clamp(20px, 3.5vh, 40px);
+  align-items: center; gap: clamp(12px, 2.2vh, 32px);
 }
 
 /* ── TYPOGRAPHY ── */
@@ -289,7 +290,7 @@ h2 {
 /* ── RESPONSIVE ── */
 @media (max-width: 760px) {
   html { scroll-snap-type: none; }
-  section  { scroll-snap-align: none; min-height: auto; padding: 48px 18px; }
+  section  { scroll-snap-align: none; height: auto; min-height: auto; overflow: visible; padding: 48px 18px; }
   .inner   { gap: clamp(14px, 3vh, 24px); }
   .grid-3  { grid-template-columns: 1fr; }
   .grid-2  { grid-template-columns: 1fr; }
@@ -339,7 +340,6 @@ h2 {
 <!-- ═══ HERO ══════════════════════════════════════════════════════════════════ -->
 <section id="hero">
   <div class="inner">
-    <p class="eyebrow eyebrow-amber">Final Year Project · Cambridge</p>
 
     <h1>Play a melody.<br><em>Hear the harmony.</em></h1>
 
